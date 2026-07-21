@@ -1,0 +1,589 @@
+/**
+ * IMS Hirosaki ポータル共通レイアウト・コンポーネントCSS
+ * 出典：07_design_system.md §4〜§7（Phase 0 では骨格に必要な最小範囲のみ実装）
+ * 新規コンポーネントを追加する場合は、まず 07_design_system.md に追記してから実装する。
+ */
+
+/* ── §4.1 グローバルベース ── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body.ims-portal-body {
+  font-family: var(--f-body);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.ims-portal-body a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ims-portal-body button {
+  font-family: inherit;
+}
+
+.ims-portal-body *:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .ims-portal-body *,
+  .ims-portal-body *::before,
+  .ims-portal-body *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── §4.2 ブランドストリップ ── */
+.brand-strip {
+  height: 4px;
+  background: linear-gradient(90deg, var(--indigo-deep), var(--indigo) 55%, var(--gold));
+}
+
+/* ── §4.3 ヘッダー ── */
+.ims-header {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--line);
+  height: 64px;
+}
+
+.ims-header__inner {
+  max-width: 1180px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ims-header__logo {
+  font-family: var(--f-display);
+  font-size: 22px;
+  color: var(--indigo);
+  font-weight: 700;
+}
+
+.page-chip {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--indigo);
+  background: var(--indigo-tint);
+  padding: 4px 14px;
+  border-radius: 20px;
+}
+
+.ims-header__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ims-header__username {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 640px) {
+  .page-chip {
+    display: none;
+  }
+}
+
+/* ── コンテンツエリア ── */
+.ims-content {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+@media (max-width: 640px) {
+  .ims-content {
+    padding: 16px;
+  }
+}
+
+/* ── §5.1 ボタン ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: var(--r-sm);
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.btn-primary {
+  background: var(--indigo);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--indigo-deep);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+
+.btn-ghost-u {
+  color: var(--indigo);
+  text-decoration: underline;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--sub);
+  padding: 6px 14px;
+  font-size: 12px;
+  transition: color .15s ease, border-color .15s ease;
+}
+
+.btn-logout:hover {
+  color: var(--vermillion);
+  border-color: var(--vermillion);
+}
+
+/* ── §5.2 カード ── */
+.card {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-header h2 {
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.card-body {
+  padding: 22px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--sub);
+}
+
+/* ── §5.7 タイル ── */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .tile-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.tile {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+
+.tile:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  border-color: var(--indigo);
+}
+
+.tile-label {
+  font-family: var(--f-display);
+  font-size: 16px;
+}
+
+.tile-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--vermillion);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+/* ── アイコンボタン（ヘッダー通知等） ── */
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+
+.icon-btn:hover {
+  border-color: var(--indigo);
+}
+
+/* ── ログイン画面（1c） ── */
+.ims-login {
+  min-height: calc(100vh - 68px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px 16px;
+}
+
+.ims-login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  padding: 36px 32px;
+}
+
+.ims-login-brand {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.ims-login-logo {
+  font-family: var(--f-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--indigo);
+}
+
+.ims-login-sub {
+  font-size: 12px;
+  color: var(--sub);
+  margin-top: 4px;
+}
+
+.ims-login-error {
+  background: var(--vermillion-tint);
+  color: var(--vermillion);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+.ims-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-soft);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.ims-google-btn:hover {
+  border-color: var(--indigo);
+  box-shadow: var(--shadow-sm);
+}
+
+.ims-google-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--indigo);
+  color: #fff;
+  font-weight: 800;
+  font-family: var(--f-display);
+}
+
+.ims-login-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--sub);
+  font-size: 12px;
+  margin: 20px 0;
+}
+
+.ims-login-divider::before,
+.ims-login-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.ims-login-divider span {
+  padding: 0 12px;
+}
+
+.ims-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ims-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ims-field span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.ims-field input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  background: var(--surface);
+}
+
+.ims-field input:focus {
+  border-color: var(--indigo);
+  outline: none;
+}
+
+.ims-remember {
+  font-size: 12px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ims-login-submit {
+  width: 100%;
+  justify-content: center;
+  padding: 11px;
+  margin-top: 4px;
+}
+
+.ims-login-foot {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 12px;
+}
+
+.ims-login-foot a {
+  color: var(--indigo);
+  text-decoration: underline;
+}
+
+.ims-login-note {
+  font-size: 11.5px;
+  color: var(--sub);
+  max-width: 400px;
+  text-align: center;
+}
+
+/* ══════════════════════════════════════════════════════════
+   §5.2.2 マイページ（/portal/profile/）— 読み取り専用プロフィール
+   ══════════════════════════════════════════════════════════ */
+.mypage-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* ── プロフィールヘッダー（藍のグラデ・白抜き） ── */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-bottom: 24px;
+  padding: 28px;
+  background: linear-gradient(155deg, var(--indigo), var(--indigo-deep) 80%);
+  color: #fff;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(115deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 26px);
+  pointer-events: none;
+}
+
+.profile-avatar {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .15);
+  border: 1px solid rgba(255, 255, 255, .3);
+  color: #fff;
+  font-family: var(--f-display);
+  font-size: 26px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-name {
+  position: relative;
+  font-family: var(--f-display);
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.profile-meta {
+  position: relative;
+  font-size: 12px;
+  color: rgba(255, 255, 255, .7);
+  margin-top: 5px;
+}
+
+.profile-tags {
+  position: relative;
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+/* ヘッダー内タグは白抜き寄りに上書き */
+.profile-tags .tag-google { background: rgba(255, 255, 255, .18); color: #fff; }
+.profile-tags .tag-pw     { background: rgba(255, 255, 255, .18); color: #fff; }
+.profile-tags .tag-active { background: rgba(127, 216, 147, .25); color: #DFF6E2; }
+.profile-tags .tag-leave  { background: rgba(255, 255, 255, .18); color: #fff; }
+.profile-tags .tag-retire { background: rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .85); }
+
+/* ── 汎用タグ ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tag-google { background: var(--indigo-tint);     color: var(--indigo); }
+.tag-pw     { background: var(--gold-tint);        color: var(--gold); }
+.tag-active { background: var(--moss-tint);        color: var(--moss); }
+.tag-retire { background: var(--line-soft);        color: var(--sub); }
+.tag-leave  { background: var(--vermillion-tint);  color: var(--vermillion); }
+
+/* ── 基本情報グリッド ── */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.info-item {
+  padding: 16px;
+  background: var(--paper);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+}
+
+.info-item .info-label {
+  font-size: 10.5px;
+  color: var(--sub);
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.info-item .info-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ── 案内ボックス（人事部への連絡導線） ── */
+.notice-box {
+  background: var(--indigo-tint);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 14px 18px;
+  font-size: 12.5px;
+  color: var(--indigo);
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.6;
+}
+
+.notice-box svg.ico {
+  color: var(--indigo);
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .info-grid { grid-template-columns: 1fr; }
+}
