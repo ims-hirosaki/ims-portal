@@ -44,13 +44,12 @@ final class Bootstrap
             \IMS\Module\User\Auth\AdminAuthSettingsPage::init(); // 認証設定 (1c)
             AdminCsvPage::init();       // アカウント一括管理CSV：エクスポート＋取り込み (1d)
             AdminLauncherPage::init();  // ポータル設定 > 外部ツール設定（ランチャー管理）(1d)
+            AdminRetiredPage::init();   // 社員管理 > 退職者一覧（退職処理・復職）(1d)
         }
 
         // 今後この module に追加していくもの（各スライスで有効化）：
-        // 1d: ProfilePage::init();     ← 実装済み（マイページ）
-        //     AdminCsvPage::init();    ← 実装済み（CSVエクスポート＋取り込み）
-        //     AdminLauncherPage / LauncherBar ← 実装済み（外部ツールランチャー）
-        //     AdminRetiredPage::init();        // 退職者一覧
+        // 1d: ProfilePage / LauncherBar / AdminCsvPage / AdminLauncherPage / AdminRetiredPage
+        //     ← すべて実装済み。これで Phase 1d（モジュール01）完了。
     }
 
     /**

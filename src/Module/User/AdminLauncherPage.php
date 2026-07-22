@@ -157,7 +157,23 @@ final class AdminLauncherPage
             $edit = LauncherRepository::find((int) $_GET['edit']);
         }
         ?>
-        <div class="wrap ims-admin">
+        <div class="wrap ims-admin ims-launcher-page">
+            <style>
+                /* この画面限定：右カラムに合わせて入力欄を収める（共有admin.cssは変更しない） */
+                .ims-launcher-page .ims-2col { grid-template-columns: 1fr 380px; }
+                .ims-launcher-page .ims-card input[type="text"],
+                .ims-launcher-page .ims-card input[type="url"],
+                .ims-launcher-page .ims-card input.regular-text {
+                    width: 100%;
+                    max-width: 100%;
+                    box-sizing: border-box;
+                }
+                .ims-launcher-page .ims-card input.small-text { width: 90px; }
+                .ims-launcher-page #ims-launcher-table td { vertical-align: middle; }
+                @media (max-width: 1100px) {
+                    .ims-launcher-page .ims-2col { grid-template-columns: 1fr; }
+                }
+            </style>
             <h1 class="wp-heading-inline">外部ツール設定</h1>
             <hr class="wp-header-end">
 

@@ -93,6 +93,7 @@ final class AdminUserFields
             <?php if (current_user_can(self::CAP_SENSITIVE)) : ?>
                 <?php self::render_sensitive_card($uid); ?>
             <?php endif; ?>
+            <?php AdminRetiredPage::account_control_card($user); ?>
         </div>
         <?php
     }
@@ -297,6 +298,9 @@ final class AdminUserFields
             return;
         }
 
+        $prev_status = get_user_meta($user_id, 'employment_status', true);
+        $new_status  = sanitize_text_field(wp_unslash($_POST['ims_employment_status'] ?? '在籍'));
+
         EmployeeRepository::save_basic_and_org($user_id, [
             'employee_code'        => sanitize_text_field(wp_unslash($_POST['ims_employee_code'] ?? '')),
             'auth_type'            => $_POST['ims_auth_type'] ?? 'password',
@@ -305,9 +309,18 @@ final class AdminUserFields
             'position_id'          => $_POST['ims_position_id'] ?? 0,
             'job_type_id'          => $_POST['ims_job_type_id'] ?? 0,
             'employment_type_id'   => $_POST['ims_employment_type_id'] ?? 0,
-            'employment_status'    => sanitize_text_field(wp_unslash($_POST['ims_employment_status'] ?? '在籍')),
+            'employment_status'    => $new_status,
             'scheduled_work_hours' => $_POST['ims_scheduled_work_hours'] ?? 8.0,
         ]);
+
+        // 在籍状況の遷移に伴う副作用（退職ボタン以外の経路でも確実に走らせる）
+        if ($new_status === '退職' && $prev_status !== '退職') {
+            EmployeeRepository::retire($user_id, get_current_user_id());
+        } elseif ($new_status !== '退職' && $prev_status === '退職') {
+            EmployeeRepository::reinstate($user_id);
+            // reinstate は status を「在籍」に固定するため、選択値が休職等の場合は上書きし直す
+            update_user_meta($user_id, 'employment_status', $new_status);
+        }
 
         EmployeeRepository::save_approvers($user_id, [
             'first_approver_id' => $_POST['ims_first_approver_id'] ?? 0,

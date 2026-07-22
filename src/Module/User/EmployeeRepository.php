@@ -47,6 +47,77 @@ final class EmployeeRepository
         }));
     }
 
+    /**
+     * 退職者のみの一覧（退職者一覧画面用）。退職処理日の新しい順。
+     * @return array<int, \WP_User>
+     */
+    public static function list_retired(): array
+    {
+        $users = get_users(['number' => -1]);
+        $retired = array_values(array_filter($users, static function (\WP_User $u): bool {
+            return get_user_meta($u->ID, 'employment_status', true) === '退職';
+        }));
+        usort($retired, static function (\WP_User $a, \WP_User $b): int {
+            return strcmp(
+                (string) get_user_meta($b->ID, 'retired_at', true),
+                (string) get_user_meta($a->ID, 'retired_at', true)
+            );
+        });
+        return $retired;
+    }
+
+    /**
+     * 退職処理（01_user_management.md §3.5 / §5.4）。
+     *
+     * ・物理削除はせず employment_status を「退職」にする。
+     * ・退職処理日（retired_at）を記録する。
+     * ・WordPress セッションを即時破棄する（全端末ログアウト）。
+     * ・auth_type = password の場合はパスワードをランダムリセットする（再ログイン不可に）。
+     *   google_sso は Google 側アカウント停止との二重ロックを推奨（Directory API は Tier3）。
+     *
+     * ※ AuthGuard / PasswordAuth / GoogleOAuth が employment_status=退職 を拒否するため、
+     *   以後のログイン・ポータルアクセスは自動的に遮断される。
+     */
+    public static function retire(int $user_id, int $operator_id): void
+    {
+        $user = get_userdata($user_id);
+        if (!$user) {
+            return;
+        }
+        update_user_meta($user_id, 'employment_status', '退職');
+        if (get_user_meta($user_id, 'retired_at', true) === '') {
+            update_user_meta($user_id, 'retired_at', current_time('Y-m-d'));
+        }
+        update_user_meta($user_id, 'retired_by', $operator_id);
+
+        // 全セッション破棄（全端末から即時ログアウト）
+        $manager = \WP_Session_Tokens::get_instance($user_id);
+        $manager->destroy_all();
+
+        // パスワード認証ユーザーはパスワードをランダム化（再ログイン不可）
+        if (get_user_meta($user_id, 'auth_type', true) === 'password') {
+            wp_set_password(wp_generate_password(24, true, true), $user_id);
+        }
+    }
+
+    /**
+     * 復職（再雇用）。employment_status を「在籍」に戻す。
+     * ・退職処理日はクリアする。
+     * ・password ユーザーはパスワードがランダム化されたままなので、別途リセットが必要
+     *   （管理画面の「パスワードを再発行」等）。その旨は画面側で案内する。
+     */
+    public static function reinstate(int $user_id): void
+    {
+        update_user_meta($user_id, 'employment_status', '在籍');
+        delete_user_meta($user_id, 'retired_at');
+        delete_user_meta($user_id, 'retired_by');
+    }
+
+    public static function is_retired(int $user_id): bool
+    {
+        return get_user_meta($user_id, 'employment_status', true) === '退職';
+    }
+
     // ── 承認者候補 ─────────────────────────────────────────
 
     /**
