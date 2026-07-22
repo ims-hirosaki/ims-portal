@@ -587,3 +587,75 @@ body.ims-portal-body {
 @media (max-width: 640px) {
   .info-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ══════════════════════════════════════════════════════════
+   §3.2.1 外部ツールランチャーバー（ダッシュボード最上部）
+   ══════════════════════════════════════════════════════════ */
+.ims-launcher {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.ims-launcher-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 72px;
+  padding: 8px 4px;
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  color: var(--ink-soft);
+  transition: transform .12s ease, background .12s ease;
+}
+
+.ims-launcher-item:hover {
+  transform: translateY(-2px);
+  background: var(--indigo-tint);
+}
+
+.ims-launcher-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ims-launcher-fallback {
+  background: var(--indigo);
+  color: #fff;
+  border-radius: 8px;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.ims-launcher-label {
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.ims-launcher-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 8px;
+  background: var(--line);
+}
+
+/* スマートフォンでは非表示（OS通知センターとのスワイプ競合回避） */
+@media (max-width: 640px) {
+  .ims-launcher { display: none; }
+}

@@ -73,6 +73,8 @@ final class AdminUserListPage
         <div class="wrap ims-admin">
             <h1 class="wp-heading-inline">社員一覧</h1>
             <a href="<?php echo esc_url(admin_url('user-new.php')); ?>" class="page-title-action">新規社員を追加</a>
+            <a href="<?php echo esc_url(AdminCsvPage::export_url()); ?>" class="page-title-action">一覧ダウンロード（CSV）</a>
+            <a href="<?php echo esc_url(AdminCsvPage::import_page_url()); ?>" class="page-title-action">一括取り込み（CSV）</a>
             <hr class="wp-header-end">
 
             <form method="get" class="ims-list-filter">

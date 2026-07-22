@@ -29,6 +29,10 @@ final class DashboardPage
     {
         Layout::render_header('ホーム');
 
+        // モジュールが寄与するダッシュボード最上部エリア
+        // （00_portal.md §3.2：ランチャー → ステータスカード → タイルグリッド の順）
+        do_action('ims_portal_dashboard_top');
+
         $tiles = TileRegistry::get_tiles_for_user(get_current_user_id());
         ?>
         <div class="tile-grid">

@@ -34,6 +34,7 @@ final class Bootstrap
 
         // フロントエンド・ポータル画面（1d）
         ProfilePage::init();                              // /portal/profile/ マイページ（読み取り専用）
+        LauncherBar::init();                              // ダッシュボードの外部ツールランチャー表示
 
         // 管理画面
         if (is_admin()) {
@@ -41,12 +42,14 @@ final class Bootstrap
             AdminMastersPage::init();   // 各種マスタ (1a)
             AdminUserFields::init();    // 標準ユーザー編集画面への業務カード追加 (1b)
             \IMS\Module\User\Auth\AdminAuthSettingsPage::init(); // 認証設定 (1c)
+            AdminCsvPage::init();       // アカウント一括管理CSV：エクスポート＋取り込み (1d)
+            AdminLauncherPage::init();  // ポータル設定 > 外部ツール設定（ランチャー管理）(1d)
         }
 
         // 今後この module に追加していくもの（各スライスで有効化）：
-        // 1d: ProfilePage::init();  ← 実装済み（マイページ）
-        //     CsvController::init();           // CSV入出力
-        //     AdminLauncherPage::init();       // 外部ツール設定
+        // 1d: ProfilePage::init();     ← 実装済み（マイページ）
+        //     AdminCsvPage::init();    ← 実装済み（CSVエクスポート＋取り込み）
+        //     AdminLauncherPage / LauncherBar ← 実装済み（外部ツールランチャー）
         //     AdminRetiredPage::init();        // 退職者一覧
     }
 

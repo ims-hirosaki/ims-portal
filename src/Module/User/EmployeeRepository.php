@@ -264,6 +264,23 @@ final class EmployeeRepository
         return false;
     }
 
+    /**
+     * 社員番号から user_id を引く。未登録は null。CSV 突合キー解決に使う。
+     */
+    public static function user_id_by_employee_code(string $code): ?int
+    {
+        $code = trim($code);
+        if ($code === '') {
+            return null;
+        }
+        global $wpdb;
+        $id = $wpdb->get_var($wpdb->prepare(
+            "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'employee_code' AND meta_value = %s LIMIT 1",
+            $code
+        ));
+        return $id ? (int) $id : null;
+    }
+
     /** 所属・部署名の解決（一覧表示用） */
     public static function org_label(int $user_id): string
     {
