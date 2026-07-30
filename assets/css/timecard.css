@@ -1,0 +1,350 @@
+/**
+ * 打刻コンソール（/portal/timecard/）専用スタイル。
+ *
+ * ・すべて `.tc-wrap` 配下にスコープする。ポータル共通の portal.css は変更しない。
+ * ・色・角丸・影・フォントは 07_design_system.md のトークン経由。
+ *   ims-tokens.css / portal.css が先に読み込まれる前提。
+ * ・ワイヤーフレーム 画面1（打刻コンソール）に準拠。
+ */
+
+.tc-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.tc-card-title {
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── 打刻コンソール（上段・藍のパネル） ───────────────── */
+
+.tc-console {
+  background: linear-gradient(160deg, var(--indigo) 0%, var(--indigo-deep) 100%);
+  color: #fff;
+  border-radius: var(--r-lg);
+  padding: 26px 28px;
+  box-shadow: var(--shadow-md);
+}
+
+.tc-console-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.tc-console .tc-card-title {
+  color: #fff;
+}
+
+.tc-server-note {
+  font-size: 12px;
+  color: rgba(255, 255, 255, .7);
+}
+
+.tc-status-row {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+/* 状態バッジ */
+.tc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, .16);
+  color: #fff;
+}
+
+.tc-badge--working { background: var(--moss); }
+.tc-badge--break   { background: var(--gold); }
+.tc-badge--after   { background: rgba(255, 255, 255, .28); }
+.tc-badge--before  { background: rgba(255, 255, 255, .14); }
+
+.tc-clock-block,
+.tc-worked-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tc-clock {
+  font-family: var(--f-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-clock-note {
+  font-size: 11px;
+  color: rgba(255, 255, 255, .65);
+}
+
+.tc-worked-block {
+  margin-left: auto;
+  text-align: right;
+}
+
+.tc-worked {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-worked-note {
+  font-size: 11px;
+  color: rgba(255, 255, 255, .65);
+}
+
+/* ── 打刻ボタン ─────────────────────────────────────── */
+
+.tc-punch-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.tc-punch-btn {
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: var(--r-md);
+  padding: 20px 10px;
+  cursor: pointer;
+  color: #fff;
+  background: rgba(255, 255, 255, .10);
+  font-size: 15px;
+  font-weight: 700;
+  transition: background-color .15s ease, transform .12s ease, box-shadow .15s ease, opacity .15s ease;
+}
+
+.tc-punch-btn.is-primary {
+  background: var(--moss);
+  border-color: var(--moss);
+}
+
+.tc-punch-btn.is-danger {
+  background: var(--vermillion);
+  border-color: var(--vermillion);
+}
+
+.tc-punch-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, .20);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .25);
+}
+
+.tc-punch-btn.is-primary:not(:disabled):hover { background: #4d6940; }
+.tc-punch-btn.is-danger:not(:disabled):hover  { background: #9c3a25; }
+
+.tc-punch-btn:not(:disabled):active {
+  transform: scale(.97);
+}
+
+.tc-punch-btn:disabled,
+.tc-punch-btn.is-inactive {
+  opacity: .3;
+  cursor: not-allowed;
+}
+
+.tc-punch-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, .7);
+}
+
+/* 2b の「準備中」告知バナー */
+.tc-pending-banner {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, .12);
+  border: 1px dashed rgba(255, 255, 255, .4);
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, .92);
+}
+
+/* ── 打刻履歴（下段・白いカード） ─────────────────────── */
+
+.tc-history {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tc-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.tc-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tc-month-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 96px;
+  text-align: center;
+}
+
+.tc-month-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 18px;
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+
+.tc-month-btn:hover {
+  border-color: var(--indigo-soft);
+  color: var(--indigo);
+}
+
+.tc-month-btn.is-disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.tc-table-scroll {
+  overflow-x: auto;
+}
+
+.tc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tc-table th,
+.tc-table td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+
+.tc-table thead th {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: var(--indigo-tint);
+  border-bottom: 1px solid var(--line);
+}
+
+.tc-table thead th:first-child { border-top-left-radius: var(--r-sm); }
+.tc-table thead th:last-child  { border-top-right-radius: var(--r-sm); }
+
+.tc-col-date {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.tc-col-date.is-sat { color: var(--indigo-soft); }
+.tc-col-date.is-sun { color: var(--vermillion); }
+
+.tc-table tr.is-today {
+  background: #FBF6E3; /* 薄黄ハイライト（今日） */
+}
+
+.tc-time {
+  display: block;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-auto-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.tc-times-count {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.tc-col-worked {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-empty {
+  margin-top: 16px;
+  padding: 20px;
+  text-align: center;
+  color: var(--sub);
+  font-size: 13px;
+}
+
+/* ── 「準備中」トースト（JS が生成） ──────────────────── */
+
+.tc-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 200;
+}
+
+.tc-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── レスポンシブ ───────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .tc-punch-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tc-worked-block {
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .tc-status-row {
+    gap: 16px;
+  }
+}

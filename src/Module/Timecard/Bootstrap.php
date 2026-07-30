@@ -29,6 +29,7 @@ final class Bootstrap
         add_filter('ims_register_schema', [Schema::class, 'contribute']);
 
         // Google Chat 通知のリトライ受け口。
+        TimecardPage::init();  
         // WP-Cron は管理画面以外の文脈でも走るため、is_admin() の外で登録する。
         ChatNotifier::init();
 
