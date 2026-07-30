@@ -3,7 +3,7 @@
  * Plugin Name:       IMS Hirosaki Portal
  * Plugin URI:        https://portal-site.labs-ims.com/
  * Description:       IMS Hirosaki 社内業務システム（グループウェア）。ユーザー管理・打刻・勤怠・交通費・稟議・Google Workspace 連携を統合するポータル基盤プラグイン。
- * Version:           0.4.7-phase1d
+ * Version:           0.5.0-phase2a
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            IMS Hirosaki
@@ -25,8 +25,8 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.4.7-phase1d');
-define('IMS_PORTAL_DB_VERSION', 2); // スキーマ変更時にインクリメントする（08 §5.2）。v2: 01モジュールのテーブル追加
+define('IMS_PORTAL_VERSION', '0.5.0-phase2a');
+define('IMS_PORTAL_DB_VERSION', 3); // スキーマ変更時にインクリメントする（08 §5.2）。v2: 01モジュールのテーブル追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
 define('IMS_PORTAL_URL', plugin_dir_url(__FILE__));
@@ -107,7 +107,7 @@ final class IMS_Portal_Plugin
         // ── 各モジュールの自己登録 ──
         // 今後 src/Module/Xxx/Bootstrap.php をここに追加していく。
         \IMS\Module\User\Bootstrap::init();   // 01_user_management
-        // \IMS\Module\Timecard\Bootstrap::init();
+        \IMS\Module\Timecard\Bootstrap::init();
         do_action('ims_portal_modules_loaded');
     }
 }

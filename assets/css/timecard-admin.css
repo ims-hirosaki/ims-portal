@@ -1,0 +1,315 @@
+/**
+ * 打刻システム設定画面（ポータル設定 > 打刻システム設定）専用スタイル。
+ *
+ * ・すべて `.ims-tc-settings` 配下にスコープする。共通の admin.css は
+ *   他の管理画面に影響するため一切変更しない。
+ * ・色・余白・角丸・影は 07_design_system.md のトークン経由で指定する。
+ *   ims-tokens.css が先に読み込まれる前提。フォールバック値を併記して、
+ *   万一トークンが未読込でも破綻しないようにする。
+ */
+
+.ims-tc-settings .ims-tc-grid {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  max-width: 1100px;
+  margin-top: 16px;
+}
+
+/* ── 左：セクション切り替えメニュー ───────────────────── */
+
+.ims-tc-settings .ims-tc-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: var(--surface-raised, #fff);
+  border: 1px solid var(--line, #E1D5B7);
+  border-radius: var(--r-md, 14px);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(33, 22, 10, .08));
+  position: sticky;
+  top: 46px;
+}
+
+.ims-tc-settings .ims-tc-menu-item {
+  appearance: none;
+  display: block;
+  width: 100%;
+  text-align: right;
+  cursor: pointer;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--r-sm, 6px);
+  background: transparent;
+  color: var(--ink-soft, #4A4339);
+  font-family: var(--f-body, inherit);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.ims-tc-settings .ims-tc-menu-item:hover {
+  background: var(--indigo-tint, #EAEEF2);
+  color: var(--ink, #211D17);
+}
+
+.ims-tc-settings .ims-tc-menu-item.is-active {
+  background: var(--indigo, #1E3A5F);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── 右：設定パネル ─────────────────────────────────── */
+
+.ims-tc-settings .ims-tc-panel {
+  background: var(--surface-raised, #fff);
+  border: 1px solid var(--line, #E1D5B7);
+  border-radius: var(--r-md, 14px);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(33, 22, 10, .08));
+  padding: 24px 26px;
+}
+
+.ims-tc-settings .ims-tc-section {
+  display: none;
+}
+
+.ims-tc-settings .ims-tc-section.is-active {
+  display: block;
+}
+
+.ims-tc-settings .ims-tc-section h2 {
+  margin: 0 0 10px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--line-soft, #ECE3CC);
+  font-family: var(--f-display, inherit);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink, #211D17);
+}
+
+.ims-tc-settings .ims-tc-desc {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-soft, #4A4339);
+}
+
+/* ── 入力フィールド ─────────────────────────────────── */
+
+.ims-tc-settings .ims-tc-field {
+  margin-bottom: 22px;
+}
+
+.ims-tc-settings .ims-tc-field > label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #211D17);
+}
+
+.ims-tc-settings .ims-tc-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ims-tc-settings .ims-tc-inline input[type="number"] {
+  max-width: 96px;
+}
+
+.ims-tc-settings .ims-tc-inline span {
+  font-size: 13px;
+  color: var(--ink-soft, #4A4339);
+}
+
+.ims-tc-settings input[type="number"],
+.ims-tc-settings input[type="url"] {
+  border: 1px solid var(--line, #E1D5B7);
+  border-radius: var(--r-sm, 6px);
+  background: var(--surface, #FFFCF5);
+  color: var(--ink, #211D17);
+  padding: 6px 10px;
+  font-family: var(--f-body, inherit);
+  font-size: 14px;
+}
+
+.ims-tc-settings input[type="number"]:focus,
+.ims-tc-settings input[type="url"]:focus {
+  border-color: var(--indigo-soft, #34557F);
+  box-shadow: 0 0 0 1px var(--indigo-soft, #34557F);
+  outline: none;
+}
+
+.ims-tc-settings .ims-tc-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--sub, #897D69);
+}
+
+.ims-tc-settings .ims-tc-webhook-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ims-tc-settings .ims-tc-webhook-row input[type="url"] {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+/* ── ラジオ（修正許可レベル） ───────────────────────── */
+
+.ims-tc-settings .ims-tc-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ims-tc-settings .ims-tc-radio {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--line, #E1D5B7);
+  border-radius: var(--r-md, 14px);
+  background: var(--surface, #FFFCF5);
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.ims-tc-settings .ims-tc-radio:hover {
+  border-color: var(--indigo-soft, #34557F);
+}
+
+.ims-tc-settings .ims-tc-radio.is-selected {
+  border-color: var(--indigo, #1E3A5F);
+  background: var(--indigo-tint, #EAEEF2);
+}
+
+.ims-tc-settings .ims-tc-radio input[type="radio"] {
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+
+.ims-tc-settings .ims-tc-radio-body {
+  display: block;
+}
+
+.ims-tc-settings .ims-tc-radio-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink, #211D17);
+  margin-bottom: 3px;
+}
+
+.ims-tc-settings .ims-tc-radio-desc {
+  display: block;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-soft, #4A4339);
+}
+
+.ims-tc-settings .ims-tc-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--moss, #5C7A4E);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* ── サンプル・注意書き ─────────────────────────────── */
+
+.ims-tc-settings .ims-tc-sample {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  background: var(--indigo-tint, #EAEEF2);
+  border-radius: var(--r-md, 14px);
+  font-size: 12px;
+  color: var(--ink, #211D17);
+}
+
+.ims-tc-settings .ims-tc-sample pre {
+  margin: 10px 0 0;
+  font-family: var(--f-body, inherit);
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.ims-tc-settings .ims-tc-tip {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--moss, #5C7A4E);
+  background: var(--moss-tint, #E7EEE3);
+  border-radius: 0 var(--r-sm, 6px) var(--r-sm, 6px) 0;
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--ink, #211D17);
+}
+
+.ims-tc-settings .ims-tc-tip.is-pending {
+  border-left-color: var(--gold, #A87C2E);
+  background: var(--gold-tint, #F3E9D3);
+}
+
+.ims-tc-settings .ims-tc-err-detail {
+  font-size: 12px;
+  color: var(--vermillion, #B8472F);
+}
+
+/* ── アクション ─────────────────────────────────────── */
+
+.ims-tc-settings .ims-tc-actions {
+  margin: 24px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-soft, #ECE3CC);
+}
+
+.ims-tc-settings .ims-tc-hidden-form {
+  display: none;
+}
+
+/* ── アクセシビリティ・レスポンシブ ─────────────────── */
+
+.ims-tc-settings *:focus-visible {
+  outline: 2px solid var(--indigo-soft, #34557F);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ims-tc-settings * {
+    transition: none !important;
+  }
+}
+
+@media screen and (max-width: 782px) {
+  .ims-tc-settings .ims-tc-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ims-tc-settings .ims-tc-menu {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .ims-tc-settings .ims-tc-menu-item {
+    width: auto;
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .ims-tc-settings .ims-tc-panel {
+    padding: 18px 16px;
+  }
+}
