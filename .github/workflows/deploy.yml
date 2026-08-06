@@ -19,3 +19,15 @@ jobs:
           password: ${{ secrets.FTP_PASS_STAGING }}
           local-dir: ./
           server-dir:  /labs-ims.com/public_html/portal-site/wp-content/plugins/ims-portal/
+          # プラグインディレクトリ配下のファイルはURL直打ちで外部から読めるため、
+          # 動作に不要なドキュメント類は本番へ送らない。
+          #
+          # ※ exclude を指定するとアクション既定の除外リストが「置き換わる」。
+          #   既定の3行（.git* / node_modules）を消すと .git や .github が本番へ
+          #   公開されてしまうため、必ず残したうえで追記すること。
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/*.md
+            composer.json
