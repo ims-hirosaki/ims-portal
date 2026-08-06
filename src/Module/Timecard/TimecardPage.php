@@ -5,22 +5,23 @@ declare(strict_types=1);
 namespace IMS\Module\Timecard;
 
 use IMS\Core\Layout;
+use IMS\Support\UserRepository;
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
 /**
- * 打刻コンソール `/portal/timecard/`（02_time_tracking.md §5.2 / ワイヤーフレーム 画面1）。
+ * 打刻コンソール `/portal/timecard/`（02_time_tracking.md §4.1 / ワイヤーフレーム 画面1）。
  *
- * 【2b の範囲】表示のみ。DB への書き込みは一切しない。
- *  ・現在ステータス（出勤前/勤務中/休憩中/退勤済）をバッジ表示
- *  ・サーバー時刻基準の実勤務時間（経過）
- *  ・4種の打刻ボタン（状態に応じた活性/非活性）※押下は「準備中」ダミー（2cでAPI接続）
- *  ・リアルタイム時計（JS・参考値）
- *  ・当月の打刻履歴テーブル（1日1行）、月送り
+ * 【2b】表示：現在ステータス／実勤務時間（経過）／リアルタイム時計／当月履歴・月送り。
+ * 【2c】打刻ボタンを REST（ims/v1/timecard/punch）へ接続。押下でその場に記録され、
+ *       ページ全体をリロードせずバッジ・経過時間・ボタン活性・当日行を描き替える。
  *
- * 修正ボタンは 2e で機能追加するため、2b では列自体を出さない
+ * 退職者（employment_status = 退職）にはボタンを出さない（§6.1）。
+ * ただしこれは表示上の配慮であり、実際の拒否は必ずサーバー側（PunchService）が行う。
+ *
+ * 修正ボタンは 2e で機能追加するため、まだ列自体を出さない
  * （空の操作列を見せて誤解させないため）。
  */
 final class TimecardPage
@@ -71,12 +72,17 @@ final class TimecardPage
     {
         $user_id = get_current_user_id();
 
-        // ── 当日の状態算出（サーバー時刻） ──
-        $today_logs = Repository::logs_for_today($user_id);
+        // ── 現在の勤務日の状態算出（サーバー時刻） ──
+        // work_date は打刻API と同じ規則で解決する（深夜帯で画面とAPIがずれないように）。
+        $work_date  = PunchService::console_work_date($user_id);
+        $today_logs = Repository::logs_for_date($user_id, $work_date);
         $status     = StatusCalculator::status($today_logs);
         $active     = StatusCalculator::active_buttons($today_logs);
         $now_ts     = (int) current_time('timestamp');
         $worked_sec = StatusCalculator::worked_seconds($today_logs, $now_ts);
+
+        // 退職者は打刻できない（§6.1）。サーバー側でも PunchService が拒否する。
+        $can_punch = !UserRepository::is_retired($user_id);
 
         // clock_in 時刻（JS で経過を進めるための基準）
         $clock_in_at = self::first_punch_time($today_logs, StatusCalculator::CLOCK_IN);
@@ -91,10 +97,12 @@ final class TimecardPage
              data-status="<?php echo esc_attr($status); ?>"
              data-worked-sec="<?php echo esc_attr((string) $worked_sec); ?>"
              data-clock-in="<?php echo esc_attr($clock_in_at); ?>"
-             data-server-now="<?php echo esc_attr((string) $now_ts); ?>">
+             data-server-now="<?php echo esc_attr((string) $now_ts); ?>"
+             data-work-date="<?php echo esc_attr($work_date); ?>"
+             data-can-punch="<?php echo $can_punch ? '1' : '0'; ?>">
 
-            <?php self::render_console($status, $active, $worked_sec); ?>
-            <?php self::render_history($year, $month, $month_logs); ?>
+            <?php self::render_console($status, $active, $worked_sec, $can_punch); ?>
+            <?php self::render_history($year, $month, $month_logs, $work_date); ?>
         </div>
         <?php
         Layout::render_footer();
@@ -102,7 +110,7 @@ final class TimecardPage
 
     // ── 打刻コンソール（上段） ──────────────────────────────
 
-    private static function render_console(string $status, array $active, int $worked_sec): void
+    private static function render_console(string $status, array $active, int $worked_sec, bool $can_punch): void
     {
         $variant = StatusCalculator::status_variant($status);
         $label   = StatusCalculator::status_label($status);
@@ -129,32 +137,36 @@ final class TimecardPage
 
             <div class="tc-punch-grid">
                 <?php
-                self::punch_button(StatusCalculator::CLOCK_IN,  __('出勤', 'ims-portal'),     'primary', $active);
-                self::punch_button(StatusCalculator::BREAK_IN,  __('休憩開始', 'ims-portal'), 'ghost',   $active);
-                self::punch_button(StatusCalculator::BREAK_OUT, __('休憩終了', 'ims-portal'), 'ghost',   $active);
-                self::punch_button(StatusCalculator::CLOCK_OUT, __('退勤', 'ims-portal'),     'danger',  $active);
+                self::punch_button(StatusCalculator::CLOCK_IN,  __('出勤', 'ims-portal'),     'primary', $active, $can_punch);
+                self::punch_button(StatusCalculator::BREAK_IN,  __('休憩開始', 'ims-portal'), 'ghost',   $active, $can_punch);
+                self::punch_button(StatusCalculator::BREAK_OUT, __('休憩終了', 'ims-portal'), 'ghost',   $active, $can_punch);
+                self::punch_button(StatusCalculator::CLOCK_OUT, __('退勤', 'ims-portal'),     'danger',  $active, $can_punch);
                 ?>
             </div>
 
-            <p class="tc-punch-hint">
-                <?php esc_html_e('打刻ボタンは押下直後に非活性化され、通信完了まで再押下できません。', 'ims-portal'); ?>
-            </p>
-
-            <div class="tc-pending-banner">
-                <?php esc_html_e('現在この打刻コンソールは表示確認用です。打刻の記録機能は次の更新で有効になります。', 'ims-portal'); ?>
-            </div>
+            <?php if ($can_punch) : ?>
+                <p class="tc-punch-hint" id="tc-feedback" role="status" aria-live="polite">
+                    <?php esc_html_e('打刻ボタンは押下直後に非活性化され、通信完了まで再押下できません。', 'ims-portal'); ?>
+                </p>
+            <?php else : ?>
+                <div class="tc-pending-banner">
+                    <?php esc_html_e('退職済みのため打刻はできません。過去の打刻履歴のみ閲覧できます。', 'ims-portal'); ?>
+                </div>
+            <?php endif; ?>
         </section>
         <?php
     }
 
     /**
      * 打刻ボタン1つを描画する。
-     * 2b では機能未接続のため、活性なボタンにも data-punch を持たせて
-     * JS 側で「準備中」トーストを出すだけにする（disabled にはしない＝押せる見た目）。
+     *
+     * 現在の状態で押せない種別は disabled にする（§3.1 の活性表）。
+     * ただしこれは表示上の補助にすぎず、押せてしまった場合の防波堤は
+     * サーバー側の StatusCalculator::validate_transition() が担う。
      */
-    private static function punch_button(string $type, string $label, string $style, array $active): void
+    private static function punch_button(string $type, string $label, string $style, array $active, bool $can_punch): void
     {
-        $is_active = in_array($type, $active, true);
+        $is_active = $can_punch && in_array($type, $active, true);
         $classes   = ['tc-punch-btn', 'is-' . $style];
         if (!$is_active) {
             $classes[] = 'is-inactive';
@@ -171,9 +183,8 @@ final class TimecardPage
 
     // ── 打刻履歴テーブル（下段） ────────────────────────────
 
-    private static function render_history(int $year, int $month, array $month_logs): void
+    private static function render_history(int $year, int $month, array $month_logs, string $work_date): void
     {
-        $today       = current_time('Y-m-d');
         $days_in_mon = (int) date('t', strtotime(sprintf('%04d-%02d-01', $year, $month)));
         [$prev_ym, $next_ym] = self::adjacent_months($year, $month);
 
@@ -217,7 +228,8 @@ final class TimecardPage
                             if ($logs !== []) {
                                 $has_any = true;
                             }
-                            self::render_history_row($date, $logs, $date === $today);
+                            // 「本日」の強調は暦日ではなく現在の勤務日に合わせる（深夜帯対応）
+                            self::render_history_row($date, $logs, $date === $work_date);
                         }
                         ?>
                     </tbody>
@@ -264,15 +276,17 @@ final class TimecardPage
         }
 
         $worked = StatusCalculator::worked_seconds($logs, (int) current_time('timestamp'));
+
+        // data-date / data-punch-cell は、打刻成功時に JS が該当セルへ時刻を差し込むための目印。
         ?>
-        <tr class="<?php echo esc_attr(implode(' ', $row_class)); ?>">
+        <tr class="<?php echo esc_attr(implode(' ', $row_class)); ?>" data-date="<?php echo esc_attr($date); ?>">
             <td class="tc-col-date <?php echo esc_attr(implode(' ', $date_class)); ?>">
                 <?php echo esc_html(sprintf('%d/%d（%s）', (int) date('n', $ts), (int) date('j', $ts), $dow_ja)); ?>
             </td>
-            <td><?php self::render_times($by_type[StatusCalculator::CLOCK_IN]); ?></td>
-            <td><?php self::render_times($by_type[StatusCalculator::BREAK_IN], true); ?></td>
-            <td><?php self::render_times($by_type[StatusCalculator::BREAK_OUT], true); ?></td>
-            <td><?php self::render_times($by_type[StatusCalculator::CLOCK_OUT]); ?></td>
+            <td data-punch-cell="<?php echo esc_attr(StatusCalculator::CLOCK_IN); ?>"><?php self::render_times($by_type[StatusCalculator::CLOCK_IN]); ?></td>
+            <td data-punch-cell="<?php echo esc_attr(StatusCalculator::BREAK_IN); ?>"><?php self::render_times($by_type[StatusCalculator::BREAK_IN], true); ?></td>
+            <td data-punch-cell="<?php echo esc_attr(StatusCalculator::BREAK_OUT); ?>"><?php self::render_times($by_type[StatusCalculator::BREAK_OUT], true); ?></td>
+            <td data-punch-cell="<?php echo esc_attr(StatusCalculator::CLOCK_OUT); ?>"><?php self::render_times($by_type[StatusCalculator::CLOCK_OUT]); ?></td>
             <td class="tc-col-worked">
                 <?php echo $logs === [] ? '—' : esc_html(StatusCalculator::format_duration($worked)); ?>
             </td>

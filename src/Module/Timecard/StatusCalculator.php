@@ -99,6 +99,75 @@ final class StatusCalculator
         };
     }
 
+    // ── 状態遷移の検証（2c で追加） ─────────────────────────
+
+    /** 検証OK */
+    public const OK = 'ok';
+    /** 休憩中の退勤。§3.2 ケースA の休憩補完が必要（2d で対応）。 */
+    public const NEEDS_BREAK_COMPLETION = 'break_completion_required';
+
+    /**
+     * その打刻を「単独の1レコードとして」記録してよいかを判定する（§3.1 の活性表の裏返し）。
+     *
+     * 打刻API（2c）はクライアントのボタン活性制御を信用せず、必ずここを通す。
+     * 判定材料は同じ `$logs` なので、UI の活性制御とサーバー検証が食い違うことはない。
+     *
+     * 戻り値が self::OK 以外はエラーコード。self::NEEDS_BREAK_COMPLETION だけは
+     * 「不正な操作」ではなく「補完フローへ分岐せよ」の意味を持つ（§3.2 ケースA）。
+     *
+     * @param array<int, array{punch_type:string, punched_at:string}> $logs 当該 work_date の昇順ログ
+     * @return string self::OK またはエラーコード
+     */
+    public static function validate_transition(array $logs, string $punch_type): string
+    {
+        if (!in_array($punch_type, [self::CLOCK_IN, self::BREAK_IN, self::BREAK_OUT, self::CLOCK_OUT], true)) {
+            return 'unknown_punch_type';
+        }
+
+        $status = self::status($logs);
+
+        // 退勤後は当日分の打刻を一切受け付けない（§3.1「すべて非活性」）
+        if ($status === self::AFTER) {
+            return 'already_clocked_out';
+        }
+
+        // 出勤は1日1回だけ（§5.1 制約・ルール）。アプリ層で担保する。
+        if ($punch_type === self::CLOCK_IN) {
+            return $status === self::BEFORE ? self::OK : 'already_clocked_in';
+        }
+
+        // 以降は出勤済みであることが前提
+        if ($status === self::BEFORE) {
+            return 'not_clocked_in';
+        }
+
+        return match ($punch_type) {
+            self::BREAK_IN  => $status === self::BREAK ? 'already_on_break' : self::OK,
+            self::BREAK_OUT => $status === self::BREAK ? self::OK : 'not_on_break',
+            // 勤務中の退勤はそのまま記録。休憩中の退勤は補完フローへ（§3.2 ケースA）。
+            self::CLOCK_OUT => $status === self::BREAK ? self::NEEDS_BREAK_COMPLETION : self::OK,
+            default         => 'unknown_punch_type',
+        };
+    }
+
+    /**
+     * validate_transition() のエラーコードを利用者向けの日本語メッセージにする。
+     * API のレスポンスにも、将来の画面表示にも同じ文言を使う。
+     */
+    public static function error_message(string $code): string
+    {
+        return match ($code) {
+            'already_clocked_out'         => '本日はすでに退勤済みです。修正が必要な場合は打刻修正をご利用ください。',
+            'already_clocked_in'          => '本日はすでに出勤打刻が済んでいます。',
+            'not_clocked_in'              => 'まだ出勤打刻がありません。先に「出勤」を打刻してください。',
+            'already_on_break'            => 'すでに休憩中です。',
+            'not_on_break'                => '休憩中ではありません。',
+            self::NEEDS_BREAK_COMPLETION  => '休憩中のため、先に「休憩終了」を打刻してから退勤してください。',
+            'unknown_punch_type'          => '打刻の種別が不正です。',
+            default                       => 'この操作は現在の状態では実行できません。',
+        };
+    }
+
     /**
      * 実労働時間（秒）を算出する：勤務時間 − 総休憩時間（§5.2「実勤務時間（経過）」）。
      *

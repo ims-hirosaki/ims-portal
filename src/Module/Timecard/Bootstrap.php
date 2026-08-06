@@ -28,8 +28,13 @@ final class Bootstrap
         // DBスキーマの寄与（Installer が収集して dbDelta する）
         add_filter('ims_register_schema', [Schema::class, 'contribute']);
 
+        // フロント：打刻コンソール（2b）
+        TimecardPage::init();
+
+        // 打刻API（2c）。rest_api_init は管理画面文脈でも走るため is_admin() の外で登録する。
+        RestController::init();
+
         // Google Chat 通知のリトライ受け口。
-        TimecardPage::init();  
         // WP-Cron は管理画面以外の文脈でも走るため、is_admin() の外で登録する。
         ChatNotifier::init();
 
@@ -39,8 +44,6 @@ final class Bootstrap
         }
 
         // 今後この module に追加していくもの（各スライスで有効化）：
-        // 2b: Page（/portal/timecard/ 表示）・Repository（読み取り）
-        // 2c: RestController（打刻API）
         // 2d: 退勤時の休憩補完（ケースA / ケースB）
         // 2e: 打刻修正（corrections への記録）
         // 2f: AdminLogPage（社員管理 > 打刻ログ照会）
