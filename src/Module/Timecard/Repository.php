@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
  * 修正（UPDATE + corrections への追記）は 2e で追加する。
  *
  * すべてのクエリは $wpdb->prepare を通し、user_id で必ず絞る（他人のログを読ませない）。
- * 物理削除するメソッドは意図的に置かない（§3.4・§7.4 の保持要件）。
+ * 物理削除するメソッドは意図的に置かない（§3.5・§7.5 の保持要件）。
  */
 final class Repository
 {
@@ -151,37 +151,103 @@ final class Repository
     }
 
     /**
-     * 「開いている勤務」＝ clock_in はあるが clock_out がない work_date を返す。
-     * 直近 $lookback_days 日分（当日を含む）だけを見て、最も新しいものを返す。
+     * 「開いている勤務」＝ clock_in はあるが clock_out がない勤務のうち、最も新しいものを返す。
+     * 出勤時刻（clock_in_at）も併せて返す。
      *
-     * 日またぎ勤務で、深夜の休憩・退勤打刻を出勤日側へ寄せるために使う
-     * （PunchService::resolve_work_date を参照）。開いている勤務がなければ null。
+     * 日またぎ勤務で、深夜の休憩・退勤打刻を出勤日側へ寄せるために使う。
+     *
+     * **経過時間による足切り（N時間以内か）はここでは行わない。**
+     * SQL に埋め込むと WordPress 無しでテストできなくなるため、この関数は候補を返すことに徹し、
+     * 採用の可否は純粋関数 PunchService::decide_work_date() が判断する。
+     * $lookback_days はインデックス（idx_user_date）を効かせるための粗い絞り込みでしかない。
+     *
+     * @return array{work_date:string, clock_in_at:string}|null 開いている勤務がなければ null
      */
-    public static function open_shift_date(int $user_id, string $today, int $lookback_days = 1): ?string
+    public static function open_shift(int $user_id, string $today, int $lookback_days = 2): ?array
     {
         global $wpdb;
         $table = Schema::logs_table();
 
         $from = gmdate('Y-m-d', strtotime($today . ' -' . max(0, $lookback_days) . ' day'));
 
-        $date = $wpdb->get_var(
+        $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT work_date
+                "SELECT work_date,
+                        MIN(CASE WHEN punch_type = 'clock_in' THEN punched_at END) AS clock_in_at
                  FROM {$table}
                  WHERE user_id = %d
                    AND work_date BETWEEN %s AND %s
                  GROUP BY work_date
-                 HAVING SUM(punch_type = 'clock_in') > 0
+                 HAVING clock_in_at IS NOT NULL
                     AND SUM(punch_type = 'clock_out') = 0
-                 ORDER BY work_date DESC
+                 ORDER BY clock_in_at DESC
                  LIMIT 1",
                 $user_id,
                 $from,
                 $today
-            )
+            ),
+            ARRAY_A
         );
 
-        return $date !== null ? (string) $date : null;
+        if (!is_array($row) || empty($row['clock_in_at'])) {
+            return null;
+        }
+
+        return [
+            'work_date'   => (string) $row['work_date'],
+            'clock_in_at' => (string) $row['clock_in_at'],
+        ];
+    }
+
+    // ── 排他制御（2c） ──────────────────────────────────────
+
+    /**
+     * 打刻処理をユーザー単位で直列化するロックを取得する（§7.1 をサーバー側で確実にする）。
+     *
+     * 「5秒重複チェック → 状態検証 → INSERT」の間に別リクエストが割り込むと、
+     * 両方が検証を通過して clock_in が同一 work_date に 2 件入り得る。
+     * 1日1件の制約は DDL の UNIQUE ではなく**アプリ層で担保する設計**（§5.1）のため、
+     * ここが唯一の防波堤になる。
+     *
+     * 行ロック（SELECT ... FOR UPDATE）ではなく MySQL の名前付きロックを使う理由：
+     * 排他したい対象の行がまだ存在せず、行ロックが効かないため。
+     * 2d でトランザクションを本格導入するまでは、こちらのほうが単純で読みやすい。
+     *
+     * ⚠ 名前付きロックの名前空間は **MySQL サーバー全体で共有**される。
+     *   共有ホスティング（エックスサーバー）では他サイトと衝突し得るため、
+     *   DB名とテーブル接頭辞のハッシュを名前に混ぜて分離する。
+     *   （MySQL 5.7+ のロック名上限は 64 文字。下記の組み立てで約 30 文字に収まる。）
+     *
+     * @return bool 取得できたら true。タイムアウト・エラーは false。
+     */
+    public static function lock_user_punches(int $user_id, int $timeout_sec = 3): bool
+    {
+        global $wpdb;
+
+        // GET_LOCK は 1=取得 / 0=タイムアウト / NULL=エラー を返す。3値すべてを扱う。
+        $got = $wpdb->get_var(
+            $wpdb->prepare('SELECT GET_LOCK(%s, %d)', self::lock_name($user_id), max(1, $timeout_sec))
+        );
+
+        return $got !== null && (int) $got === 1;
+    }
+
+    /**
+     * 打刻ロックを解放する。呼び出し側は必ず finally で呼ぶこと。
+     * （PHP プロセスが落ちた場合は接続断で MySQL 側が自動解放するため、ロックは残らない。）
+     */
+    public static function unlock_user_punches(int $user_id): void
+    {
+        global $wpdb;
+        $wpdb->query($wpdb->prepare('SELECT RELEASE_LOCK(%s)', self::lock_name($user_id)));
+    }
+
+    /** ロック名。取得と解放で同一文字列になるよう1か所に閉じ込める。 */
+    private static function lock_name(int $user_id): string
+    {
+        global $wpdb;
+        $scope = substr(md5((string) $wpdb->dbname . '|' . $wpdb->prefix), 0, 12);
+        return 'ims_punch_' . $scope . '_' . $user_id;
     }
 
     /**
