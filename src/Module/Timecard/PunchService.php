@@ -47,6 +47,18 @@ final class PunchService
     private const OPEN_SHIFT_MAX_HOURS = 20;
 
     /**
+     * 労働基準法の休憩付与義務の目安（§3.2 インフォボックス）。組織の運用方針ではなく
+     * 法令由来の固定値のため、OPEN_SHIFT_MAX_HOURS と同じ原則で定数に置く。
+     * 6時間超〜8時間以内は45分以上、8時間超は60分以上の休憩が必要とされる。
+     * ケースB（休憩未打刻での退勤）の確認ポップアップ表示要否の閾値も
+     * LABOR_BREAK_TIER1_HOURS（6時間）を流用する。
+     */
+    public const LABOR_BREAK_TIER1_HOURS   = 6;
+    public const LABOR_BREAK_TIER2_HOURS   = 8;
+    public const LABOR_BREAK_TIER1_MINUTES = 45;
+    public const LABOR_BREAK_TIER2_MINUTES = 60;
+
+    /**
      * 打刻を1件記録する。
      *
      * @param int         $user_id 打刻するユーザー
@@ -289,6 +301,9 @@ final class PunchService
             'log_id'     => $ids[1],
             'punched_at' => $now_mysql,
             'work_date'  => $work_date,
+            // フロントが履歴テーブルの休憩終了セルもリロードなしで描き替えられるよう、
+            // 補完した休憩終了ログの情報も併せて返す。
+            'break_out'  => ['log_id' => $ids[0], 'punched_at' => $rows[0]['punched_at']],
         ];
     }
 
@@ -388,6 +403,10 @@ final class PunchService
             'log_id'     => $ids[2],
             'punched_at' => $now_mysql,
             'work_date'  => $work_date,
+            // フロントが履歴テーブルの休憩開始・終了セルもリロードなしで描き替えられるよう、
+            // 登録した休憩ログの情報も併せて返す。
+            'break_in'   => ['log_id' => $ids[0], 'punched_at' => $rows[0]['punched_at']],
+            'break_out'  => ['log_id' => $ids[1], 'punched_at' => $rows[1]['punched_at']],
         ];
     }
 

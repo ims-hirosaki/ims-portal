@@ -204,6 +204,10 @@ final class RestController
      * handle_complete_break() / handle_clock_out_with_break() 共通のレスポンス整形。
      * どちらも最終的な打刻種別は必ず clock_out なので handle_punch() の汎用整形は流用せず、
      * 既存の handle_punch()（2c で検証済み・本番稼働中）には手を加えない。
+     *
+     * 成功時は `punches`（複数形）に、今回の操作で保存された全レコード
+     * （休憩の補完・登録があればそれも含む）を保存順に並べて返す。
+     * フロントはこれをループして履歴テーブルの複数セルをリロードなしで描き替える。
      */
     private static function respond_clock_out_result(int $user_id, array $result): \WP_REST_Response
     {
@@ -224,18 +228,35 @@ final class RestController
             return new \WP_REST_Response($body, $status);
         }
 
+        $work_date = (string) $result['work_date'];
+        $punches   = [];
+        foreach ([StatusCalculator::BREAK_IN, StatusCalculator::BREAK_OUT] as $type) {
+            if (isset($result[$type])) {
+                $punches[] = self::shape_punch($type, (string) $result[$type]['punched_at'], $work_date, true);
+            }
+        }
+        $punches[] = self::shape_punch(StatusCalculator::CLOCK_OUT, (string) $result['punched_at'], $work_date, false);
+
         return new \WP_REST_Response([
             'ok'      => true,
             'message' => (string) $result['message'],
-            'punch'   => [
-                'log_id'     => (int) $result['log_id'],
-                'punch_type' => StatusCalculator::CLOCK_OUT,
-                'punched_at' => (string) $result['punched_at'],
-                'time'       => date('H:i', strtotime((string) $result['punched_at'])),
-                'work_date'  => (string) $result['work_date'],
-            ],
-            'state'   => PunchService::current_state($user_id, (string) $result['work_date']),
+            'punches' => $punches,
+            'state'   => PunchService::current_state($user_id, $work_date),
         ], 201);
+    }
+
+    /**
+     * @return array{log_id?:int, punch_type:string, punched_at:string, time:string, work_date:string, is_auto_filled:bool}
+     */
+    private static function shape_punch(string $punch_type, string $punched_at, string $work_date, bool $is_auto_filled): array
+    {
+        return [
+            'punch_type'     => $punch_type,
+            'punched_at'     => $punched_at,
+            'time'           => date('H:i', strtotime($punched_at)),
+            'work_date'      => $work_date,
+            'is_auto_filled' => $is_auto_filled,
+        ];
     }
 
     /**
