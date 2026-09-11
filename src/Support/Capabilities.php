@@ -39,6 +39,12 @@ final class Capabilities
         return current_user_can('ims_manage_users');
     }
 
+    /** 打刻修正機能を利用できるか（02_time_tracking.md §3.4）。approver は false。 */
+    public static function can_correct_own_punch(): bool
+    {
+        return current_user_can('ims_correct_own_punch');
+    }
+
     public static function can_run_closing(): bool
     {
         return current_user_can('ims_run_closing');

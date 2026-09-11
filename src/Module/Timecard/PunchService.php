@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace IMS\Module\Timecard;
 
+use IMS\Support\Capabilities;
 use IMS\Support\UserRepository;
 
 if (!defined('ABSPATH')) {
@@ -443,6 +444,116 @@ final class PunchService
             'worked_seconds' => $worked,
             'worked_label'   => StatusCalculator::format_duration($worked),
             'server_now'     => $now_ts,
+        ];
+    }
+
+    // ── 打刻修正（2e） ──────────────────────────────────────
+
+    /**
+     * 打刻修正が許可されるかを判定する純粋ロジック（§3.4「修正許可レベルの動作」）。
+     * DB/WPに触れない。締め後ロック（MonthlyClosing）はこれより優先して呼び出し側で
+     * 判定する（すべての操作者に対して修正不可・§3.4）。
+     *
+     * @param bool   $is_always_allowed   hr_admin/administrator（常に直接修正可）
+     * @param bool   $has_self_service_cap ims_correct_own_punch（approverはfalse）
+     * @param string $correction_level    Settings::staff_correction_level() の値
+     * @param string $work_date           対象ログの work_date
+     * @param string $current_work_date   現在の勤務日（console_work_date() 相当）
+     */
+    public static function can_correct_punch(
+        bool $is_always_allowed,
+        bool $has_self_service_cap,
+        string $correction_level,
+        string $work_date,
+        string $current_work_date
+    ): bool {
+        if ($is_always_allowed) {
+            return true;
+        }
+        if (!$has_self_service_cap) {
+            return false; // approver 等
+        }
+
+        return match ($correction_level) {
+            'disabled'    => false,
+            'today_only'  => $work_date === $current_work_date,
+            'pre_closing' => true,
+            default       => false,
+        };
+    }
+
+    /**
+     * 打刻修正（§3.4）。対象ログは必ずログイン中の本人のものに限る
+     * （他人のログの修正は 2f の管理者向け打刻ログ照会画面が別途提供する）。
+     *
+     * @return array{ok:bool, code:string, message:string, work_date?:string}
+     */
+    public static function correct_punch(int $user_id, int $log_id, string $corrected_datetime, string $reason): array
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            return self::fail('reason_required', '修正理由を入力してください。');
+        }
+
+        $log = Repository::find_log($log_id);
+        if ($log === null || $log['user_id'] !== $user_id) {
+            return self::fail('not_found', '対象の打刻が見つかりません。');
+        }
+
+        $corrected_ts = strtotime($corrected_datetime);
+        if ($corrected_ts === false) {
+            return self::fail('invalid_datetime', '修正後の日時が不正です。', $log['work_date']);
+        }
+
+        // 締め後ロックはすべての操作者に優先して効く（§3.4）。
+        if (MonthlyClosing::is_locked($log['work_date'])) {
+            return self::fail('month_closed', 'この月度は締め処理が完了しているため修正できません。', $log['work_date']);
+        }
+
+        $allowed = self::can_correct_punch(
+            Capabilities::can_manage_users(),
+            Capabilities::can_correct_own_punch(),
+            Settings::staff_correction_level(),
+            $log['work_date'],
+            self::console_work_date($user_id)
+        );
+        if (!$allowed) {
+            return self::fail('correction_not_allowed', 'この打刻を修正する権限がありません。', $log['work_date']);
+        }
+
+        $corrected_mysql = gmdate('Y-m-d H:i:s', $corrected_ts);
+
+        // 保存前に、置き換え後の並びで矛盾チェック（§3.4 手順5）。
+        $logs = Repository::logs_for_date($user_id, $log['work_date']);
+        $simulated = array_map(static function (array $l) use ($log_id, $corrected_mysql): array {
+            if ($l['log_id'] === $log_id) {
+                $l['punched_at'] = $corrected_mysql;
+            }
+            return $l;
+        }, $logs);
+        usort($simulated, static fn(array $a, array $b): int => strtotime($a['punched_at']) <=> strtotime($b['punched_at']));
+
+        if (!StatusCalculator::is_chronologically_consistent($simulated)) {
+            return self::fail(
+                'inconsistent',
+                '修正後の打刻順序に矛盾があります（出勤より前の退勤等）。内容をご確認ください。',
+                $log['work_date']
+            );
+        }
+
+        $ok = Repository::correct_punch($log_id, $log['punched_at'], $corrected_mysql, $reason, $user_id);
+        if (!$ok) {
+            return self::fail('db_error', '修正の保存に失敗しました。時間をおいて再度お試しください。', $log['work_date']);
+        }
+
+        return [
+            'ok'         => true,
+            'code'       => 'ok',
+            'message'    => '打刻を修正しました。',
+            'work_date'  => $log['work_date'],
+            'log_id'     => $log_id,
+            'punch_type' => $log['punch_type'],
+            'punched_at' => $corrected_mysql,
         ];
     }
 

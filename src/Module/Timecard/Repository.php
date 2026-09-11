@@ -228,6 +228,91 @@ final class Repository
         ];
     }
 
+    // ── 打刻修正（2e） ──────────────────────────────────────
+
+    /**
+     * log_id 指定で1件取得する（§3.4：対象ログの本人確認・現在値表示に使う）。
+     *
+     * @return array{log_id:int, user_id:int, work_date:string, punch_type:string, punched_at:string, is_auto_filled:int}|null
+     */
+    public static function find_log(int $log_id): ?array
+    {
+        global $wpdb;
+        $table = Schema::logs_table();
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT log_id, user_id, work_date, punch_type, punched_at, is_auto_filled
+                 FROM {$table} WHERE log_id = %d",
+                $log_id
+            ),
+            ARRAY_A
+        );
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        return [
+            'log_id'         => (int) $row['log_id'],
+            'user_id'        => (int) $row['user_id'],
+            'work_date'      => (string) $row['work_date'],
+            'punch_type'     => (string) $row['punch_type'],
+            'punched_at'     => (string) $row['punched_at'],
+            'is_auto_filled' => (int) $row['is_auto_filled'],
+        ];
+    }
+
+    /**
+     * 打刻修正を1トランザクションで保存する（§3.4 手順4）。
+     * 先に修正履歴（attendance_corrections）へ記録してから、対象ログを新しい日時で
+     * 上書きする。どちらかが失敗すればロールバックする（監査証跡だけ残ることを防ぐ）。
+     */
+    public static function correct_punch(
+        int $log_id,
+        string $original_datetime,
+        string $corrected_datetime,
+        string $reason,
+        int $corrected_by
+    ): bool {
+        global $wpdb;
+        $logs_table = self::logs_table();
+        $corr_table = self::corrections_table();
+
+        $wpdb->query('START TRANSACTION');
+
+        $inserted = $wpdb->insert(
+            $corr_table,
+            [
+                'log_id'             => $log_id,
+                'original_datetime'  => $original_datetime,
+                'corrected_datetime' => $corrected_datetime,
+                'reason'             => $reason,
+                'corrected_by'       => $corrected_by,
+            ],
+            ['%d', '%s', '%s', '%s', '%d']
+        );
+        if (!$inserted) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
+        $updated = $wpdb->update(
+            $logs_table,
+            ['punched_at' => $corrected_datetime],
+            ['log_id' => $log_id],
+            ['%s'],
+            ['%d']
+        );
+        if ($updated === false) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
+        $wpdb->query('COMMIT');
+        return true;
+    }
+
     // ── 排他制御（2c） ──────────────────────────────────────
 
     /**
