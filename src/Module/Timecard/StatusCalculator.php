@@ -153,6 +153,9 @@ final class StatusCalculator
     /**
      * validate_transition() のエラーコードを利用者向けの日本語メッセージにする。
      * API のレスポンスにも、将来の画面表示にも同じ文言を使う。
+     *
+     * `currently_on_break`・`break_already_recorded`・`invalid_break_minutes`・
+     * `invalid_break_range` は 2d（休憩補完付き退勤）のエラーコード。
      */
     public static function error_message(string $code): string
     {
@@ -164,8 +167,27 @@ final class StatusCalculator
             'not_on_break'                => '休憩中ではありません。',
             self::NEEDS_BREAK_COMPLETION  => '休憩中のため、先に「休憩終了」を打刻してから退勤してください。',
             'unknown_punch_type'          => '打刻の種別が不正です。',
+            'currently_on_break'          => '現在休憩中です。休憩終了を打刻してから退勤してください。',
+            'break_already_recorded'      => '本日はすでに休憩を記録済みです。通常の退勤をご利用ください。',
+            'invalid_break_minutes'       => '入力した休憩時間が現在時刻を超えています。',
+            'invalid_break_range'         => '入力した休憩の開始・終了時刻が勤務時間内に収まっていません。',
             default                       => 'この操作は現在の状態では実行できません。',
         };
+    }
+
+    /**
+     * 当日ログに `break_in` が1件でも含まれるか（§3.2 ケースB の前提判定）。
+     *
+     * @param array<int, array{punch_type:string, punched_at:string}> $logs
+     */
+    public static function has_break_in(array $logs): bool
+    {
+        foreach ($logs as $log) {
+            if (($log['punch_type'] ?? '') === self::BREAK_IN) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

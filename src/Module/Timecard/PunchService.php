@@ -211,6 +211,187 @@ final class PunchService
     }
 
     /**
+     * ケースA（休憩中に退勤ボタンが押された）の補完保存（§3.2 ケースA）。
+     *
+     * 「休憩終了（自動補完・is_auto_filled=1）」と「退勤（実時刻）」の2レコードを
+     * 1トランザクションで保存する。休憩終了時刻は「最終 break_in ＋ $minutes 分」。
+     * 前提状態（休憩中であること）と時刻の妥当性は、クライアント側の表示を信用せず
+     * ここで必ず再検証する。
+     *
+     * @return array{ok:bool, code:string, message:string, log_id?:int, punched_at?:string, work_date?:string}
+     */
+    public static function clock_out_with_break_duration(int $user_id, int $minutes): array
+    {
+        if (UserRepository::is_retired($user_id)) {
+            return self::fail('retired', '退職済みのため打刻できません。');
+        }
+
+        $now_mysql = current_time('mysql');
+        $now_ts    = (int) current_time('timestamp');
+        $work_date = self::resolve_work_date($user_id, StatusCalculator::CLOCK_OUT, $now_ts);
+
+        if (!Repository::lock_user_punches($user_id, self::LOCK_TIMEOUT_SEC)) {
+            return self::fail('duplicate', '打刻を処理中です。しばらくしてからお試しください。');
+        }
+
+        try {
+            $logs = Repository::logs_for_date($user_id, $work_date);
+
+            if (StatusCalculator::status($logs) !== StatusCalculator::BREAK) {
+                return self::fail('not_on_break', StatusCalculator::error_message('not_on_break'), $work_date);
+            }
+
+            $break_in_ts = self::last_punch_ts($logs, StatusCalculator::BREAK_IN);
+            if ($break_in_ts === null || $minutes < 1) {
+                return self::fail('invalid_break_minutes', StatusCalculator::error_message('invalid_break_minutes'), $work_date);
+            }
+
+            $break_out_ts = $break_in_ts + ($minutes * 60);
+            if ($break_out_ts > $now_ts) {
+                return self::fail('invalid_break_minutes', StatusCalculator::error_message('invalid_break_minutes'), $work_date);
+            }
+
+            $rows = [
+                [
+                    'user_id'        => $user_id,
+                    'work_date'      => $work_date,
+                    'punch_type'     => StatusCalculator::BREAK_OUT,
+                    'punched_at'     => gmdate('Y-m-d H:i:s', $break_out_ts),
+                    'is_auto_filled' => 1,
+                    'ip_address'     => self::client_ip(),
+                ],
+                [
+                    'user_id'        => $user_id,
+                    'work_date'      => $work_date,
+                    'punch_type'     => StatusCalculator::CLOCK_OUT,
+                    'punched_at'     => $now_mysql,
+                    'is_auto_filled' => 0,
+                    'ip_address'     => self::client_ip(),
+                ],
+            ];
+
+            $ids = Repository::insert_punches_atomic($rows);
+            if ($ids === false) {
+                return self::fail('db_error', '打刻の保存に失敗しました。時間をおいて再度お試しください。');
+            }
+        } finally {
+            Repository::unlock_user_punches($user_id);
+        }
+
+        foreach ($ids as $i => $log_id) {
+            self::fire_hooks($user_id, $rows[$i]['punch_type'], $work_date, $rows[$i]['punched_at'], $log_id);
+        }
+
+        return [
+            'ok'         => true,
+            'code'       => 'ok',
+            'message'    => self::success_message(StatusCalculator::CLOCK_OUT),
+            'log_id'     => $ids[1],
+            'punched_at' => $now_mysql,
+            'work_date'  => $work_date,
+        ];
+    }
+
+    /**
+     * ケースB・ボタンA（休憩を一度も打刻せず退勤しようとしたが、休憩を登録する）の保存（§3.2 ケースB）。
+     *
+     * ケースAと違い実在する break_in が無いため、開始・終了の時刻を利用者が直接指定する。
+     * どちらも「実際にその時刻に打刻した」ものではなく事後入力のため、
+     * 休憩開始・休憩終了ともに is_auto_filled=1 で記録する（退勤のみ実時刻・is_auto_filled=0）。
+     * 「休憩開始」「休憩終了」「退勤」の3レコードを1トランザクションで保存する。
+     *
+     * @param string $break_in_hm  休憩開始時刻 'H:i'
+     * @param string $break_out_hm 休憩終了時刻 'H:i'
+     * @return array{ok:bool, code:string, message:string, log_id?:int, punched_at?:string, work_date?:string}
+     */
+    public static function clock_out_with_break_range(int $user_id, string $break_in_hm, string $break_out_hm): array
+    {
+        if (UserRepository::is_retired($user_id)) {
+            return self::fail('retired', '退職済みのため打刻できません。');
+        }
+
+        $now_mysql = current_time('mysql');
+        $now_ts    = (int) current_time('timestamp');
+        $work_date = self::resolve_work_date($user_id, StatusCalculator::CLOCK_OUT, $now_ts);
+
+        if (!Repository::lock_user_punches($user_id, self::LOCK_TIMEOUT_SEC)) {
+            return self::fail('duplicate', '打刻を処理中です。しばらくしてからお試しください。');
+        }
+
+        try {
+            $logs   = Repository::logs_for_date($user_id, $work_date);
+            $status = StatusCalculator::status($logs);
+
+            if ($status === StatusCalculator::BREAK) {
+                return self::fail('currently_on_break', StatusCalculator::error_message('currently_on_break'), $work_date);
+            }
+            if ($status !== StatusCalculator::WORKING) {
+                $code = $status === StatusCalculator::BEFORE ? 'not_clocked_in' : 'already_clocked_out';
+                return self::fail($code, StatusCalculator::error_message($code), $work_date);
+            }
+            if (StatusCalculator::has_break_in($logs)) {
+                return self::fail('break_already_recorded', StatusCalculator::error_message('break_already_recorded'), $work_date);
+            }
+
+            $clock_in_ts  = self::last_punch_ts($logs, StatusCalculator::CLOCK_IN);
+            $break_in_ts  = $clock_in_ts !== null ? self::parse_time_on_or_after($break_in_hm, $work_date, $clock_in_ts) : null;
+            $break_out_ts = $break_in_ts !== null ? self::parse_time_on_or_after($break_out_hm, $work_date, $break_in_ts) : null;
+
+            if ($clock_in_ts === null || $break_in_ts === null || $break_out_ts === null
+                || $break_in_ts < $clock_in_ts || $break_out_ts <= $break_in_ts || $break_out_ts > $now_ts) {
+                return self::fail('invalid_break_range', StatusCalculator::error_message('invalid_break_range'), $work_date);
+            }
+
+            $rows = [
+                [
+                    'user_id'        => $user_id,
+                    'work_date'      => $work_date,
+                    'punch_type'     => StatusCalculator::BREAK_IN,
+                    'punched_at'     => gmdate('Y-m-d H:i:s', $break_in_ts),
+                    'is_auto_filled' => 1,
+                    'ip_address'     => self::client_ip(),
+                ],
+                [
+                    'user_id'        => $user_id,
+                    'work_date'      => $work_date,
+                    'punch_type'     => StatusCalculator::BREAK_OUT,
+                    'punched_at'     => gmdate('Y-m-d H:i:s', $break_out_ts),
+                    'is_auto_filled' => 1,
+                    'ip_address'     => self::client_ip(),
+                ],
+                [
+                    'user_id'        => $user_id,
+                    'work_date'      => $work_date,
+                    'punch_type'     => StatusCalculator::CLOCK_OUT,
+                    'punched_at'     => $now_mysql,
+                    'is_auto_filled' => 0,
+                    'ip_address'     => self::client_ip(),
+                ],
+            ];
+
+            $ids = Repository::insert_punches_atomic($rows);
+            if ($ids === false) {
+                return self::fail('db_error', '打刻の保存に失敗しました。時間をおいて再度お試しください。');
+            }
+        } finally {
+            Repository::unlock_user_punches($user_id);
+        }
+
+        foreach ($ids as $i => $log_id) {
+            self::fire_hooks($user_id, $rows[$i]['punch_type'], $work_date, $rows[$i]['punched_at'], $log_id);
+        }
+
+        return [
+            'ok'         => true,
+            'code'       => 'ok',
+            'message'    => self::success_message(StatusCalculator::CLOCK_OUT),
+            'log_id'     => $ids[2],
+            'punched_at' => $now_mysql,
+            'work_date'  => $work_date,
+        ];
+    }
+
+    /**
      * 打刻コンソールが「本日分」として表示すべき work_date。
      *
      * 打刻APIが継続打刻（休憩・退勤）に使う日付と同じ規則で解決する。
@@ -260,6 +441,58 @@ final class PunchService
             // 05_稟議モジュールの残業乖離検知が拾う（要件 §6・引き継ぎ書の設計方針）。
             do_action('ims_timecard_clocked_out', $user_id, $work_date, $punched_at, $log_id);
         }
+    }
+
+    // ── 2d 補完ロジック用ヘルパー（DB/WPに触れない純粋関数） ──────
+
+    /**
+     * 当日ログの中で、指定 punch_type の最後の打刻時刻を UNIX 秒で返す。
+     * $logs は punched_at 昇順である前提（Repository が保証）。
+     *
+     * @param array<int, array{punch_type:string, punched_at:string}> $logs
+     */
+    private static function last_punch_ts(array $logs, string $punch_type): ?int
+    {
+        $last = null;
+        foreach ($logs as $log) {
+            if (($log['punch_type'] ?? '') === $punch_type) {
+                $ts = strtotime((string) ($log['punched_at'] ?? ''));
+                if ($ts !== false) {
+                    $last = $ts;
+                }
+            }
+        }
+        return $last;
+    }
+
+    /**
+     * 'H:i' 形式の時刻を $base_date の日付として解釈し、$not_before_ts 以降になるよう
+     * 必要なら1日繰り上げる（§3.2 ケースB：休憩の開始・終了は日をまたぎ得る）。
+     *
+     * 例：出勤が前日23:50、休憩開始の入力が「00:10」→ $base_date のままでは
+     * 出勤より前になってしまうため、翌日として解釈し直す。
+     *
+     * @return int|null 形式が不正、または1日繰り上げても $not_before_ts に届かない場合は null
+     */
+    private static function parse_time_on_or_after(string $hm, string $base_date, int $not_before_ts): ?int
+    {
+        if (!preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', $hm, $m)) {
+            return null;
+        }
+
+        $ts = strtotime(sprintf('%s %02d:%02d:00', $base_date, (int) $m[1], (int) $m[2]));
+        if ($ts === false) {
+            return null;
+        }
+
+        if ($ts < $not_before_ts) {
+            $ts = strtotime('+1 day', $ts);
+            if ($ts === false || $ts < $not_before_ts) {
+                return null;
+            }
+        }
+
+        return $ts;
     }
 
     // ── 付帯情報 ────────────────────────────────────────────
