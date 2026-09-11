@@ -341,6 +341,92 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 2e：打刻修正（操作列） */
+
+.tc-col-actions {
+  color: var(--sub);
+}
+
+.tc-correct-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--indigo);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.tc-correct-btn:hover {
+  border-color: var(--indigo-soft);
+  background: var(--indigo-tint);
+}
+
+.tc-correct-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.tc-correct-field input[type="datetime-local"],
+.tc-correct-field textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.tc-correct-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--sub);
+}
+
+.tc-correct-steps li {
+  position: relative;
+  padding-left: 20px;
+}
+
+.tc-correct-steps li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+}
+
+.tc-correct-steps li.is-active {
+  color: var(--indigo);
+  font-weight: 700;
+}
+
+.tc-correct-steps li.is-active::before {
+  border-color: var(--indigo);
+}
+
+.tc-correct-steps li.is-done {
+  color: var(--moss);
+}
+
+.tc-correct-steps li.is-done::before {
+  border-color: var(--moss);
+  background: var(--moss);
+}
+
 .tc-empty {
   margin-top: 16px;
   padding: 20px;
