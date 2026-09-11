@@ -123,6 +123,35 @@ final class Repository
     }
 
     /**
+     * 複数件の打刻ログを1つのDBトランザクションで挿入する（§3.2 ケースA/B）。
+     * 途中の1件でも失敗したら即ロールバックし、false を返す（部分保存を残さない）。
+     *
+     * `attendance_logs` が InnoDB であることが前提（2d 実装前に確認済み）。
+     *
+     * @param array<int, array<string, mixed>> $rows insert_punch() と同じキー形式の配列
+     * @return array<int, int>|false 成功時は $rows と同じ順序の log_id 配列。失敗時は false
+     */
+    public static function insert_punches_atomic(array $rows): array|false
+    {
+        global $wpdb;
+
+        $wpdb->query('START TRANSACTION');
+
+        $ids = [];
+        foreach ($rows as $row) {
+            $id = self::insert_punch($row);
+            if ($id === 0) {
+                $wpdb->query('ROLLBACK');
+                return false;
+            }
+            $ids[] = $id;
+        }
+
+        $wpdb->query('COMMIT');
+        return $ids;
+    }
+
+    /**
      * 多重サブミットのサーバー側ガード（§7.1）。
      * 同一ユーザー・同一 punch_type のログが直近 $window_sec 秒以内に存在するかを見る。
      *

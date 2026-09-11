@@ -6,8 +6,15 @@
  *  ③ ボタン押下 → POST ims/v1/timecard/punch → 応答でバッジ・経過・ボタン・当日行を更新
  *  ④ 多重サブミット防止（押下直後に全ボタンを disabled・§4.1）
  *  ⑤ GPS オプトイン（スマホのみ・拒否/失敗しても打刻は続行・§4.1）
+ * 【2d】退勤時の休憩補完・確認（02_time_tracking.md §3.2）：
+ *  ⑥ ケースA：休憩中に退勤ボタン → 休憩補完ポップアップ（分数選択）
+ *  ⑦ ケースB：休憩未打刻・実勤務6時間超で退勤ボタン → 確認ポップアップ
+ *     （休憩を登録＝開始・終了時刻を直接入力 ／ 休憩なしで退勤＝通常の退勤と同じ）
  *
  * 打刻時刻は必ずサーバーが決める。このJSは時刻を一切送らない（§3.1）。
+ * ケースA/Bのポップアップが表示する時刻・経過時間も、サーバー時刻ベースの
+ * 値（後述の offset 補正）から計算するのみで、送信する値は「分数」または
+ * 「HH:MM」の時刻文字列であり、最終的な妥当性はサーバー側で必ず再検証される。
  *
  * サーバー時刻とブラウザ時刻のズレを吸収するため、初期表示時に
  * サーバーの now（data-server-now）とブラウザの now の差分（オフセット）を
@@ -105,7 +112,7 @@
         };
     }
 
-    // ── ③〜⑤ 打刻 ──────────────────────────────────────────
+    // ── ③〜⑦ 打刻 ──────────────────────────────────────────
 
     function setupPunchButtons(wrap, workedTimer, offset) {
         var buttons = Array.prototype.slice.call(wrap.querySelectorAll('.tc-punch-btn[data-punch]'));
@@ -117,38 +124,69 @@
             return;
         }
 
-        var sending = false;
-        // 位置情報は「その日の初回打刻時のみ」許可を求める（§4.1）
-        var geoAsked = false;
+        // 2d：ケースA/Bの判定・補完に使う状態。押下ごとの sending/geoAsked も含めて
+        // ここに集約し、モーダル側の関数にもそのまま渡す。
+        var ctx = {
+            offset: offset,
+            sending: false,
+            // 位置情報は「その日の初回打刻時のみ」許可を求める（§4.1）
+            geoAsked: false,
+            clockInEpoch: parseInt(wrap.getAttribute('data-clock-in-epoch'), 10) || 0,
+            breakInEpoch: parseInt(wrap.getAttribute('data-break-in-epoch'), 10) || 0,
+            hasBreakToday: wrap.getAttribute('data-has-break') === '1'
+        };
 
         buttons.forEach(function (btn) {
             btn.addEventListener('click', function () {
-                if (sending || btn.disabled) {
+                if (ctx.sending || btn.disabled) {
                     return;
                 }
                 var punchType = btn.getAttribute('data-punch');
 
-                // ④ 押下直後に全ボタンを止める。応答が返るまで解除しない。
-                sending = true;
-                setAllDisabled(buttons, true);
-                setFeedback('送信中…', 'sending');
+                if (punchType === 'clock_out') {
+                    var currentStatus = wrap.getAttribute('data-status');
 
-                var needGeo = isMobile() && !geoAsked;
-                geoAsked = true;
+                    // ケースA（§3.2）：休憩中に退勤 → 休憩補完ポップアップ
+                    if (currentStatus === 'break') {
+                        openCaseAModal(ctx, wrap, buttons, workedTimer);
+                        return;
+                    }
 
-                acquirePosition(needGeo).then(function (coords) {
-                    return postPunch(punchType, coords);
-                }).then(function (res) {
-                    handleResponse(res, punchType, wrap, buttons, workedTimer);
-                }).catch(function () {
-                    // 通信失敗。打刻できたと誤認させないよう明示し、再試行できる状態に戻す（§4.1）
-                    setFeedback('通信に失敗しました。打刻は記録されていません。もう一度お試しください。', 'error');
-                    showToast('通信に失敗しました。打刻は記録されていません。');
-                    restoreButtons(wrap, buttons);
-                }).then(function () {
-                    sending = false;
-                });
+                    // ケースB（§3.2）：休憩未打刻・実勤務6時間超 → 確認ポップアップ
+                    if (currentStatus === 'working' && !ctx.hasBreakToday) {
+                        var elapsed = serverEpoch(ctx.offset) - ctx.clockInEpoch;
+                        if (elapsed > laborCfg().tier1Hours * 3600) {
+                            openCaseBModal(ctx, wrap, buttons, workedTimer);
+                            return;
+                        }
+                    }
+                }
+
+                performPunch(punchType, wrap, buttons, workedTimer, ctx);
             });
+        });
+    }
+
+    /** 通常の打刻（③〜⑤の本体）。ケースB「休憩なしで退勤する」からも呼ばれる。 */
+    function performPunch(punchType, wrap, buttons, workedTimer, ctx) {
+        ctx.sending = true;
+        setAllDisabled(buttons, true);
+        setFeedback('送信中…', 'sending');
+
+        var needGeo = isMobile() && !ctx.geoAsked;
+        ctx.geoAsked = true;
+
+        acquirePosition(needGeo).then(function (coords) {
+            return postPunch(punchType, coords);
+        }).then(function (res) {
+            handleResponse(res, punchType, wrap, buttons, workedTimer, ctx);
+        }).catch(function () {
+            // 通信失敗。打刻できたと誤認させないよう明示し、再試行できる状態に戻す（§4.1）
+            setFeedback('通信に失敗しました。打刻は記録されていません。もう一度お試しください。', 'error');
+            showToast('通信に失敗しました。打刻は記録されていません。');
+            restoreButtons(wrap, buttons);
+        }).then(function () {
+            ctx.sending = false;
         });
     }
 
@@ -183,16 +221,10 @@
         });
     }
 
-    /** 打刻APIを叩く。時刻は送らない（サーバー時刻を強制するため）。 */
-    function postPunch(punchType, coords) {
+    /** ims/v1 配下へのPOST共通処理。 */
+    function restPost(path, body) {
         var cfg = window.imsPortal || {};
-        var body = { punch_type: punchType };
-        if (coords) {
-            body.gps_latitude = coords.lat;
-            body.gps_longitude = coords.lng;
-        }
-
-        return fetch(cfg.restUrl + 'timecard/punch', {
+        return fetch(cfg.restUrl + path, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
@@ -209,13 +241,40 @@
         });
     }
 
-    function handleResponse(res, punchType, wrap, buttons, workedTimer) {
+    /** 打刻APIを叩く。時刻は送らない（サーバー時刻を強制するため）。 */
+    function postPunch(punchType, coords) {
+        var body = { punch_type: punchType };
+        if (coords) {
+            body.gps_latitude = coords.lat;
+            body.gps_longitude = coords.lng;
+        }
+        return restPost('timecard/punch', body);
+    }
+
+    /** 2d：ケースA・ケースBのAPIルート（TimecardPage::enqueue() が localize）。 */
+    function routes() {
+        return (window.imsTimecard || {}).routes || {};
+    }
+
+    /** 2d：労基法の休憩の目安（PunchService の定数が正本。JS は数値を持たない）。 */
+    function laborCfg() {
+        return (window.imsTimecard || {}).laborBreak || {
+            tier1Hours: 6, tier2Hours: 8, tier1Minutes: 45, tier2Minutes: 60
+        };
+    }
+
+    function handleResponse(res, punchType, wrap, buttons, workedTimer, ctx) {
         var data = res.data || {};
 
         if (res.status >= 200 && res.status < 300 && data.ok) {
             applyState(wrap, buttons, workedTimer, data.state);
             if (data.punch) {
                 appendPunchToRow(wrap, data.punch);
+            }
+            // 2d：休憩を1件でも打刻したら、以後ケースBの確認は不要になる
+            if (punchType === 'break_in') {
+                ctx.hasBreakToday = true;
+                ctx.breakInEpoch = serverEpoch(ctx.offset);
             }
             var msg = data.message || (PUNCH_LABELS[punchType] || '打刻') + 'を記録しました。';
             setFeedback(msg, 'success');
@@ -231,6 +290,35 @@
         }
 
         var err = data.message || '打刻できませんでした。画面を再読み込みしてお試しください。';
+        setFeedback(err, 'error');
+        showToast(err);
+    }
+
+    /**
+     * 2d：ケースA/Bの補完API（clock_outを含む複数レコードを1回で保存する）の応答処理。
+     * handle_punch() とは異なり `punches`（複数形）で返る。
+     */
+    function handleMultiPunchResponse(res, wrap, buttons, workedTimer, ctx) {
+        var data = res.data || {};
+
+        if (res.status >= 200 && res.status < 300 && data.ok) {
+            applyState(wrap, buttons, workedTimer, data.state);
+            (data.punches || []).forEach(function (p) {
+                appendPunchToRow(wrap, p);
+            });
+            var msg = data.message || '退勤を記録しました。';
+            setFeedback(msg, 'success');
+            showToast(msg);
+            return;
+        }
+
+        if (data.state) {
+            applyState(wrap, buttons, workedTimer, data.state);
+        } else {
+            restoreButtons(wrap, buttons);
+        }
+
+        var err = data.message || '操作できませんでした。画面を再読み込みしてお試しください。';
         setFeedback(err, 'error');
         showToast(err);
     }
@@ -295,7 +383,423 @@
         var span = document.createElement('span');
         span.className = 'tc-time';
         span.textContent = punch.time;
+        // 2d：休憩補完・登録で保存したログは自動補完タグを添える（サーバー描画と同じ見た目）
+        if (punch.is_auto_filled) {
+            span.appendChild(document.createTextNode(' '));
+            var tag = document.createElement('span');
+            tag.className = 'tc-auto-tag';
+            tag.textContent = '自動補完';
+            span.appendChild(tag);
+        }
         cell.appendChild(span);
+    }
+
+    // ── 2d：ケースA（休憩中の退勤）ポップアップ ─────────────
+
+    function openCaseAModal(ctx, wrap, buttons, workedTimer) {
+        var now = serverEpoch(ctx.offset);
+        var maxMinutes = Math.max(0, Math.floor((now - ctx.breakInEpoch) / 60));
+        var elapsedSinceClockIn = Math.max(0, now - ctx.clockInEpoch);
+        var cfg = laborCfg();
+
+        var m = createModal('休憩を終了して退勤しますか？');
+
+        var info = document.createElement('p');
+        info.className = 'tc-modal-info';
+        info.textContent = '休憩を始めた時刻：' + formatHm(ctx.breakInEpoch) +
+            '　／　出勤からの経過時間：' + formatDuration(elapsedSinceClockIn);
+        m.body.appendChild(info);
+
+        m.body.appendChild(buildLawInfoBox(caseANote(elapsedSinceClockIn, cfg)));
+
+        var optionsWrap = document.createElement('div');
+        optionsWrap.className = 'tc-break-options';
+
+        var chosenMinutes = null;
+
+        function addRadioOption(value, label, badgeText) {
+            var row = document.createElement('label');
+            row.className = 'tc-break-option';
+            var input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'tc-break-minutes-choice';
+            input.value = String(value);
+            row.appendChild(input);
+            var span = document.createElement('span');
+            span.textContent = label;
+            row.appendChild(span);
+            if (badgeText) {
+                var badge = document.createElement('span');
+                badge.className = 'tc-badge-tag';
+                badge.textContent = badgeText;
+                row.appendChild(badge);
+            }
+            optionsWrap.appendChild(row);
+            input.addEventListener('change', function () {
+                chosenMinutes = value;
+                customInput.value = '';
+                updateSubmitState();
+            });
+        }
+
+        if (maxMinutes >= cfg.tier1Minutes) {
+            addRadioOption(cfg.tier1Minutes, cfg.tier1Minutes + '分', '6〜8時間勤務の法定最低ライン');
+        }
+        if (maxMinutes >= cfg.tier2Minutes) {
+            var recommend = elapsedSinceClockIn > cfg.tier2Hours * 3600 ? '推奨' : null;
+            addRadioOption(cfg.tier2Minutes, cfg.tier2Minutes + '分', recommend);
+        }
+
+        var hasPresetOption = maxMinutes >= cfg.tier1Minutes;
+
+        var customRow = document.createElement('label');
+        customRow.className = 'tc-break-option';
+        var customRadio = document.createElement('input');
+        customRadio.type = 'radio';
+        customRadio.name = 'tc-break-minutes-choice';
+        customRow.appendChild(customRadio);
+        var customLabelSpan = document.createElement('span');
+        customLabelSpan.textContent = 'その他の時間を入力：';
+        customRow.appendChild(customLabelSpan);
+        var customInput = document.createElement('input');
+        customInput.type = 'number';
+        customInput.min = '1';
+        customInput.max = String(maxMinutes);
+        customInput.className = 'tc-break-custom-input';
+        customRow.appendChild(customInput);
+        var customUnit = document.createElement('span');
+        customUnit.textContent = '分';
+        customRow.appendChild(customUnit);
+        optionsWrap.appendChild(customRow);
+
+        if (!hasPresetOption) {
+            var hint = document.createElement('p');
+            hint.className = 'tc-modal-hint';
+            hint.textContent = '最大 ' + maxMinutes + ' 分まで入力可能です。';
+            optionsWrap.insertBefore(hint, customRow);
+        }
+
+        m.body.appendChild(optionsWrap);
+
+        var errorEl = document.createElement('p');
+        errorEl.className = 'tc-modal-error';
+        errorEl.hidden = true;
+        m.body.appendChild(errorEl);
+
+        var actions = document.createElement('div');
+        actions.className = 'tc-modal-actions';
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'tc-modal-btn is-ghost';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.addEventListener('click', m.close);
+        var submitBtn = document.createElement('button');
+        submitBtn.type = 'button';
+        submitBtn.className = 'tc-modal-btn is-primary';
+        submitBtn.textContent = '休憩を登録して退勤する';
+        submitBtn.disabled = true;
+        actions.appendChild(cancelBtn);
+        actions.appendChild(submitBtn);
+        m.body.appendChild(actions);
+
+        function currentMinutesValue() {
+            if (customRadio.checked) {
+                var v = parseInt(customInput.value, 10);
+                return isNaN(v) ? null : v;
+            }
+            return chosenMinutes;
+        }
+
+        function updateSubmitState() {
+            var v = currentMinutesValue();
+            if (v === null) {
+                submitBtn.disabled = true;
+                errorEl.hidden = true;
+                return;
+            }
+            if (v > maxMinutes) {
+                errorEl.textContent = '入力した時間が上限（' + maxMinutes + '分）を超えています。';
+                errorEl.hidden = false;
+                submitBtn.disabled = true;
+                return;
+            }
+            if (v < 1) {
+                errorEl.textContent = '1分以上を入力してください。';
+                errorEl.hidden = false;
+                submitBtn.disabled = true;
+                return;
+            }
+            errorEl.hidden = true;
+            submitBtn.disabled = false;
+        }
+
+        customRadio.addEventListener('change', updateSubmitState);
+        customInput.addEventListener('input', function () {
+            customRadio.checked = true;
+            updateSubmitState();
+        });
+        customInput.addEventListener('focus', function () {
+            customRadio.checked = true;
+            updateSubmitState();
+        });
+
+        submitBtn.addEventListener('click', function () {
+            var minutes = currentMinutesValue();
+            if (minutes === null || minutes < 1 || minutes > maxMinutes) {
+                return;
+            }
+            setAllDisabled(buttons, true);
+            setFeedback('送信中…', 'sending');
+
+            restPost(routes().completeBreak, { minutes: minutes }).then(function (res) {
+                m.close();
+                handleMultiPunchResponse(res, wrap, buttons, workedTimer, ctx);
+            }).catch(function () {
+                m.close();
+                setFeedback('通信に失敗しました。打刻は記録されていません。もう一度お試しください。', 'error');
+                showToast('通信に失敗しました。打刻は記録されていません。');
+                restoreButtons(wrap, buttons);
+            });
+        });
+    }
+
+    /** ケースA：労基法インフォボックスの補足メッセージ（「本日の勤務時間は8時間超のため…」）。 */
+    function caseANote(elapsedSeconds, cfg) {
+        if (elapsedSeconds > cfg.tier2Hours * 3600) {
+            return '本日の勤務時間は' + cfg.tier2Hours + '時間超のため、' + cfg.tier2Minutes + '分以上の休憩が推奨されます。';
+        }
+        if (elapsedSeconds > cfg.tier1Hours * 3600) {
+            return '本日の勤務時間は' + cfg.tier1Hours + '時間超のため、' + cfg.tier1Minutes + '分以上の休憩が推奨されます。';
+        }
+        return '';
+    }
+
+    // ── 2d：ケースB（休憩未打刻・6時間超での退勤）ポップアップ ─
+
+    function openCaseBModal(ctx, wrap, buttons, workedTimer) {
+        var now = serverEpoch(ctx.offset);
+        // ケースBの前提（当日 break_in が0件）より、経過時間＝実勤務時間になる
+        var workedSeconds = Math.max(0, now - ctx.clockInEpoch);
+        var cfg = laborCfg();
+
+        var m = createModal('休憩を取らずに退勤しますか？');
+
+        var info = document.createElement('p');
+        info.className = 'tc-modal-info';
+        info.textContent = '出勤時刻：' + formatHm(ctx.clockInEpoch) +
+            '　／　現在の勤務時間：' + formatDuration(workedSeconds);
+        m.body.appendChild(info);
+
+        m.body.appendChild(buildLawInfoBox(caseBNote(workedSeconds, cfg)));
+
+        var actions = document.createElement('div');
+        actions.className = 'tc-modal-actions tc-modal-actions--stacked';
+
+        var registerBtn = document.createElement('button');
+        registerBtn.type = 'button';
+        registerBtn.className = 'tc-modal-btn is-primary';
+        registerBtn.textContent = '休憩を登録して退勤する';
+        registerBtn.addEventListener('click', function () {
+            m.close();
+            openCaseBRangeModal(ctx, wrap, buttons, workedTimer);
+        });
+
+        var noBreakBtn = document.createElement('button');
+        noBreakBtn.type = 'button';
+        noBreakBtn.className = 'tc-modal-btn is-ghost';
+        noBreakBtn.textContent = '休憩なしで退勤する';
+        noBreakBtn.addEventListener('click', function () {
+            m.close();
+            performPunch('clock_out', wrap, buttons, workedTimer, ctx);
+        });
+
+        actions.appendChild(registerBtn);
+        actions.appendChild(noBreakBtn);
+        m.body.appendChild(actions);
+
+        var note = document.createElement('p');
+        note.className = 'tc-modal-note';
+        note.textContent = '休憩なしで退勤を選択した場合も退勤は完了します。休憩の登録はシステムでは強制しません。';
+        m.body.appendChild(note);
+    }
+
+    /** ケースB：労基法インフォボックスの補足メッセージ（「現在7時間28分のため…」）。 */
+    function caseBNote(workedSeconds, cfg) {
+        var totalMin = Math.floor(workedSeconds / 60);
+        var hm = Math.floor(totalMin / 60) + '時間' + (totalMin % 60) + '分';
+        if (workedSeconds > cfg.tier2Hours * 3600) {
+            return '現在' + hm + 'のため、' + cfg.tier2Minutes + '分以上の休憩が必要です。';
+        }
+        if (workedSeconds > cfg.tier1Hours * 3600) {
+            return '現在' + hm + 'のため、' + cfg.tier1Minutes + '分以上の休憩が必要です。';
+        }
+        return '';
+    }
+
+    /** ケースB・ボタンA：休憩の開始・終了時刻を直接入力する画面。 */
+    function openCaseBRangeModal(ctx, wrap, buttons, workedTimer) {
+        var m = createModal('休憩の時刻を入力してください');
+
+        var form = document.createElement('div');
+        form.className = 'tc-break-range-form';
+
+        var startLabel = document.createElement('label');
+        startLabel.textContent = '休憩開始';
+        var startInput = document.createElement('input');
+        startInput.type = 'time';
+        startLabel.appendChild(startInput);
+
+        var endLabel = document.createElement('label');
+        endLabel.textContent = '休憩終了';
+        var endInput = document.createElement('input');
+        endInput.type = 'time';
+        endLabel.appendChild(endInput);
+
+        form.appendChild(startLabel);
+        form.appendChild(endLabel);
+        m.body.appendChild(form);
+
+        var errorEl = document.createElement('p');
+        errorEl.className = 'tc-modal-error';
+        errorEl.hidden = true;
+        m.body.appendChild(errorEl);
+
+        var actions = document.createElement('div');
+        actions.className = 'tc-modal-actions';
+        var backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'tc-modal-btn is-ghost';
+        backBtn.textContent = 'キャンセル';
+        backBtn.addEventListener('click', m.close);
+
+        var submitBtn = document.createElement('button');
+        submitBtn.type = 'button';
+        submitBtn.className = 'tc-modal-btn is-primary';
+        submitBtn.textContent = '休憩を登録して退勤する';
+        submitBtn.disabled = true;
+
+        actions.appendChild(backBtn);
+        actions.appendChild(submitBtn);
+        m.body.appendChild(actions);
+
+        // 簡易な事前チェックのみ（日をまたぐ入力もあり得るため、厳密な妥当性は
+        // サーバー側の parse_time_on_or_after() が判定する）。
+        function validate() {
+            if (!startInput.value || !endInput.value) {
+                return false;
+            }
+            if (startInput.value === endInput.value) {
+                errorEl.textContent = '休憩開始と休憩終了に同じ時刻は指定できません。';
+                errorEl.hidden = false;
+                return false;
+            }
+            errorEl.hidden = true;
+            return true;
+        }
+
+        [startInput, endInput].forEach(function (el) {
+            el.addEventListener('input', function () {
+                submitBtn.disabled = !validate();
+            });
+        });
+
+        submitBtn.addEventListener('click', function () {
+            if (!validate()) {
+                return;
+            }
+            setAllDisabled(buttons, true);
+            setFeedback('送信中…', 'sending');
+
+            restPost(routes().clockOutWithBreak, {
+                break_in: startInput.value,
+                break_out: endInput.value
+            }).then(function (res) {
+                m.close();
+                handleMultiPunchResponse(res, wrap, buttons, workedTimer, ctx);
+            }).catch(function () {
+                m.close();
+                setFeedback('通信に失敗しました。打刻は記録されていません。もう一度お試しください。', 'error');
+                showToast('通信に失敗しました。打刻は記録されていません。');
+                restoreButtons(wrap, buttons);
+            });
+        });
+    }
+
+    // ── 2d：モーダル共通部品 ────────────────────────────────
+
+    /** 労基法の休憩の目安インフォボックス（3段の一覧＋任意の補足メッセージ）。 */
+    function buildLawInfoBox(noteText) {
+        var cfg = laborCfg();
+        var box = document.createElement('div');
+        box.className = 'tc-law-box';
+
+        var list = document.createElement('ul');
+        [
+            '勤務 ' + cfg.tier1Hours + ' 時間以内 → 休憩の付与義務なし',
+            '勤務 ' + cfg.tier1Hours + ' 時間超〜' + cfg.tier2Hours + ' 時間以内 → ' + cfg.tier1Minutes + ' 分以上の休憩が必要',
+            '勤務 ' + cfg.tier2Hours + ' 時間超 → ' + cfg.tier2Minutes + ' 分以上の休憩が必要'
+        ].forEach(function (text) {
+            var li = document.createElement('li');
+            li.textContent = text;
+            list.appendChild(li);
+        });
+        box.appendChild(list);
+
+        if (noteText) {
+            var note = document.createElement('p');
+            note.className = 'tc-law-note';
+            note.textContent = noteText;
+            box.appendChild(note);
+        }
+        return box;
+    }
+
+    /** 簡素なモーダルの土台。オーバーレイクリック・Escで閉じる。 */
+    function createModal(titleText) {
+        var overlay = document.createElement('div');
+        overlay.className = 'tc-modal-overlay';
+
+        var modal = document.createElement('div');
+        modal.className = 'tc-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+
+        var title = document.createElement('h2');
+        title.className = 'tc-modal-title';
+        title.textContent = titleText;
+        modal.appendChild(title);
+
+        var body = document.createElement('div');
+        body.className = 'tc-modal-body';
+        modal.appendChild(body);
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        function onKeydown(e) {
+            if (e.key === 'Escape') {
+                close();
+            }
+        }
+        function close() {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            document.removeEventListener('keydown', onKeydown);
+        }
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) {
+                close();
+            }
+        });
+        document.addEventListener('keydown', onKeydown);
+
+        var focusable = modal.querySelector('button, input');
+        if (focusable) {
+            focusable.focus();
+        }
+
+        return { overlay: overlay, modal: modal, body: body, close: close };
     }
 
     // ── ユーティリティ ──
@@ -327,6 +831,15 @@
         var h = Math.floor(totalSec / 3600);
         var m = Math.floor((totalSec % 3600) / 60);
         return h + '時間 ' + m + '分';
+    }
+
+    /** epoch秒（serverEpoch と同じ「サーバー時刻」系列）を HH:MM 表示にする。 */
+    function formatHm(epochSec) {
+        if (!epochSec) {
+            return '--:--';
+        }
+        var d = new Date(epochSec * 1000);
+        return pad(d.getHours()) + ':' + pad(d.getMinutes());
     }
 
     function pad(n) {

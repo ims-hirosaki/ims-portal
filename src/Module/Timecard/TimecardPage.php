@@ -57,6 +57,21 @@ final class TimecardPage
             IMS_PORTAL_VERSION,
             true
         );
+
+        // 2d：休憩補完付き退勤（ケースA/B）用のルートと労基法の目安（§3.2）。
+        // 法令由来の固定値は PunchService の定数を正本とし、JS 側で数値を持たない。
+        wp_localize_script('ims-timecard', 'imsTimecard', [
+            'routes' => [
+                'completeBreak'     => 'timecard/punch/complete-break',
+                'clockOutWithBreak' => 'timecard/punch/clock-out-with-break',
+            ],
+            'laborBreak' => [
+                'tier1Hours'   => PunchService::LABOR_BREAK_TIER1_HOURS,
+                'tier2Hours'   => PunchService::LABOR_BREAK_TIER2_HOURS,
+                'tier1Minutes' => PunchService::LABOR_BREAK_TIER1_MINUTES,
+                'tier2Minutes' => PunchService::LABOR_BREAK_TIER2_MINUTES,
+            ],
+        ]);
     }
 
     /**
@@ -87,6 +102,13 @@ final class TimecardPage
         // clock_in 時刻（JS で経過を進めるための基準）
         $clock_in_at = self::first_punch_time($today_logs, StatusCalculator::CLOCK_IN);
 
+        // 2d：ケースA/Bの補完UIが必要とする材料。
+        // タイムゾーンのずれを避けるため H:i ではなく UNIX 秒（サーバー時刻基準）で渡す
+        // （data-server-now と同じ流儀。JS 側の offset 計算とそのまま整合する）。
+        $clock_in_epoch = self::last_punch_epoch($today_logs, StatusCalculator::CLOCK_IN);
+        $break_in_epoch = self::last_punch_epoch($today_logs, StatusCalculator::BREAK_IN);
+        $has_break      = StatusCalculator::has_break_in($today_logs);
+
         // ── 表示する月（?ym=YYYY-MM、なければ当月） ──
         [$year, $month] = self::resolve_month();
         $month_logs = Repository::logs_for_month($user_id, $year, $month);
@@ -99,7 +121,10 @@ final class TimecardPage
              data-clock-in="<?php echo esc_attr($clock_in_at); ?>"
              data-server-now="<?php echo esc_attr((string) $now_ts); ?>"
              data-work-date="<?php echo esc_attr($work_date); ?>"
-             data-can-punch="<?php echo $can_punch ? '1' : '0'; ?>">
+             data-can-punch="<?php echo $can_punch ? '1' : '0'; ?>"
+             data-clock-in-epoch="<?php echo esc_attr((string) $clock_in_epoch); ?>"
+             data-break-in-epoch="<?php echo esc_attr((string) $break_in_epoch); ?>"
+             data-has-break="<?php echo $has_break ? '1' : '0'; ?>">
 
             <?php self::render_console($status, $active, $worked_sec, $can_punch); ?>
             <?php self::render_history($year, $month, $month_logs, $work_date); ?>
@@ -376,5 +401,23 @@ final class TimecardPage
             }
         }
         return '';
+    }
+
+    /**
+     * 指定した種別の最後の打刻時刻を UNIX 秒で返す（2d のケースA/B補完UI用）。
+     * なければ 0（JS 側は 0 を「該当なし」として扱う）。
+     */
+    private static function last_punch_epoch(array $logs, string $type): int
+    {
+        $last = 0;
+        foreach ($logs as $log) {
+            if (($log['punch_type'] ?? '') === $type) {
+                $ts = strtotime((string) $log['punched_at']);
+                if ($ts !== false) {
+                    $last = $ts;
+                }
+            }
+        }
+        return $last;
     }
 }

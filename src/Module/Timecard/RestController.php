@@ -29,7 +29,16 @@ final class RestController
     private const NAMESPACE = 'ims/v1';
     private const ROUTE     = '/timecard/punch';
 
-    /** エラーコード → HTTPステータス。§7.1 は重複を 409 Conflict と定めている。 */
+    /** ケースA（休憩補完のみ）。§3.2 ケースA。 */
+    private const ROUTE_COMPLETE_BREAK = '/timecard/punch/complete-break';
+    /** ケースB・ボタンA（休憩の開始・終了を指定して退勤）。§3.2 ケースB。 */
+    private const ROUTE_CLOCK_OUT_WITH_BREAK = '/timecard/punch/clock-out-with-break';
+
+    /**
+     * エラーコード → HTTPステータス。§7.1 は重複を 409 Conflict と定めている。
+     * `currently_on_break`・`break_already_recorded`・`invalid_break_minutes`・
+     * `invalid_break_range` は 2d（休憩補完付き退勤）のエラーコード。
+     */
     private const STATUS_MAP = [
         'retired'                   => 403,
         'duplicate'                 => 409,
@@ -39,6 +48,10 @@ final class RestController
         'not_clocked_in'            => 409,
         'not_on_break'              => 409,
         'break_completion_required' => 409,
+        'currently_on_break'        => 409,
+        'break_already_recorded'    => 409,
+        'invalid_break_minutes'     => 400,
+        'invalid_break_range'       => 400,
         'unknown_punch_type'        => 400,
         'db_error'                  => 500,
     ];
@@ -73,6 +86,36 @@ final class RestController
                 'gps_longitude' => [
                     'required' => false,
                     'type'     => 'number',
+                ],
+            ],
+        ]);
+
+        // ケースA：休憩中に退勤しようとした場合の補完（§3.2 ケースA）
+        register_rest_route(self::NAMESPACE, self::ROUTE_COMPLETE_BREAK, [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'handle_complete_break'],
+            'permission_callback' => [self::class, 'can_punch'],
+            'args'                => [
+                'minutes' => [
+                    'required' => true,
+                    'type'    => 'integer',
+                ],
+            ],
+        ]);
+
+        // ケースB・ボタンA：休憩を打刻していないが、開始・終了を指定して退勤する（§3.2 ケースB）
+        register_rest_route(self::NAMESPACE, self::ROUTE_CLOCK_OUT_WITH_BREAK, [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'handle_clock_out_with_break'],
+            'permission_callback' => [self::class, 'can_punch'],
+            'args'                => [
+                'break_in' => [
+                    'required' => true,
+                    'type'     => 'string',
+                ],
+                'break_out' => [
+                    'required' => true,
+                    'type'     => 'string',
                 ],
             ],
         ]);
@@ -130,6 +173,90 @@ final class RestController
             ],
             'state'   => PunchService::current_state($user_id, (string) $result['work_date']),
         ], 201);
+    }
+
+    /**
+     * ケースA：休憩中の退勤補完（§3.2 ケースA）。
+     */
+    public static function handle_complete_break(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $user_id = get_current_user_id();
+        $minutes = (int) $request->get_param('minutes');
+
+        $result = PunchService::clock_out_with_break_duration($user_id, $minutes);
+        return self::respond_clock_out_result($user_id, $result);
+    }
+
+    /**
+     * ケースB・ボタンA：休憩の開始・終了を指定しての退勤（§3.2 ケースB）。
+     */
+    public static function handle_clock_out_with_break(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $user_id   = get_current_user_id();
+        $break_in  = (string) $request->get_param('break_in');
+        $break_out = (string) $request->get_param('break_out');
+
+        $result = PunchService::clock_out_with_break_range($user_id, $break_in, $break_out);
+        return self::respond_clock_out_result($user_id, $result);
+    }
+
+    /**
+     * handle_complete_break() / handle_clock_out_with_break() 共通のレスポンス整形。
+     * どちらも最終的な打刻種別は必ず clock_out なので handle_punch() の汎用整形は流用せず、
+     * 既存の handle_punch()（2c で検証済み・本番稼働中）には手を加えない。
+     *
+     * 成功時は `punches`（複数形）に、今回の操作で保存された全レコード
+     * （休憩の補完・登録があればそれも含む）を保存順に並べて返す。
+     * フロントはこれをループして履歴テーブルの複数セルをリロードなしで描き替える。
+     */
+    private static function respond_clock_out_result(int $user_id, array $result): \WP_REST_Response
+    {
+        if (!$result['ok']) {
+            $code   = (string) $result['code'];
+            $status = self::STATUS_MAP[$code] ?? 400;
+
+            $body = [
+                'ok'      => false,
+                'code'    => $code,
+                'message' => (string) $result['message'],
+            ];
+            if ($status === 409) {
+                $work_date = (string) ($result['work_date'] ?? PunchService::console_work_date($user_id));
+                $body['state'] = PunchService::current_state($user_id, $work_date);
+            }
+
+            return new \WP_REST_Response($body, $status);
+        }
+
+        $work_date = (string) $result['work_date'];
+        $punches   = [];
+        foreach ([StatusCalculator::BREAK_IN, StatusCalculator::BREAK_OUT] as $type) {
+            if (isset($result[$type])) {
+                $punches[] = self::shape_punch($type, (string) $result[$type]['punched_at'], $work_date, true);
+            }
+        }
+        $punches[] = self::shape_punch(StatusCalculator::CLOCK_OUT, (string) $result['punched_at'], $work_date, false);
+
+        return new \WP_REST_Response([
+            'ok'      => true,
+            'message' => (string) $result['message'],
+            'punches' => $punches,
+            'state'   => PunchService::current_state($user_id, $work_date),
+        ], 201);
+    }
+
+    /**
+     * @return array{log_id?:int, punch_type:string, punched_at:string, time:string, work_date:string, is_auto_filled:bool}
+     */
+    private static function shape_punch(string $punch_type, string $punched_at, string $work_date, bool $is_auto_filled): array
+    {
+        return [
+            'punch_type'     => $punch_type,
+            'punched_at'     => $punched_at,
+            'time'           => date('H:i', strtotime($punched_at)),
+            'work_date'      => $work_date,
+            'is_auto_filled' => $is_auto_filled,
+        ];
     }
 
     /**
