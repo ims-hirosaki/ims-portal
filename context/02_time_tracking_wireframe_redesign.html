@@ -1,0 +1,2765 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMS Hirosaki – 打刻管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --paper: #F3ECDD;
+            --surface: #FFFCF5;
+            --surface-raised: #FFFFFF;
+            --ink: #211D17;
+            --ink-soft: #4A4339;
+            --sub: #897D69;
+            --line: #E1D5B7;
+            --line-soft: #ECE3CC;
+            --indigo: #1E3A5F;
+            --indigo-deep: #0F2034;
+            --indigo-soft: #34557F;
+            --indigo-tint: #EAEEF2;
+            --vermillion: #B8472F;
+            --vermillion-tint: #F6E3DB;
+            --gold: #A87C2E;
+            --moss: #5C7A4E;
+            --moss-tint: #E7EEE3;
+            --shadow-sm: 0 1px 2px rgba(33, 22, 10, .08);
+            --shadow-md: 0 10px 28px rgba(33, 22, 10, .12);
+            --shadow-lg: 0 26px 60px rgba(15, 32, 52, .30);
+            --r-sm: 6px;
+            --r-md: 14px;
+            --r-lg: 22px;
+            --f-display: 'Shippori Mincho', 'Hiragino Mincho ProN', serif;
+            --f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--f-body);
+            background: var(--paper);
+            color: var(--ink);
+            font-size: 15px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        button {
+            font-family: inherit;
+        }
+
+        *:focus-visible {
+            outline: 2px solid var(--indigo);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* paper grain overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            pointer-events: none;
+            opacity: .035;
+            mix-blend-mode: multiply;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        .brand-strip {
+            height: 4px;
+            background: linear-gradient(90deg, var(--indigo-deep), var(--indigo) 55%, var(--gold));
+        }
+
+        /* ===== DEV SCREEN-SWITCHER (utility bar, distinct from real chrome) ===== */
+        .dev-bar {
+            background: #DCD3BC;
+            border-bottom: 1px dashed #B9AC87;
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .dev-bar-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #6B6249;
+            letter-spacing: .16em;
+            flex-shrink: 0;
+        }
+
+        .dev-tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 5px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 11px;
+            color: #6B6249;
+            border: 1px solid transparent;
+            background: transparent;
+            font-weight: 600;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, .5);
+            border-color: #B9AC87;
+        }
+
+        .nav-tab.active {
+            background: var(--surface-raised);
+            color: var(--indigo);
+            border-color: var(--line);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ===== HEADER ===== */
+        .site-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .header-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            height: 64px;
+            padding: 0 28px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .brand-mark {
+            font-family: var(--f-display);
+            font-weight: 700;
+            font-size: 22px;
+            color: var(--indigo);
+            letter-spacing: .02em;
+        }
+
+        .brand-sub {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .14em;
+        }
+
+        .page-chip {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--indigo);
+            background: var(--indigo-tint);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-name {
+            font-size: 13.5px;
+            font-weight: 500;
+        }
+
+        .icon-btn {
+            position: relative;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-soft);
+            transition: border-color .15s, color .15s;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--indigo);
+            color: var(--indigo);
+        }
+
+        .icon-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .ping-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--vermillion);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 5px;
+            border-radius: 10px;
+            box-shadow: 0 0 0 2px var(--surface);
+        }
+
+        .btn-ghost {
+            background: none;
+            border: none;
+            font-size: 12.5px;
+            color: var(--sub);
+            cursor: pointer;
+            padding: 6px 4px;
+            border-bottom: 1px solid transparent;
+            transition: color .15s, border-color .15s;
+        }
+
+        .btn-ghost:hover {
+            color: var(--ink);
+            border-color: var(--sub);
+        }
+
+        /* ===== LAYOUT ===== */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 40px 28px 64px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .14em;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-label::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--line);
+        }
+
+        .screen-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .1em;
+            color: var(--sub);
+            margin-bottom: 18px;
+        }
+
+        /* ===== ICONS ===== */
+        .ic {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* ===== ANIMATION ===== */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(127, 216, 147, .55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 7px rgba(127, 216, 147, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(127, 216, 147, 0);
+            }
+        }
+
+        @keyframes pulseAmber {
+            0% {
+                box-shadow: 0 0 0 0 rgba(232, 196, 128, .55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 7px rgba(232, 196, 128, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(232, 196, 128, 0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeUp .55s ease backwards;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* ===== HERO STATUS PANEL (punch console centerpiece) ===== */
+        .punch-hero {
+            position: relative;
+            background: linear-gradient(155deg, var(--indigo), var(--indigo-deep) 75%);
+            border-radius: var(--r-lg);
+            padding: 36px 40px;
+            color: #fff;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            animation: fadeUp .7s ease backwards;
+            animation-delay: .05s;
+            margin-bottom: 28px;
+        }
+
+        .punch-hero::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient(115deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 26px);
+            pointer-events: none;
+        }
+
+        .ph-glow {
+            position: absolute;
+            width: 280px;
+            height: 280px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168, 124, 46, .35), transparent 70%);
+            top: -90px;
+            right: -70px;
+            filter: blur(4px);
+        }
+
+        .ph-top {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .ph-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            color: rgba(255, 255, 255, .65);
+        }
+
+        .ph-status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .ph-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, .12);
+            color: #fff;
+        }
+
+        .ph-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .ph-badge.st-before .dot {
+            background: rgba(255, 255, 255, .4);
+        }
+
+        .ph-badge.st-working .dot {
+            background: #7FD893;
+            box-shadow: 0 0 0 0 rgba(127, 216, 147, .6);
+            animation: pulse 2s infinite;
+        }
+
+        .ph-badge.st-break .dot {
+            background: #E8C480;
+            box-shadow: 0 0 0 0 rgba(232, 196, 128, .6);
+            animation: pulseAmber 2s infinite;
+        }
+
+        .ph-badge.st-done .dot {
+            background: #9FB6CF;
+        }
+
+        .ph-body {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 32px;
+            align-items: end;
+        }
+
+        .ph-clock-block {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ph-timer {
+            font-family: var(--f-body);
+            font-weight: 900;
+            font-size: 64px;
+            letter-spacing: .01em;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .ph-timer-caption {
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, .55);
+            margin-top: 6px;
+        }
+
+        .ph-worktime {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .ph-worktime-val {
+            font-family: var(--f-display);
+            font-weight: 700;
+            font-size: 30px;
+            font-variant-numeric: tabular-nums;
+            color: #E8C480;
+        }
+
+        .ph-worktime-lbl {
+            font-size: 11.5px;
+            color: rgba(255, 255, 255, .6);
+        }
+
+        .ph-progress {
+            position: relative;
+            height: 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, .18);
+            overflow: hidden;
+            margin: 22px 0 26px;
+        }
+
+        .ph-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #C99B4A, #E8C480);
+            border-radius: 4px;
+            transition: width .6s ease;
+        }
+
+        .punch-btn-grid {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 760px) {
+            .punch-btn-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .punch-btn {
+            border: none;
+            border-radius: var(--r-md);
+            padding: 18px 10px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--f-body);
+            font-weight: 700;
+            font-size: 13.5px;
+            transition: transform .12s, box-shadow .15s, opacity .15s;
+            background: rgba(255, 255, 255, .08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, .18);
+        }
+
+        .punch-btn .ic {
+            width: 24px;
+            height: 24px;
+            stroke-width: 1.6;
+        }
+
+        .punch-btn:not(:disabled):hover {
+            background: rgba(255, 255, 255, .16);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .25);
+        }
+
+        .punch-btn:not(:disabled):active {
+            transform: scale(.97);
+        }
+
+        .punch-btn:disabled {
+            opacity: .28;
+            cursor: not-allowed;
+        }
+
+        .punch-btn.is-primary {
+            background: var(--moss);
+            border-color: var(--moss);
+        }
+
+        .punch-btn.is-primary:not(:disabled):hover {
+            background: #4d6940;
+        }
+
+        .punch-btn.is-danger {
+            background: var(--vermillion);
+            border-color: var(--vermillion);
+        }
+
+        .punch-btn.is-danger:not(:disabled):hover {
+            background: #9c3a25;
+        }
+
+        .ph-hint {
+            position: relative;
+            font-size: 12px;
+            color: rgba(255, 255, 255, .55);
+            text-align: center;
+            margin-top: 14px;
+        }
+
+        .ph-note {
+            position: relative;
+            font-size: 11px;
+            color: rgba(255, 255, 255, .4);
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .dev-controls-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+        }
+
+        .demo-state {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--sub);
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 6px 16px;
+            cursor: pointer;
+            transition: border-color .15s, color .15s;
+        }
+
+        .demo-state:hover {
+            border-color: var(--indigo-soft);
+            color: var(--indigo);
+        }
+
+        .anno {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            border: 1px dashed var(--gold);
+            color: var(--gold);
+            background: #FBF4E4;
+        }
+
+        /* ===== CARD ===== */
+        .card {
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
+            padding: 26px;
+            box-shadow: var(--shadow-sm);
+            animation: fadeUp .5s ease backwards;
+        }
+
+        .card+.card {
+            margin-top: 20px;
+        }
+
+        .card-title {
+            font-family: var(--f-display);
+            font-weight: 700;
+            font-size: 17px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--ink);
+        }
+
+        .card-title .ic {
+            color: var(--indigo);
+            width: 20px;
+            height: 20px;
+        }
+
+        .card-title small {
+            font-size: 11.5px;
+            font-weight: 400;
+            color: var(--sub);
+            font-family: var(--f-body);
+        }
+
+        /* ===== PUNCH HISTORY CARD ===== */
+        .history-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .month-nav-btn {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            font-size: 15px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--indigo);
+            transition: border-color .15s, background .15s;
+        }
+
+        .month-nav-btn:hover {
+            background: var(--indigo-tint);
+            border-color: var(--indigo-soft);
+        }
+
+        .month-label {
+            font-family: var(--f-display);
+            font-size: 15px;
+            font-weight: 700;
+            min-width: 100px;
+            text-align: center;
+            color: var(--ink);
+        }
+
+        .punch-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .punch-history-table thead th {
+            background: var(--indigo-tint);
+            padding: 10px 10px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--indigo-soft);
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+            letter-spacing: .02em;
+        }
+
+        .punch-history-table thead th:first-child {
+            text-align: left;
+            padding-left: 14px;
+            border-radius: var(--r-sm) 0 0 0;
+        }
+
+        .punch-history-table thead th:last-child {
+            border-radius: 0 var(--r-sm) 0 0;
+        }
+
+        .punch-history-table tbody td {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--line-soft);
+            text-align: center;
+            vertical-align: middle;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .punch-history-table tbody td:first-child {
+            text-align: left;
+            padding-left: 14px;
+            font-weight: 600;
+        }
+
+        .punch-history-table tbody tr:hover td {
+            background: var(--paper);
+        }
+
+        .punch-history-table tbody tr.today-row td {
+            background: #FBF4E0;
+        }
+
+        .punch-history-table tbody tr.today-row td:first-child {
+            color: var(--gold);
+        }
+
+        .punch-history-table tbody tr.holiday-row td {
+            color: #C9BD9E;
+        }
+
+        .auto-mark {
+            font-size: 10px;
+            color: var(--gold);
+            font-weight: 700;
+            margin-left: 2px;
+            cursor: help;
+        }
+
+        .missing-cell {
+            color: #D7CBAE;
+        }
+
+        .work-mins {
+            font-size: 12.5px;
+            color: var(--moss);
+            font-weight: 700;
+        }
+
+        .edit-btn-sm {
+            font-size: 11px;
+            color: var(--indigo);
+            background: none;
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            padding: 4px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: border-color .15s, background .15s;
+        }
+
+        .edit-btn-sm:hover {
+            border-color: var(--indigo);
+            background: var(--indigo-tint);
+        }
+
+        .auto-chip {
+            font-size: 10px;
+            background: var(--gold);
+            color: #fff;
+            border-radius: 4px;
+            padding: 1px 6px;
+            margin-left: 4px;
+            font-weight: 700;
+        }
+
+        .correction-chip {
+            font-size: 10px;
+            background: var(--vermillion-tint);
+            color: var(--vermillion);
+            border-radius: 4px;
+            padding: 1px 6px;
+            margin-left: 4px;
+            font-weight: 700;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 32, 52, .55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal {
+            background: var(--surface-raised);
+            border-radius: var(--r-lg);
+            padding: 32px;
+            width: 460px;
+            max-width: calc(100vw - 32px);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--line);
+            animation: fadeUp .35s ease backwards;
+        }
+
+        .modal-icon-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+
+        .modal-icon-row .ic-wrap {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-icon-row .ic-wrap.warn {
+            background: var(--vermillion-tint);
+            color: var(--vermillion);
+        }
+
+        .modal-icon-row .ic-wrap.info {
+            background: var(--indigo-tint);
+            color: var(--indigo);
+        }
+
+        .modal-title {
+            font-family: var(--f-display);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .modal-sub {
+            font-size: 13px;
+            color: var(--sub);
+            margin-bottom: 22px;
+            margin-top: 8px;
+        }
+
+        .modal-info-row {
+            display: flex;
+            justify-content: space-between;
+            background: var(--paper);
+            border-radius: var(--r-sm);
+            padding: 11px 16px;
+            margin-bottom: 14px;
+            font-size: 13px;
+        }
+
+        .modal-info-row span:first-child {
+            color: var(--sub);
+        }
+
+        .modal-info-row span:last-child {
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .law-box {
+            border-radius: var(--r-sm);
+            padding: 13px 16px;
+            font-size: 12px;
+            margin-bottom: 18px;
+            line-height: 1.7;
+        }
+
+        .law-box.tint-indigo {
+            background: var(--indigo-tint);
+            border: 1px solid #C7D3DF;
+            color: var(--indigo-deep);
+        }
+
+        .law-box.tint-gold {
+            background: #FBF4E0;
+            border: 1px solid #ECD8A6;
+            color: #6B5217;
+        }
+
+        .law-box-title {
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .law-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 3px 12px;
+        }
+
+        .law-grid .em {
+            font-weight: 700;
+        }
+
+        .law-box-foot {
+            margin-top: 7px;
+            padding-top: 7px;
+            border-top: 1px solid rgba(0, 0, 0, .08);
+        }
+
+        .option-list {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            margin-bottom: 16px;
+        }
+
+        .option-radio {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1.5px solid var(--line-soft);
+            border-radius: var(--r-sm);
+            padding: 11px 15px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s;
+            font-size: 13px;
+            background: var(--surface);
+        }
+
+        .option-radio.selected {
+            border-color: var(--indigo);
+            background: var(--indigo-tint);
+        }
+
+        .option-radio input {
+            accent-color: var(--indigo);
+            width: 16px;
+            height: 16px;
+        }
+
+        .recommend-chip {
+            font-size: 10.5px;
+            background: var(--moss);
+            color: #fff;
+            border-radius: 4px;
+            padding: 1px 7px;
+            margin-left: 6px;
+            font-weight: 700;
+        }
+
+        .free-input-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .free-input-row input {
+            width: 64px;
+            border: 1px solid var(--line-soft);
+            border-radius: var(--r-sm);
+            padding: 7px 8px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .free-input-row input:focus {
+            outline: 2px solid var(--indigo);
+            outline-offset: 1px;
+        }
+
+        .input-error-box {
+            background: var(--vermillion-tint);
+            border-radius: var(--r-sm);
+            padding: 10px 14px;
+            font-size: 12px;
+            color: var(--vermillion);
+            margin-bottom: 4px;
+            display: flex;
+            gap: 7px;
+            align-items: flex-start;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .btn {
+            flex: 1;
+            border: none;
+            border-radius: var(--r-sm);
+            padding: 13px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: var(--f-body);
+            transition: opacity .15s, transform .1s, background .15s;
+        }
+
+        .btn:active {
+            transform: scale(.98);
+        }
+
+        .btn-primary {
+            background: var(--indigo);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--indigo-soft);
+        }
+
+        .btn-confirm {
+            background: var(--moss);
+            color: #fff;
+        }
+
+        .btn-confirm:hover {
+            background: #4d6940;
+        }
+
+        .btn-secondary {
+            background: var(--paper);
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
+        }
+
+        .btn-secondary:hover {
+            background: var(--line-soft);
+        }
+
+        .btn-danger {
+            background: var(--vermillion);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #9c3a25;
+        }
+
+        .modal-foot-note {
+            font-size: 11px;
+            color: var(--sub);
+            margin-top: 12px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .field-row {
+            margin-bottom: 16px;
+        }
+
+        .field-row label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--ink-soft);
+        }
+
+        .field-row .req {
+            color: var(--vermillion);
+        }
+
+        .field-row input,
+        .field-row select {
+            border: 1px solid var(--line-soft);
+            border-radius: var(--r-sm);
+            padding: 9px 12px;
+            font-size: 13px;
+            width: 100%;
+            font-family: var(--f-body);
+            background: var(--surface);
+            color: var(--ink);
+        }
+
+        .field-row input:focus,
+        .field-row select:focus {
+            outline: 2px solid var(--indigo);
+            outline-offset: 1px;
+            border-color: var(--indigo);
+        }
+
+        .field-hint {
+            font-size: 11.5px;
+            color: var(--sub);
+            margin-top: 6px;
+            line-height: 1.6;
+        }
+
+        /* ===== correction wizard steps ===== */
+        .corr-steps {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 22px;
+        }
+
+        .corr-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            position: relative;
+        }
+
+        .corr-step-circle {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--line-soft);
+            color: var(--sub);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            transition: background .25s, color .25s;
+        }
+
+        .corr-step.is-active .corr-step-circle {
+            background: var(--indigo);
+            color: #fff;
+        }
+
+        .corr-step.is-done .corr-step-circle {
+            background: var(--moss);
+            color: #fff;
+        }
+
+        .corr-step-lbl {
+            font-size: 10.5px;
+            color: var(--sub);
+            white-space: nowrap;
+        }
+
+        .corr-step.is-active .corr-step-lbl {
+            color: var(--indigo);
+            font-weight: 700;
+        }
+
+        .corr-step.is-done .corr-step-lbl {
+            color: var(--moss);
+            font-weight: 700;
+        }
+
+        .corr-step-line {
+            flex: 1;
+            height: 1px;
+            background: var(--line-soft);
+            margin: 0 -4px;
+            margin-bottom: 18px;
+            transition: background .25s;
+        }
+
+        .corr-step-line.is-done {
+            background: var(--moss);
+        }
+
+        /* ===== ADMIN ===== */
+        .admin-explainer {
+            background: var(--indigo-tint);
+            border: 1px solid #C7D3DF;
+            border-radius: var(--r-md);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            animation: fadeUp .5s ease backwards;
+        }
+
+        .admin-explainer-title {
+            font-weight: 700;
+            font-size: 14.5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--indigo-deep);
+        }
+
+        .admin-explainer p {
+            font-size: 13px;
+            color: var(--ink-soft);
+            margin-bottom: 12px;
+            line-height: 1.7;
+        }
+
+        .use-case-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .use-case-chip {
+            background: var(--surface-raised);
+            border: 1px solid #C7D3DF;
+            border-radius: var(--r-sm);
+            padding: 7px 13px;
+            font-size: 12px;
+            color: var(--indigo-soft);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+
+        .use-case-chip .ic {
+            width: 14px;
+            height: 14px;
+            color: var(--indigo);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-search {
+            background: var(--indigo);
+            color: #fff;
+            border: none;
+            border-radius: var(--r-sm);
+            padding: 10px 30px;
+            font-weight: 700;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: background .15s;
+        }
+
+        .btn-search:hover {
+            background: var(--indigo-soft);
+        }
+
+        .btn-reset {
+            background: none;
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            padding: 9px 18px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--sub);
+            transition: border-color .15s, color .15s;
+        }
+
+        .btn-reset:hover {
+            border-color: var(--indigo-soft);
+            color: var(--indigo);
+        }
+
+        .admin-empty-card {
+            text-align: center;
+            padding: 56px 24px;
+        }
+
+        .admin-empty-icon {
+            width: 44px;
+            height: 44px;
+            color: var(--line);
+            margin: 0 auto 16px;
+        }
+
+        .admin-empty-title {
+            font-weight: 700;
+            font-size: 15.5px;
+            margin-bottom: 8px;
+            font-family: var(--f-display);
+        }
+
+        .admin-empty-desc {
+            font-size: 13px;
+            color: var(--sub);
+            line-height: 1.7;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table.admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .admin-table thead th {
+            background: var(--indigo-tint);
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--indigo-soft);
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+        }
+
+        .admin-table tbody td {
+            padding: 11px 12px;
+            border-bottom: 1px solid var(--line-soft);
+            vertical-align: middle;
+        }
+
+        .admin-table tbody tr:hover {
+            background: var(--paper);
+            cursor: pointer;
+        }
+
+        .gps-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .gps-yes {
+            background: var(--moss);
+        }
+
+        .gps-no {
+            background: var(--line);
+        }
+
+        .history-row {
+            display: none;
+            background: var(--paper);
+        }
+
+        .history-row td {
+            padding: 14px 18px;
+        }
+
+        .history-inner {
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            padding: 12px 16px;
+            font-size: 12px;
+            background: var(--surface-raised);
+        }
+
+        .history-inner .h-label {
+            font-weight: 700;
+            color: var(--sub);
+            font-size: 11px;
+            margin-bottom: 8px;
+            letter-spacing: .03em;
+        }
+
+        .history-inner .h-row {
+            display: flex;
+            gap: 18px;
+            color: var(--sub);
+            flex-wrap: wrap;
+        }
+
+        .history-inner .h-row span {
+            color: var(--ink);
+        }
+
+        .edit-btn {
+            font-size: 12px;
+            color: var(--indigo);
+            background: none;
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            padding: 4px 11px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s;
+        }
+
+        .edit-btn:hover {
+            border-color: var(--indigo);
+            background: var(--indigo-tint);
+        }
+
+        .punch-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .tag-clock_in {
+            background: var(--moss-tint);
+            color: var(--moss);
+        }
+
+        .tag-break_in {
+            background: #FBF4E0;
+            color: var(--gold);
+        }
+
+        .tag-break_out {
+            background: var(--indigo-tint);
+            color: var(--indigo);
+        }
+
+        .tag-clock_out {
+            background: var(--vermillion-tint);
+            color: var(--vermillion);
+        }
+
+        .result-hint {
+            font-size: 12px;
+            color: var(--sub);
+        }
+
+        /* ===== SETTINGS ===== */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 680px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .settings-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .settings-menu-item {
+            padding: 11px 16px;
+            border-radius: var(--r-sm);
+            font-size: 13.5px;
+            cursor: pointer;
+            color: var(--ink-soft);
+            font-weight: 600;
+            transition: background .15s, color .15s;
+        }
+
+        .settings-menu-item:hover {
+            background: var(--paper);
+        }
+
+        .settings-menu-item.active {
+            background: var(--indigo-tint);
+            color: var(--indigo);
+        }
+
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+            animation: fadeUp .4s ease backwards;
+        }
+
+        .settings-desc {
+            font-size: 12.5px;
+            color: var(--sub);
+            margin-bottom: 18px;
+            line-height: 1.8;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: var(--paper);
+            border: 1.5px solid transparent;
+            border-radius: var(--r-sm);
+            padding: 13px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s;
+        }
+
+        .radio-option:hover {
+            border-color: var(--line);
+        }
+
+        .radio-option.selected {
+            border-color: var(--indigo);
+            background: var(--indigo-tint);
+        }
+
+        .radio-option input {
+            margin-top: 3px;
+            accent-color: var(--indigo);
+            width: 16px;
+            height: 16px;
+        }
+
+        .radio-option-label {
+            font-weight: 700;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radio-option-desc {
+            font-size: 12px;
+            color: var(--sub);
+            margin-top: 3px;
+            line-height: 1.6;
+        }
+
+        .default-chip {
+            font-size: 10.5px;
+            background: var(--indigo);
+            color: #fff;
+            border-radius: 4px;
+            padding: 1px 7px;
+            font-weight: 700;
+        }
+
+        .save-btn {
+            background: var(--indigo);
+            color: #fff;
+            border: none;
+            border-radius: var(--r-sm);
+            padding: 12px 32px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: background .15s;
+        }
+
+        .save-btn:hover {
+            background: var(--indigo-soft);
+        }
+
+        .webhook-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .webhook-row input {
+            flex: 1;
+        }
+
+        .test-btn {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            padding: 9px 16px;
+            font-size: 12.5px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: 600;
+            color: var(--ink-soft);
+            transition: border-color .15s, color .15s;
+        }
+
+        .test-btn:hover {
+            border-color: var(--indigo-soft);
+            color: var(--indigo);
+        }
+
+        .sample-msg-box {
+            background: var(--paper);
+            border-radius: var(--r-sm);
+            padding: 16px 18px;
+            font-size: 12px;
+            color: var(--ink-soft);
+            margin-bottom: 18px;
+            line-height: 1.8;
+            border: 1px solid var(--line-soft);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .sample-msg-box strong {
+            color: var(--ink);
+        }
+
+        .info-tip {
+            background: var(--moss-tint);
+            border: 1px solid #C9DBC0;
+            border-radius: var(--r-sm);
+            padding: 11px 15px;
+            font-size: 12px;
+            color: #3E5A33;
+            margin-bottom: 18px;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .info-tip .ic {
+            color: var(--moss);
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* ===== FOOTER ===== */
+        .site-footer {
+            text-align: center;
+            padding: 28px;
+            font-size: 11.5px;
+            color: var(--sub);
+            border-top: 1px solid var(--line);
+        }
+
+        @media (max-width: 640px) {
+            .page-chip {
+                display: none;
+            }
+
+            .shell {
+                padding: 28px 16px 48px;
+            }
+
+            .ph-body {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .ph-worktime {
+                align-items: flex-start;
+            }
+
+            .ph-timer {
+                font-size: 46px;
+            }
+
+            .header-inner {
+                padding: 0 16px;
+                gap: 10px;
+            }
+
+            .punch-hero {
+                padding: 26px 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="brand-strip"></div>
+
+    <div class="dev-bar">
+        <span class="dev-bar-label">DEV SCREEN SELECTOR</span>
+        <div class="dev-tabs">
+            <button class="nav-tab active" onclick="showPage('console')">打刻コンソール</button>
+            <button class="nav-tab" onclick="showPage('popup-a')">ポップアップ（ケースA）</button>
+            <button class="nav-tab" onclick="showPage('popup-b')">ポップアップ（ケースB）</button>
+            <button class="nav-tab" onclick="showPage('admin')">管理者：打刻ログ管理</button>
+            <button class="nav-tab" onclick="showPage('settings')">管理者：システム設定</button>
+        </div>
+    </div>
+
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="#">
+                <span class="brand-mark">IMS</span>
+                <span class="brand-sub">HIROSAKI</span>
+            </a>
+            <div class="page-chip" id="page-chip-label">打刻コンソール</div>
+            <div class="header-actions">
+                <span class="user-name">佐藤 一郎</span>
+                <button class="icon-btn" aria-label="通知">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M12 4a5 5 0 0 0-5 5v3.2c0 .9-.34 1.77-.95 2.45L5 16h14l-1.05-1.35A3.8 3.8 0 0 1 17 12.2V9a5 5 0 0 0-5-5Z" />
+                        <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
+                    </svg>
+                    <span class="ping-badge">2</span>
+                </button>
+                <button class="btn-ghost">ログアウト</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ════════════════════════════════════════
+     PAGE 1: 打刻コンソール
+════════════════════════════════════════ -->
+    <div id="page-console" class="page active">
+        <div class="shell">
+            <p class="screen-label">画面 1 / 5 ── フロントエンド：打刻コンソール（/portal/timecard/）</p>
+
+            <div class="dev-controls-row">
+                <button class="demo-state" onclick="cycleStatus()">ステータス切替（デモ）</button>
+                <span class="anno">現在のステータス：<strong id="status-label">勤務中</strong></span>
+            </div>
+
+            <!-- HERO: live clock + status + punch buttons -->
+            <div class="punch-hero">
+                <div class="ph-glow"></div>
+                <div class="ph-top">
+                    <span class="ph-label">本日の打刻 ／ サーバー時刻基準</span>
+                    <div class="ph-status-row">
+                        <span class="ph-badge st-working" id="status-badge"><span class="dot"></span><span
+                                id="status-badge-text">勤務中</span></span>
+                    </div>
+                </div>
+
+                <div class="ph-body">
+                    <div class="ph-clock-block">
+                        <div class="ph-timer" id="clock-disp">14:32:05</div>
+                        <div class="ph-timer-caption">※ 表示は参考値です。打刻時刻はサーバー時刻を使用します。</div>
+                    </div>
+                    <div class="ph-worktime">
+                        <div class="ph-worktime-val" id="work-time">5時間 12分</div>
+                        <div class="ph-worktime-lbl">実勤務時間（経過）</div>
+                    </div>
+                </div>
+
+                <div class="ph-progress">
+                    <div class="ph-progress-fill" id="ph-progress-fill"></div>
+                </div>
+
+                <div class="punch-btn-grid">
+                    <button class="punch-btn is-primary" id="btn-ci" disabled>
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <path d="M5 12.5l3.2 3.2L19 5.2" />
+                        </svg>
+                        出勤
+                    </button>
+                    <button class="punch-btn" id="btn-bi">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <path d="M5 9.5h12v4.2A4.3 4.3 0 0 1 12.7 18H10A4.3 4.3 0 0 1 5.7 13.7Z" />
+                            <path d="M17 10.5h1.3a2 2 0 0 1 0 4H17" />
+                            <path d="M8.5 4.8c-.6.6-.6 1 0 1.7M12 4.8c-.6.6-.6 1 0 1.7" />
+                        </svg>
+                        休憩開始
+                    </button>
+                    <button class="punch-btn" id="btn-bo" disabled>
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <path d="M9 7l-4.5 5L9 17" />
+                            <path d="M4.5 12h9a5.5 5.5 0 1 1 0 11" />
+                        </svg>
+                        休憩終了
+                    </button>
+                    <button class="punch-btn is-danger" id="btn-co">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <rect x="6.5" y="6.5" width="11" height="11" rx="1.5" />
+                        </svg>
+                        退勤
+                    </button>
+                </div>
+                <p class="ph-hint" id="btn-hint">ステータス「勤務中」：休憩開始・退勤のみ押下可</p>
+                <p class="ph-note">打刻ボタンは押下直後に非活性化され、通信完了まで再押下できません。</p>
+            </div>
+
+            <!-- 打刻履歴テーブル -->
+            <div class="card">
+                <div class="history-toolbar">
+                    <div class="card-title" style="margin-bottom:0;">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <rect x="3.5" y="5" width="17" height="15" rx="2.2" />
+                            <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+                        </svg>
+                        打刻履歴
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="month-nav-btn" onclick="changeMonth(-1)">&#8249;</button>
+                        <span id="month-label" class="month-label">2025年6月</span>
+                        <button class="month-nav-btn" onclick="changeMonth(1)">&#8250;</button>
+                    </div>
+                </div>
+
+                <div style="overflow-x:auto;">
+                    <table class="punch-history-table" id="punch-history-table">
+                        <thead>
+                            <tr>
+                                <th style="width:72px;">日付</th>
+                                <th style="width:80px;">出勤</th>
+                                <th style="width:96px;">休憩開始</th>
+                                <th style="width:96px;">休憩終了</th>
+                                <th style="width:80px;">退勤</th>
+                                <th style="width:76px;">実労働</th>
+                                <th style="width:56px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 修正ポップアップ -->
+        <div id="correction-overlay" class="modal-backdrop" style="display:none;">
+            <div class="modal">
+                <div class="modal-icon-row">
+                    <div class="ic-wrap info">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <path d="M12 5L4 9.5v9L12 23l8-4.5v-9z" style="display:none;" />
+                            <path d="M4 18l4-12M9 6h10M7 12h9M5 18h9" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="modal-title">打刻時刻の修正</div>
+                    </div>
+                </div>
+                <div id="corr-target-label" class="modal-sub"></div>
+
+                <div class="modal-info-row">
+                    <span>現在の打刻時刻</span>
+                    <span id="corr-original"></span>
+                </div>
+
+                <div class="field-row">
+                    <label>修正後の日時 <span class="req">*</span></label>
+                    <input type="datetime-local" id="corr-new-dt">
+                </div>
+
+                <div class="field-row">
+                    <label>修正理由 <span class="req">*</span></label>
+                    <input type="text" id="corr-reason" placeholder="例：打刻し忘れのため実際の時刻に合わせて修正">
+                </div>
+
+                <!-- 保存フロー表示 -->
+                <div id="corr-flow" style="display:none;">
+                    <div class="corr-steps">
+                        <div class="corr-step is-active" id="corr-step-circle-1">
+                            <div class="corr-step-circle">1</div>
+                            <div class="corr-step-lbl">記録</div>
+                        </div>
+                        <div class="corr-step-line" id="corr-line-1"></div>
+                        <div class="corr-step" id="corr-step-circle-2">
+                            <div class="corr-step-circle">2</div>
+                            <div class="corr-step-lbl">更新</div>
+                        </div>
+                        <div class="corr-step-line" id="corr-line-2"></div>
+                        <div class="corr-step" id="corr-step-circle-3">
+                            <div class="corr-step-circle">3</div>
+                            <div class="corr-step-lbl">反映</div>
+                        </div>
+                    </div>
+                    <div
+                        style="background:var(--moss-tint); border:1px solid #C9DBC0; border-radius:var(--r-sm); padding:13px 15px; font-size:12.5px; color:#2F4827; line-height:1.9;">
+                        <div id="flow-step1">① 修正内容を記録中…</div>
+                        <div id="flow-step2" style="opacity:.4;">② データベースを更新中…</div>
+                        <div id="flow-step3" style="opacity:.4;">③ 画面に反映しました</div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="submitCorrection()">修正を登録する</button>
+                    <button class="btn btn-secondary" onclick="closeCorrection()">キャンセル</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════
+     PAGE 2: ポップアップ ケースA
+════════════════════════════════════════ -->
+    <div id="page-popup-a" class="page">
+        <div class="shell">
+            <p class="screen-label">画面 2 / 5 ── ケースA：休憩中ステータスのまま退勤した場合のポップアップ</p>
+
+            <div style="display:flex; justify-content:center; padding:24px 0;">
+                <div class="modal" style="position:relative;">
+                    <div class="modal-icon-row">
+                        <div class="ic-wrap warn">
+                            <svg class="ic" viewBox="0 0 24 24">
+                                <path d="M12 3.5L21 19.5H3Z" />
+                                <path d="M12 9.5v4M12 16.3v.1" />
+                            </svg>
+                        </div>
+                        <div class="modal-title">休憩中のまま退勤しようとしています</div>
+                    </div>
+                    <div class="modal-sub">休憩終了時刻を補完してから退勤します。</div>
+
+                    <div class="modal-info-row">
+                        <span>休憩を始めた時刻</span><span>13:45</span>
+                    </div>
+                    <div class="modal-info-row">
+                        <span>出勤からの経過時間</span><span style="color:var(--vermillion);">8時間 44分</span>
+                    </div>
+
+                    <!-- 労務ガイダンス -->
+                    <div class="law-box tint-indigo">
+                        <div class="law-box-title">
+                            <svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;">
+                                <rect x="5" y="4" width="14" height="17" rx="1.6" />
+                                <path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" />
+                            </svg>
+                            労働基準法による休憩の目安
+                        </div>
+                        <div class="law-grid">
+                            <span>勤務 6時間以内</span><span>休憩の付与義務なし</span>
+                            <span>勤務 6時間超〜8時間以内</span><span>45分以上の休憩が必要</span>
+                            <span>勤務 8時間超</span><span class="em">1時間以上の休憩が必要</span>
+                        </div>
+                        <div class="law-box-foot">
+                            本日の勤務時間は <strong>8時間超</strong> のため、<strong>1時間以上</strong>の休憩が推奨されます。
+                        </div>
+                    </div>
+
+                    <p style="font-size:12px; font-weight:700; color:var(--sub); margin-bottom:10px;">実際に取った休憩時間を選んでください
+                    </p>
+                    <div class="option-list">
+                        <label class="option-radio">
+                            <input type="radio" name="break-min" value="45">
+                            <div>
+                                <span>45分</span>
+                                <span style="font-size:11px; color:var(--sub); margin-left:6px;">6〜8時間勤務の法定最低ライン</span>
+                            </div>
+                        </label>
+                        <label class="option-radio selected">
+                            <input type="radio" name="break-min" value="60" checked>
+                            <div>
+                                <span style="font-weight:700;">60分</span>
+                                <span class="recommend-chip">8時間超の場合に推奨</span>
+                            </div>
+                        </label>
+                        <label class="option-radio">
+                            <input type="radio" name="break-min" value="custom">
+                            <div style="flex:1;">
+                                <div>その他の時間を入力</div>
+                                <div class="free-input-row">
+                                    <input type="number" value="30" min="1" max="89">
+                                    <span style="font-size:13px; color:var(--sub);">分（最大 89分まで入力可）</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="input-error-box">
+                        <svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;flex-shrink:0;">
+                            <circle cx="12" cy="12" r="8.5" />
+                            <path d="M12 8v5M12 15.5v.1" />
+                        </svg>
+                        <span>入力した時間が最大値（89分）を超えています。休憩開始時刻から現在時刻までの範囲で入力してください。</span>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn btn-confirm">休憩を登録して退勤する</button>
+                        <button class="btn btn-secondary">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+     PAGE 3: ポップアップ ケースB
+════════════════════════════════════════ -->
+    <div id="page-popup-b" class="page">
+        <div class="shell">
+            <p class="screen-label">画面 3 / 5 ── ケースB：休憩打刻なし・勤務6時間超で退勤した場合のポップアップ</p>
+
+            <div style="display:flex; justify-content:center; padding:24px 0;">
+                <div id="modal-b1" class="modal">
+                    <div class="modal-icon-row">
+                        <div class="ic-wrap info">
+                            <svg class="ic" viewBox="0 0 24 24">
+                                <path
+                                    d="M4 6a1.6 1.6 0 0 1 1.6-1.6h12.8A1.6 1.6 0 0 1 20 6v8a1.6 1.6 0 0 1-1.6 1.6H9l-3.6 3v-3H5.6A1.6 1.6 0 0 1 4 14Z" />
+                            </svg>
+                        </div>
+                        <div class="modal-title">本日の休憩について確認します</div>
+                    </div>
+                    <div class="modal-sub">休憩の打刻がないまま退勤しようとしています。</div>
+
+                    <div class="modal-info-row">
+                        <span>出勤時刻</span><span>09:01</span>
+                    </div>
+                    <div class="modal-info-row">
+                        <span>現在の勤務時間</span><span style="color:var(--gold);">7時間 28分</span>
+                    </div>
+
+                    <!-- 労務ガイダンス -->
+                    <div class="law-box tint-gold">
+                        <div class="law-box-title">
+                            <svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;">
+                                <rect x="5" y="4" width="14" height="17" rx="1.6" />
+                                <path d="M8.5 9h7M8.5 12.5h7M8.5 16h4.5" />
+                            </svg>
+                            労働基準法による休憩の目安
+                        </div>
+                        <div class="law-grid">
+                            <span>勤務 6時間以内</span><span>休憩の付与義務なし</span>
+                            <span>勤務 6時間超〜8時間以内</span><span class="em">45分以上の休憩が必要</span>
+                            <span>勤務 8時間超</span><span class="em">1時間以上の休憩が必要</span>
+                        </div>
+                        <div class="law-box-foot">
+                            現在の勤務時間（7時間28分）は <strong>6時間超</strong> のため、<strong>45分以上</strong>の休憩が必要です。
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn btn-confirm" onclick="showModalB2()">休憩を登録して退勤する</button>
+                        <button class="btn btn-danger" onclick="hideModalB2()">休憩なしで退勤する</button>
+                    </div>
+                    <p class="modal-foot-note">「休憩なしで退勤」を選択した場合も退勤は完了します。休憩の登録はシステムでは強制しません。</p>
+                </div>
+
+                <div id="modal-b2" class="modal" style="display:none;">
+                    <div class="modal-icon-row">
+                        <div class="ic-wrap warn">
+                            <svg class="ic" viewBox="0 0 24 24">
+                                <path d="M12 3.5L21 19.5H3Z" />
+                                <path d="M12 9.5v4M12 16.3v.1" />
+                            </svg>
+                        </div>
+                        <div class="modal-title">休憩時間を入力してください</div>
+                    </div>
+                    <div class="modal-sub">ケースAと同じ補完UI（休憩開始時刻を別途入力して補完）</div>
+                    <div class="field-row">
+                        <label>休憩開始時刻（推定） <span class="req">*</span></label>
+                        <input type="time" value="12:00">
+                    </div>
+                    <div class="option-list">
+                        <label class="option-radio selected"><input type="radio" name="break2" checked> 45分</label>
+                        <label class="option-radio"><input type="radio" name="break2"> 60分</label>
+                        <label class="option-radio"><input type="radio" name="break2"> 自由入力（分）</label>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-confirm">休憩を登録して退勤する</button>
+                        <button class="btn btn-secondary" onclick="hideModalB2()">戻る</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+     PAGE 4: 管理者打刻ログ管理
+════════════════════════════════════════ -->
+    <div id="page-admin" class="page">
+        <div class="shell">
+            <p class="screen-label">画面 4 / 5 ── wp-admin：社員管理 ＞ 打刻ログ照会</p>
+
+            <!-- 画面の目的説明 -->
+            <div class="admin-explainer">
+                <div class="admin-explainer-title">
+                    <svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;">
+                        <rect x="6" y="4.5" width="12" height="16" rx="2" />
+                        <rect x="9" y="2.7" width="6" height="3" rx="1" />
+                        <path d="M9 12.5l2 2 4-4.2" />
+                    </svg>
+                    この画面について
+                </div>
+                <p>
+                    全社員の打刻記録を照会・調査するための画面です。日常的な打刻修正には使用しません。<br>
+                    打刻データは労働基準法第109条に基づき<strong style="color:var(--indigo-deep);">最低5年間保存</strong>され、削除はできません。
+                </p>
+                <div class="use-case-row">
+                    <div class="use-case-chip">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M16.2 16.2L21 21" />
+                        </svg>
+                        労働基準監督署の調査対応
+                    </div>
+                    <div class="use-case-chip">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M16.2 16.2L21 21" />
+                        </svg>
+                        特定の打刻に疑義が生じたとき
+                    </div>
+                    <div class="use-case-chip">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M12 4v2.2M12 17.8V20M4 12h2.2M17.8 12H20M6.3 6.3l1.6 1.6M16.1 16.1l1.6 1.6M6.3 17.7l1.6-1.6M16.1 7.9l1.6-1.6" />
+                        </svg>
+                        自動補完された打刻の確認
+                    </div>
+                    <div class="use-case-chip">
+                        <svg class="ic" viewBox="0 0 24 24">
+                            <path d="M6 4.5h9l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1Z" />
+                            <path d="M9 12.5h6M9 16h6" />
+                        </svg>
+                        過去の修正履歴の証跡確認
+                    </div>
+                </div>
+            </div>
+
+            <!-- 検索フォーム -->
+            <div class="card">
+                <div class="card-title">
+                    <svg class="ic" viewBox="0 0 24 24">
+                        <circle cx="10.5" cy="10.5" r="6.5" />
+                        <path d="M19.5 19.5l-4-4" />
+                    </svg>
+                    検索条件
+                </div>
+                <div class="filter-grid">
+                    <div>
+                        <label
+                            style="font-size:12px; font-weight:700; color:var(--sub); display:block; margin-bottom:5px;">社員名
+                            / 社員番号</label>
+                        <input type="text" placeholder="山田 太郎 / E0012">
+                    </div>
+                    <div>
+                        <label
+                            style="font-size:12px; font-weight:700; color:var(--sub); display:block; margin-bottom:5px;">対象期間（開始）</label>
+                        <input type="date">
+                    </div>
+                    <div>
+                        <label
+                            style="font-size:12px; font-weight:700; color:var(--sub); display:block; margin-bottom:5px;">対象期間（終了）</label>
+                        <input type="date">
+                    </div>
+                    <div>
+                        <label
+                            style="font-size:12px; font-weight:700; color:var(--sub); display:block; margin-bottom:5px;">打刻の種類</label>
+                        <select>
+                            <option value="">すべて</option>
+                            <option>出勤</option>
+                            <option>休憩開始</option>
+                            <option>休憩終了</option>
+                            <option>退勤</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            style="font-size:12px; font-weight:700; color:var(--sub); display:block; margin-bottom:5px;">自動補完</label>
+                        <select>
+                            <option value="">すべて</option>
+                            <option>自動補完された打刻のみ</option>
+                            <option>通常の打刻のみ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            style="font-size:12px; font-weight:700; color:var(--sub); display:block; margin-bottom:5px;">修正履歴</label>
+                        <select>
+                            <option value="">すべて</option>
+                            <option>修正されたことがある打刻のみ</option>
+                            <option>一度も修正されていない打刻のみ</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn-search" onclick="showAdminResult()">検索する</button>
+                    <button class="btn-reset" onclick="resetAdminSearch()">条件をリセット</button>
+                </div>
+            </div>
+
+            <!-- 検索前の状態 -->
+            <div id="admin-empty" class="card admin-empty-card">
+                <svg class="admin-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10.5" cy="10.5" r="6.5" />
+                    <path d="M19.5 19.5l-4-4" />
+                </svg>
+                <div class="admin-empty-title">検索条件を入力して「検索する」を押してください</div>
+                <div class="admin-empty-desc">
+                    社員名・期間・打刻の種類などを組み合わせて絞り込めます。<br>
+                    条件を指定せずに検索すると全件が表示されます。
+                </div>
+            </div>
+
+            <!-- 検索結果（検索後に表示） -->
+            <div id="admin-result" style="display:none;">
+                <div class="card">
+                    <div
+                        style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+                        <div class="card-title" style="margin-bottom:0;">検索結果 <small id="result-count">3件</small></div>
+                        <div class="result-hint">行をクリックすると修正履歴を確認できます</div>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>社員名</th>
+                                    <th>対象日</th>
+                                    <th>打刻の種類</th>
+                                    <th>打刻時刻</th>
+                                    <th>自動補完</th>
+                                    <th>GPS</th>
+                                    <th>接続元IP</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr onclick="toggleHistory('h1')">
+                                    <td>山田 太郎</td>
+                                    <td>2025-06-15</td>
+                                    <td><span class="punch-tag tag-clock_out">退勤</span></td>
+                                    <td>
+                                        19:32:10
+                                        <span class="correction-chip">修正あり</span>
+                                    </td>
+                                    <td>—</td>
+                                    <td><span class="gps-dot gps-no" title="位置情報なし"></span></td>
+                                    <td style="color:var(--sub); font-size:11px;">203.0.xx.xx</td>
+                                    <td>
+                                        <button class="edit-btn" onclick="event.stopPropagation()">修正</button>
+                                    </td>
+                                </tr>
+                                <tr class="history-row" id="h1">
+                                    <td colspan="8">
+                                        <div class="history-inner">
+                                            <div class="h-label">修正履歴（1件）</div>
+                                            <div class="h-row">
+                                                <span style="color:var(--sub);">修正日時</span><span>2025-06-15
+                                                    20:05:11</span>
+                                                <span style="color:var(--sub);">修正者</span><span>人事担当（hr_admin）</span>
+                                                <span style="color:var(--sub);">修正前</span><span>19:30:00</span>
+                                                <span style="color:var(--sub);">修正後</span><span>19:32:10</span>
+                                                <span
+                                                    style="color:var(--sub);">修正理由</span><span>端末時刻ズレのため実時刻に合わせて修正</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr onclick="toggleHistory('h2')">
+                                    <td>鈴木 花子</td>
+                                    <td>2025-06-15</td>
+                                    <td><span class="punch-tag tag-break_out">休憩終了</span></td>
+                                    <td>13:00:22 <span class="auto-chip">自動補完</span></td>
+                                    <td>✔</td>
+                                    <td><span class="gps-dot gps-yes" title="GPS取得済"></span></td>
+                                    <td style="color:var(--sub); font-size:11px;">203.0.yy.yy</td>
+                                    <td><button class="edit-btn" onclick="event.stopPropagation()">修正</button></td>
+                                </tr>
+                                <tr class="history-row" id="h2">
+                                    <td colspan="8">
+                                        <div class="history-inner">
+                                            <div class="h-label">修正履歴</div>
+                                            <div style="font-size:12px; color:var(--sub);">修正履歴はありません</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr onclick="toggleHistory('h3')">
+                                    <td>佐藤 一郎</td>
+                                    <td>2025-06-15</td>
+                                    <td><span class="punch-tag tag-clock_in">出勤</span></td>
+                                    <td>08:58:44</td>
+                                    <td>—</td>
+                                    <td><span class="gps-dot gps-yes"></span></td>
+                                    <td style="color:var(--sub); font-size:11px;">203.0.zz.zz</td>
+                                    <td><button class="edit-btn" onclick="event.stopPropagation()">修正</button></td>
+                                </tr>
+                                <tr class="history-row" id="h3">
+                                    <td colspan="8">
+                                        <div class="history-inner">
+                                            <div class="h-label">修正履歴</div>
+                                            <div style="font-size:12px; color:var(--sub);">修正履歴はありません</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════
+     PAGE 5: システム設定
+════════════════════════════════════════ -->
+    <div id="page-settings" class="page">
+        <div class="shell">
+            <p class="screen-label">画面 5 / 5 ── wp-admin：設定 ＞ 打刻システム設定</p>
+            <div class="settings-grid">
+                <div class="card" style="padding:12px;">
+                    <div class="settings-menu">
+                        <div class="settings-menu-item active" onclick="switchSetting('s1', this)">① 深夜勤務の日付設定</div>
+                        <div class="settings-menu-item" onclick="switchSetting('s2', this)">② スタッフの打刻修正</div>
+                        <div class="settings-menu-item" onclick="switchSetting('s3', this)">③ 残業アラート通知</div>
+                    </div>
+                </div>
+                <div class="card">
+
+                    <!-- S1 -->
+                    <div class="settings-section active" id="s1">
+                        <div class="card-title">① 深夜勤務の日付設定</div>
+                        <p class="settings-desc">
+                            日をまたいで勤務するスタッフがいる場合に設定します。深夜の退勤打刻を「前日の勤務」として記録する時刻を指定できます。<br>
+                            <strong style="color:var(--ink);">通常の勤務形態のみの場合は「0時」のままで問題ありません。</strong>
+                        </p>
+                        <div class="field-row">
+                            <label>この時刻より前の退勤は「前日の勤務」として記録する</label>
+                            <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+                                <input type="number" value="0" min="0" max="23" style="max-width:90px;">
+                                <span style="font-size:13px;">時（0〜23時）</span>
+                            </div>
+                            <div class="field-hint">
+                                例：「4」に設定した場合 → 深夜0時〜3時59分の退勤は前日の勤務として集計されます。<br>
+                                「0」のまま（初期値）→ 日またぎを考慮しません。
+                            </div>
+                        </div>
+                        <button class="save-btn">保存する</button>
+                    </div>
+
+                    <!-- S2 -->
+                    <div class="settings-section" id="s2">
+                        <div class="card-title">② スタッフ自身による打刻の修正</div>
+                        <p class="settings-desc">スタッフが自分の打刻を後から修正できる範囲を設定します。<br>人事担当者・システム管理者は、この設定に関わらず常に修正できます。</p>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="corr" value="disabled">
+                                <div>
+                                    <div class="radio-option-label">修正させない</div>
+                                    <div class="radio-option-desc">スタッフ本人は打刻を修正できません。修正が必要な場合は管理者へ依頼が必要です。</div>
+                                </div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="corr" value="today_only">
+                                <div>
+                                    <div class="radio-option-label">当日分のみ修正できる</div>
+                                    <div class="radio-option-desc">当日の打刻に限り、スタッフ自身が修正できます。翌日以降は管理者のみ修正可能です。</div>
+                                </div>
+                            </label>
+                            <label class="radio-option selected">
+                                <input type="radio" name="corr" value="pre_closing" checked>
+                                <div>
+                                    <div class="radio-option-label">月次締めまでの分を修正できる <span class="default-chip">初期値</span>
+                                    </div>
+                                    <div class="radio-option-desc">当月の締め処理が完了するまでの間、スタッフ自身が過去の打刻を修正できます。</div>
+                                </div>
+                            </label>
+                        </div>
+                        <button class="save-btn">保存する</button>
+                    </div>
+
+                    <!-- S3 -->
+                    <div class="settings-section" id="s3">
+                        <div class="card-title">③ 残業アラートの通知先（Google Chat）</div>
+                        <p class="settings-desc">
+                            残業申請の予定終了時刻と実際の退勤時刻が大きくずれていた場合に、Google Chat へ自動で通知します。<br>
+                            申請承認の通知（稟議モジュール側）とは別のチャットルームに送ることもできます。
+                        </p>
+
+                        <div class="field-row">
+                            <label>通知先のチャットルーム URL</label>
+                            <div class="webhook-row">
+                                <input type="url" placeholder="https://chat.googleapis.com/v1/spaces/...">
+                                <button class="test-btn">テスト送信</button>
+                            </div>
+                            <div class="field-hint">Google Chat のルームを開き、「Webhook を管理」から取得した URL を貼り付けてください。</div>
+                        </div>
+
+                        <div class="field-row">
+                            <label>ずれが何分以上でアラートを送るか</label>
+                            <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+                                <input type="number" value="30" min="1" style="max-width:90px;">
+                                <span style="font-size:13px;">分以上のずれで通知（初期値：30分）</span>
+                            </div>
+                            <div class="field-hint">残業申請の予定終了時刻と実際の退勤打刻の差がこの時間を超えたときに通知します。</div>
+                        </div>
+
+                        <div class="sample-msg-box">
+                            <strong>通知メッセージのサンプル</strong><br><br>
+                            【残業時間のずれを検知しました】<br>
+                            申請者　: 山田 太郎<br>
+                            対象日　: 2025年6月15日<br>
+                            申請の予定終了　: 18:00<br>
+                            実際の退勤打刻　: 19:32（＋1時間32分）<br>
+                            勤怠集計は実際の打刻時刻を正として反映します。
+                        </div>
+
+                        <div class="info-tip">
+                            <svg class="ic" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="8.5" />
+                                <path d="M12 11v5M12 8v.1" />
+                            </svg>
+                            通知の送信に失敗した場合も、打刻の記録自体には影響しません。最大3回まで自動で再送します。
+                        </div>
+
+                        <button class="save-btn">保存する</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">© IMS Hirosaki 社内グループウェア</footer>
+
+    <script>
+        // ─── Page switch ───
+        const PAGE_CHIP_LABELS = {
+            console: '打刻コンソール',
+            'popup-a': 'ポップアップ（ケースA）',
+            'popup-b': 'ポップアップ（ケースB）',
+            admin: '管理者：打刻ログ管理',
+            settings: '管理者：システム設定'
+        };
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('page-' + id).classList.add('active');
+            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            const chip = document.getElementById('page-chip-label');
+            if (chip) chip.textContent = PAGE_CHIP_LABELS[id] || '';
+        }
+
+        // ─── Clock ───
+        function tick() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock-disp').textContent = `${h}:${m}:${s}`;
+        }
+        setInterval(tick, 1000); tick();
+
+        // ─── Status cycle demo ───
+        const states = [
+            { label: '出勤前', badge: 'st-before', ci: true, bi: false, bo: false, co: false, hint: 'ステータス「出勤前」：出勤のみ押下可', workTime: '—' },
+            { label: '勤務中', badge: 'st-working', ci: false, bi: true, bo: false, co: true, hint: 'ステータス「勤務中」：休憩開始・退勤のみ押下可', workTime: '5時間 12分' },
+            { label: '休憩中', badge: 'st-break', ci: false, bi: false, bo: true, co: false, hint: 'ステータス「休憩中」：休憩終了のみ押下可（退勤は補完ポップアップあり）', workTime: '5時間 12分' },
+            { label: '退勤済', badge: 'st-done', ci: false, bi: false, bo: false, co: false, hint: 'ステータス「退勤済」：全ボタン非活性', workTime: '8時間 03分' },
+        ];
+        let si = 1;
+        function cycleStatus() {
+            si = (si + 1) % states.length;
+            const s = states[si];
+            document.getElementById('status-label').textContent = s.label;
+            const b = document.getElementById('status-badge');
+            b.className = 'ph-badge ' + s.badge;
+            b.innerHTML = `<span class="dot"></span><span id="status-badge-text">${s.label}</span>`;
+            document.getElementById('btn-ci').disabled = !s.ci;
+            document.getElementById('btn-bi').disabled = !s.bi;
+            document.getElementById('btn-bo').disabled = !s.bo;
+            document.getElementById('btn-co').disabled = !s.co;
+            document.getElementById('btn-hint').textContent = s.hint;
+            document.getElementById('work-time').textContent = s.workTime || '—';
+        }
+
+        // ─── Case B modal ───
+        function showModalB2() {
+            document.getElementById('modal-b1').style.display = 'none';
+            document.getElementById('modal-b2').style.display = 'block';
+        }
+        function hideModalB2() {
+            document.getElementById('modal-b1').style.display = 'block';
+            document.getElementById('modal-b2').style.display = 'none';
+        }
+
+        // ─── Admin search demo ───
+        function showAdminResult() {
+            document.getElementById('admin-empty').style.display = 'none';
+            document.getElementById('admin-result').style.display = 'block';
+        }
+        function resetAdminSearch() {
+            document.getElementById('admin-empty').style.display = 'block';
+            document.getElementById('admin-result').style.display = 'none';
+        }
+
+        function toggleHistory(id) {
+            const row = document.getElementById(id);
+            row.style.display = row.style.display === 'table-row' ? 'none' : 'table-row';
+        }
+
+        // ─── Settings menu ───
+        function switchSetting(id, el) {
+            document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.settings-menu-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            el.classList.add('active');
+        }
+
+        // ════════════════════════════════════════
+        // PUNCH HISTORY TABLE
+        // ════════════════════════════════════════
+
+        // サンプルデータ（キー: "YYYY-MM-DD"）
+        // 休憩は複数回対応：breaks = [{in, out}, ...]
+        const punchData = {
+            '2025-06-02': { ci: '08:58', breaks: [{ in: '12:01', out: '13:02' }], co: '17:32' },
+            '2025-06-03': { ci: '09:03', breaks: [{ in: '12:15', out: '13:10' }, { in: '15:30', out: '15:45' }], co: '18:21' },
+            '2025-06-04': { ci: '08:55', breaks: [{ in: '12:00', out: '13:00' }], co: '19:45' },
+            '2025-06-05': { ci: '09:10', breaks: [], co: '17:05' },
+            '2025-06-06': { ci: '09:00', breaks: [{ in: '12:00', out: '12:45', auto: true }], co: '20:12' },
+            '2025-06-09': { ci: '08:50', breaks: [{ in: '12:05', out: '13:00' }], co: '17:30' },
+            '2025-06-10': { ci: '09:02', breaks: [{ in: '12:10', out: '13:05' }], co: '18:00' },
+            '2025-06-11': { ci: '09:00', breaks: [{ in: '12:00', out: '12:55' }], co: '17:55' },
+            '2025-06-12': { ci: '08:58', breaks: [{ in: '11:58', out: '12:58' }], co: '18:30' },
+            '2025-06-13': { ci: '09:05', breaks: [{ in: '12:02', out: '13:00' }], co: '17:45' },
+            '2025-06-16': { ci: '09:01', breaks: [{ in: '12:00', out: '13:01' }], co: '17:33' },
+            '2025-06-17': { ci: '08:59', breaks: [{ in: '12:05', out: '13:00' }], co: '18:05' },
+            '2025-06-18': { ci: '09:03', breaks: [{ in: '12:00', out: '13:00' }], co: null },   // 退勤なし（進行中）
+            '2025-06-15': { ci: '09:01', breaks: [{ in: '12:00', out: '13:00' }, { in: '15:00', out: '15:15' }], co: '19:32' },
+        };
+        const holidays = ['2025-06-07', '2025-06-08', '2025-06-14', '2025-06-15']; // 土日
+
+        let currentYear = 2025, currentMonth = 6; // 表示中の月
+
+        function toMinutes(hhmm) {
+            if (!hhmm) return null;
+            const [h, m] = hhmm.split(':').map(Number);
+            return h * 60 + m;
+        }
+        function calcWorkMins(row) {
+            if (!row.ci || !row.co) return null;
+            let total = toMinutes(row.co) - toMinutes(row.ci);
+            for (const b of row.breaks) {
+                if (b.in && b.out) total -= (toMinutes(b.out) - toMinutes(b.in));
+            }
+            return total;
+        }
+        function fmtMins(mins) {
+            if (mins === null) return '';
+            const h = Math.floor(mins / 60), m = mins % 60;
+            return h > 0 ? `${h}h${String(m).padStart(2, '0')}m` : `${m}m`;
+        }
+
+        // 1行分のHTMLを生成（休憩はセル内に全件縦並び・B案）
+        function buildRow(dateStr, row, isToday, isHoliday) {
+            const [y, mo, d] = dateStr.split('-');
+            const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
+            const dowColor = dow === '日' ? 'color:var(--vermillion)' : dow === '土' ? 'color:var(--indigo)' : '';
+            const dateLabel = `<span style="font-size:13px;">${String(Number(mo)).padStart(2, '0')}/${String(Number(d)).padStart(2, '0')}</span><span style="font-size:11px; color:#B9AC87; margin-left:4px;">${dow}</span>`;
+
+            // 休憩セル：全件を縦に並べる
+            let breakInLines = '', breakOutLines = '';
+            if (row.breaks.length === 0) {
+                breakInLines = `<span class="missing-cell">—</span>`;
+                breakOutLines = `<span class="missing-cell">—</span>`;
+            } else {
+                row.breaks.forEach((b, i) => {
+                    const autoTag = b.auto
+                        ? `<span class="auto-chip">自動補完</span>`
+                        : '';
+                    const sep = i > 0 ? '<div style="height:4px;"></div>' : '';
+                    breakInLines += sep + (b.in ? `<div style="white-space:nowrap;">${b.in}${autoTag}</div>` : `<div class="missing-cell">—</div>`);
+                    breakOutLines += sep + (b.out ? `<div style="white-space:nowrap;">${b.out}${autoTag}</div>` : `<div class="missing-cell">—</div>`);
+                });
+            }
+
+            // 合計休憩時間（セル下部に小さく表示）
+            const totalBreakMins = row.breaks.reduce((sum, b) => {
+                if (b.in && b.out) return sum + toMinutes(b.out) - toMinutes(b.in);
+                return sum;
+            }, 0);
+            const breakSummary = row.breaks.length > 1 && totalBreakMins > 0
+                ? `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--line);font-size:11px;color:var(--sub);text-align:center;">計 ${fmtMins(totalBreakMins)}</div>`
+                : '';
+
+            const workMins = calcWorkMins(row);
+            const workCell = workMins !== null
+                ? `<span class="work-mins">${fmtMins(workMins)}</span>`
+                : `<span style="font-size:11px;color:var(--sub);">勤務中</span>`;
+
+            const cls = isToday ? 'today-row' : isHoliday ? 'holiday-row' : '';
+
+            return `<tr class="${cls}" data-date="${dateStr}">
+      <td style="${dowColor};vertical-align:top;padding-top:10px;">${dateLabel}</td>
+      <td style="vertical-align:top;padding-top:10px;">${row.ci || '<span class="missing-cell">—</span>'}</td>
+      <td style="vertical-align:top;">${breakInLines}${breakSummary}</td>
+      <td style="vertical-align:top;">${breakOutLines}</td>
+      <td style="vertical-align:top;padding-top:10px;">${row.co || '<span style="font-size:11px;color:var(--sub);">—</span>'}</td>
+      <td style="vertical-align:top;padding-top:10px;">${workCell}</td>
+      <td style="vertical-align:top;padding-top:6px;"><button class="edit-btn-sm" onclick="openCorrection('${dateStr}')">修正</button></td>
+    </tr>`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('history-tbody');
+            // 表示月のデモ用今日は 2025-06-18
+            const demoToday = '2025-06-18';
+
+            document.getElementById('month-label').textContent = `${currentYear}年${currentMonth}月`;
+
+            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+            let html = '';
+
+            // 当月の全日付をループ（打刻データがある日のみ行を出す）
+            const rows = [];
+            for (let d = 1; d <= daysInMonth; d++) {
+                const ds = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                if (punchData[ds]) {
+                    const isToday = ds === demoToday;
+                    const isHoliday = holidays.includes(ds);
+                    rows.push(buildRow(ds, punchData[ds], isToday, isHoliday));
+                }
+            }
+
+            if (rows.length === 0) {
+                html = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--sub);font-size:13px;">この月の打刻記録はありません</td></tr>`;
+            } else {
+                html = rows.join('');
+            }
+            tbody.innerHTML = html;
+        }
+
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+            if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+            renderTable();
+        }
+
+        renderTable();
+
+        // ─── Correction popup ───
+        let corrTarget = null; // { dateStr, field, originalValue }
+
+        function resetCorrSteps() {
+            document.getElementById('corr-flow').style.display = 'none';
+            ['corr-step-circle-1', 'corr-step-circle-2', 'corr-step-circle-3'].forEach((id, i) => {
+                const el = document.getElementById(id);
+                el.classList.remove('is-active', 'is-done');
+                if (i === 0) el.classList.add('is-active');
+            });
+            document.getElementById('corr-line-1').classList.remove('is-done');
+            document.getElementById('corr-line-2').classList.remove('is-done');
+            document.getElementById('flow-step1').textContent = '① 修正内容を記録中…';
+            document.getElementById('flow-step2').textContent = '② データベースを更新中…';
+            document.getElementById('flow-step3').textContent = '③ 画面に反映しました';
+            document.getElementById('flow-step1').style.opacity = '1';
+            document.getElementById('flow-step2').style.opacity = '.4';
+            document.getElementById('flow-step3').style.opacity = '.4';
+        }
+
+        function openCorrection(dateStr) {
+            const row = punchData[dateStr];
+            corrTarget = { dateStr, row };
+
+            const [y, mo, d] = dateStr.split('-');
+            const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr).getDay()];
+            document.getElementById('corr-target-label').textContent = `${y}年${Number(mo)}月${Number(d)}日（${dow}）の打刻を修正`;
+
+            // 代表として出勤時刻を初期値に（実際はフィールド選択も可）
+            const orig = row.ci || '—';
+            document.getElementById('corr-original').textContent = orig;
+            document.getElementById('corr-new-dt').value = orig !== '—' ? `${dateStr}T${orig}` : `${dateStr}T09:00`;
+            document.getElementById('corr-reason').value = '';
+            resetCorrSteps();
+
+            const overlay = document.getElementById('correction-overlay');
+            overlay.style.display = 'flex';
+        }
+
+        function closeCorrection() {
+            document.getElementById('correction-overlay').style.display = 'none';
+            corrTarget = null;
+        }
+
+        function submitCorrection() {
+            const reason = document.getElementById('corr-reason').value.trim();
+            const newDt = document.getElementById('corr-new-dt').value;
+            if (!reason) { document.getElementById('corr-reason').style.borderColor = 'var(--vermillion)'; return; }
+            if (!newDt) { return; }
+            document.getElementById('corr-reason').style.borderColor = '';
+
+            const flow = document.getElementById('corr-flow');
+            flow.style.display = 'block';
+            resetCorrSteps();
+            flow.style.display = 'block';
+
+            // ステップアニメーション（デモ）
+            const s1 = document.getElementById('flow-step1');
+            const s2 = document.getElementById('flow-step2');
+            const s3 = document.getElementById('flow-step3');
+            const c1 = document.getElementById('corr-step-circle-1');
+            const c2 = document.getElementById('corr-step-circle-2');
+            const c3 = document.getElementById('corr-step-circle-3');
+            const l1 = document.getElementById('corr-line-1');
+            const l2 = document.getElementById('corr-line-2');
+
+            setTimeout(() => {
+                s1.textContent = '① 修正内容を記録しました ✔';
+                c1.classList.remove('is-active'); c1.classList.add('is-done');
+                l1.classList.add('is-done');
+                c2.classList.add('is-active');
+                s2.style.opacity = '1';
+                s2.textContent = '② データベースを更新中…';
+            }, 700);
+
+            setTimeout(() => {
+                s2.textContent = '② データベースを更新しました ✔';
+                c2.classList.remove('is-active'); c2.classList.add('is-done');
+                l2.classList.add('is-done');
+                c3.classList.add('is-active');
+                s3.style.opacity = '1';
+                s3.textContent = '③ 画面に反映しました ✔';
+
+                // データを書き換えて表を再描画
+                const newTime = newDt.split('T')[1]?.slice(0, 5);
+                if (corrTarget && newTime) {
+                    punchData[corrTarget.dateStr].ci = newTime; // デモ：出勤時刻を更新
+                }
+
+                setTimeout(() => {
+                    c3.classList.remove('is-active'); c3.classList.add('is-done');
+                    closeCorrection();
+                    renderTable();
+                }, 800);
+            }, 1600);
+        }
+
+        // オーバーレイ外クリックで閉じる
+        document.getElementById('correction-overlay').addEventListener('click', function (e) {
+            if (e.target === this) closeCorrection();
+        });
+    </script>
+</body>
+
+</html>

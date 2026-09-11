@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMS Hirosaki – ホーム</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --paper: #F3ECDD;
+            --surface: #FFFCF5;
+            --surface-raised: #FFFFFF;
+            --ink: #211D17;
+            --ink-soft: #4A4339;
+            --sub: #897D69;
+            --line: #E1D5B7;
+            --line-soft: #ECE3CC;
+            --indigo: #1E3A5F;
+            --indigo-deep: #0F2034;
+            --indigo-soft: #34557F;
+            --indigo-tint: #EAEEF2;
+            --vermillion: #B8472F;
+            --vermillion-tint: #F6E3DB;
+            --gold: #A87C2E;
+            --moss: #5C7A4E;
+            --shadow-sm: 0 1px 2px rgba(33, 22, 10, .08);
+            --shadow-md: 0 10px 28px rgba(33, 22, 10, .12);
+            --shadow-lg: 0 26px 60px rgba(15, 32, 52, .30);
+            --r-sm: 6px;
+            --r-md: 14px;
+            --r-lg: 22px;
+            --f-display: 'Shippori Mincho', 'Hiragino Mincho ProN', serif;
+            --f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--f-body);
+            background: var(--paper);
+            color: var(--ink);
+            font-size: 15px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        button {
+            font-family: inherit;
+        }
+
+        *:focus-visible {
+            outline: 2px solid var(--indigo);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* paper grain overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            pointer-events: none;
+            opacity: .035;
+            mix-blend-mode: multiply;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        .brand-strip {
+            height: 4px;
+            background: linear-gradient(90deg, var(--indigo-deep), var(--indigo) 55%, var(--gold));
+        }
+
+        /* ===== HEADER ===== */
+        .site-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .header-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            height: 64px;
+            padding: 0 28px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .brand-mark {
+            font-family: var(--f-display);
+            font-weight: 700;
+            font-size: 22px;
+            color: var(--indigo);
+            letter-spacing: .02em;
+        }
+
+        .brand-sub {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .14em;
+        }
+
+        .page-chip {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--indigo);
+            background: var(--indigo-tint);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-name {
+            font-size: 13.5px;
+            font-weight: 500;
+        }
+
+        .icon-btn {
+            position: relative;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-soft);
+            transition: border-color .15s, color .15s;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--indigo);
+            color: var(--indigo);
+        }
+
+        .icon-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .ping-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--vermillion);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 5px;
+            border-radius: 10px;
+            box-shadow: 0 0 0 2px var(--surface);
+        }
+
+        .btn-ghost {
+            background: none;
+            border: none;
+            font-size: 12.5px;
+            color: var(--sub);
+            cursor: pointer;
+            padding: 6px 4px;
+            border-bottom: 1px solid transparent;
+            transition: color .15s, border-color .15s;
+        }
+
+        .btn-ghost:hover {
+            color: var(--ink);
+            border-color: var(--sub);
+        }
+
+        /* ===== QUICK LINKS BAR ===== */
+        .quicklinks {
+            background: var(--indigo-tint);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .quicklinks-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 10px 28px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .quicklinks-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--indigo-soft);
+            letter-spacing: .12em;
+            flex-shrink: 0;
+        }
+
+        .ql-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .ql-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--line);
+            flex-shrink: 0;
+        }
+
+        .ql-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            transition: background .15s, box-shadow .15s, transform .15s;
+        }
+
+        .ql-chip:hover {
+            background: var(--surface-raised);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-2px);
+        }
+
+        .ql-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ql-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .ql-chip[data-tint="mail"] .ql-icon {
+            background: #F5DCD6;
+            color: #A8392A;
+        }
+
+        .ql-chip[data-tint="drive"] .ql-icon {
+            background: #F4E6BE;
+            color: #97711C;
+        }
+
+        .ql-chip[data-tint="chat"] .ql-icon {
+            background: #DCEBDD;
+            color: #2E6B40;
+        }
+
+        .ql-chip[data-tint="cal"] .ql-icon {
+            background: #DDE6F2;
+            color: #2C5184;
+        }
+
+        .ql-chip[data-tint="teams"] .ql-icon {
+            background: #E5E1F0;
+            color: #4F4685;
+        }
+
+        .ql-chip span {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+        }
+
+        /* ===== LAYOUT ===== */
+        .dashboard {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 44px 28px 64px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .14em;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-label::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--line);
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            display: grid;
+            grid-template-columns: 1.05fr .95fr;
+            gap: 36px;
+            margin-bottom: 56px;
+        }
+
+        .hero-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .hero-date {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--indigo);
+            letter-spacing: .04em;
+            border-left: 3px solid var(--gold);
+            padding-left: 10px;
+        }
+
+        .hero-headline {
+            font-family: var(--f-display);
+            font-weight: 800;
+            font-size: 38px;
+            line-height: 1.3;
+            color: var(--ink);
+            margin-bottom: 10px;
+            animation: fadeUp .6s ease backwards;
+            animation-delay: .05s;
+        }
+
+        .hero-headline span {
+            color: var(--indigo);
+        }
+
+        .hero-sub {
+            font-size: 14px;
+            color: var(--sub);
+            margin-bottom: 30px;
+            animation: fadeUp .6s ease backwards;
+            animation-delay: .12s;
+        }
+
+        .stat-rail {
+            display: flex;
+            align-items: stretch;
+            gap: 24px;
+            animation: fadeUp .6s ease backwards;
+            animation-delay: .2s;
+        }
+
+        .stat-block {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .stat-label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .04em;
+        }
+
+        .stat-value {
+            font-family: var(--f-display);
+            font-size: 21px;
+            font-weight: 700;
+            color: var(--ink);
+            transition: color .15s;
+        }
+
+        .stat-value--alert {
+            color: var(--vermillion);
+        }
+
+        .stat-caption {
+            font-size: 12px;
+            color: var(--sub);
+        }
+
+        .stat-caption--alert {
+            color: var(--vermillion);
+            opacity: .85;
+        }
+
+        .stat-block:hover .stat-label {
+            color: var(--indigo);
+            text-decoration: underline;
+            text-decoration-color: var(--line);
+        }
+
+        .stat-rail-divider {
+            width: 1px;
+            background: var(--line);
+        }
+
+        /* ===== HERO STATUS PANEL ===== */
+        .hero-status-panel {
+            position: relative;
+            background: linear-gradient(155deg, var(--indigo), var(--indigo-deep) 75%);
+            border-radius: var(--r-lg);
+            padding: 30px 32px;
+            color: #fff;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            animation: fadeUp .7s ease backwards;
+            animation-delay: .15s;
+        }
+
+        .hero-status-panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient(115deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 26px);
+            pointer-events: none;
+        }
+
+        .hsp-glow {
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168, 124, 46, .35), transparent 70%);
+            top: -70px;
+            right: -60px;
+            filter: blur(4px);
+        }
+
+        .hsp-top {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 26px;
+        }
+
+        .hsp-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            color: rgba(255, 255, 255, .65);
+        }
+
+        .hsp-live {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-family: var(--f-display);
+            font-weight: 700;
+            font-size: 19px;
+        }
+
+        .pulse-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #7FD893;
+            box-shadow: 0 0 0 0 rgba(127, 216, 147, .6);
+            animation: pulse 2s infinite;
+        }
+
+        .hsp-timer {
+            position: relative;
+            font-family: var(--f-body);
+            font-weight: 900;
+            font-size: 52px;
+            letter-spacing: .01em;
+            line-height: 1;
+            margin-bottom: 6px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hsp-timer-caption {
+            position: relative;
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, .6);
+            margin-bottom: 22px;
+        }
+
+        .hsp-progress {
+            position: relative;
+            height: 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, .18);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .hsp-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #C99B4A, #E8C480);
+            border-radius: 4px;
+            transition: width .6s ease;
+        }
+
+        .hsp-cta {
+            position: relative;
+            margin-top: auto;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #fff;
+            align-self: flex-end;
+            border-bottom: 1px solid rgba(255, 255, 255, .4);
+            padding-bottom: 2px;
+            transition: border-color .15s;
+        }
+
+        .hsp-cta:hover {
+            border-color: #fff;
+        }
+
+        /* ===== MENU TILES ===== */
+        .tile-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr 1fr;
+            grid-template-rows: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .tile {
+            position: relative;
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
+            padding: 22px;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow .2s, transform .2s, border-color .2s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            animation: fadeUp .5s ease backwards;
+        }
+
+        .tile:nth-of-type(1) {
+            animation-delay: .25s;
+        }
+
+        .tile:nth-of-type(2) {
+            animation-delay: .3s;
+        }
+
+        .tile:nth-of-type(3) {
+            animation-delay: .35s;
+        }
+
+        .tile:nth-of-type(4) {
+            animation-delay: .4s;
+        }
+
+        .tile:nth-of-type(5) {
+            animation-delay: .45s;
+        }
+
+        .tile:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-3px);
+            border-color: var(--indigo-soft);
+        }
+
+        .tile-icon {
+            width: 26px;
+            height: 26px;
+            color: var(--indigo);
+            stroke-width: 1.6;
+        }
+
+        .tile-label {
+            font-family: var(--f-display);
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .tile-desc {
+            font-size: 12px;
+            color: var(--sub);
+        }
+
+        .tile-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: var(--vermillion);
+            color: #fff;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+        }
+
+        .tile-featured {
+            grid-column: 1;
+            grid-row: 1 / 3;
+            background: linear-gradient(160deg, var(--indigo-deep), #1A3554);
+            color: #fff;
+            justify-content: space-between;
+            border: none;
+        }
+
+        .tile-featured .tile-icon {
+            color: #fff;
+            width: 34px;
+            height: 34px;
+        }
+
+        .tile-featured .tile-label {
+            font-size: 24px;
+            margin-top: 4px;
+        }
+
+        .tile-featured .tile-desc {
+            color: rgba(255, 255, 255, .65);
+        }
+
+        .tile-featured:hover {
+            border-color: transparent;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .tile-featured-foot {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--gold);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tile-featured-time {
+            font-size: 11px;
+            color: rgba(255, 255, 255, .5);
+            margin-top: -4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ===== FOOTER ===== */
+        .site-footer {
+            text-align: center;
+            padding: 28px;
+            font-size: 11.5px;
+            color: var(--sub);
+            border-top: 1px solid var(--line);
+        }
+
+        /* ===== MOTION ===== */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(127, 216, 147, .55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 7px rgba(127, 216, 147, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(127, 216, 147, 0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .tile-grid {
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: auto;
+            }
+
+            .tile-featured {
+                grid-column: 1 / 3;
+                grid-row: auto;
+                min-height: 170px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .quicklinks {
+                display: none;
+            }
+
+            .page-chip {
+                display: none;
+            }
+
+            .dashboard {
+                padding: 32px 18px 48px;
+            }
+
+            .hero-headline {
+                font-size: 28px;
+            }
+
+            .hsp-timer {
+                font-size: 40px;
+            }
+
+            .stat-rail {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .stat-rail-divider {
+                display: none;
+            }
+
+            .tile-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .header-inner {
+                padding: 0 16px;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="brand-strip"></div>
+
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="#">
+                <span class="brand-mark">IMS</span>
+                <span class="brand-sub">HIROSAKI</span>
+            </a>
+            <div class="page-chip">ホーム</div>
+            <div class="header-actions">
+                <span class="user-name">田中 一郎</span>
+                <button class="icon-btn" aria-label="通知">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M12 4a5 5 0 0 0-5 5v3.2c0 .9-.34 1.77-.95 2.45L5 16h14l-1.05-1.35A3.8 3.8 0 0 1 17 12.2V9a5 5 0 0 0-5-5Z" />
+                        <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
+                    </svg>
+                    <span class="ping-badge">2</span>
+                </button>
+                <button class="btn-ghost">ログアウト</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="quicklinks">
+        <div class="quicklinks-inner">
+            <span class="quicklinks-label">クイックリンク</span>
+            <div class="ql-group">
+                <a class="ql-chip" data-tint="mail" href="https://mail.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="ql-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+                            <path d="M4 6.5l8 6.5 8-6.5" />
+                        </svg></span>
+                    <span>Gmail</span>
+                </a>
+                <a class="ql-chip" data-tint="drive" href="https://drive.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="ql-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M3.5 7.2A1.7 1.7 0 0 1 5.2 5.5h4.1l1.7 2h7.3a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z" />
+                        </svg></span>
+                    <span>Drive</span>
+                </a>
+                <a class="ql-chip" data-tint="chat" href="https://chat.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="ql-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M4 6a1.6 1.6 0 0 1 1.6-1.6h12.8A1.6 1.6 0 0 1 20 6v8a1.6 1.6 0 0 1-1.6 1.6H9l-3.6 3v-3H5.6A1.6 1.6 0 0 1 4 14Z" />
+                        </svg></span>
+                    <span>Chat</span>
+                </a>
+                <a class="ql-chip" data-tint="cal" href="https://calendar.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="ql-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3.5" y="5" width="17" height="15" rx="2.2" />
+                            <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+                        </svg></span>
+                    <span>カレンダー</span>
+                </a>
+            </div>
+            <div class="ql-divider"></div>
+            <div class="ql-group">
+                <a class="ql-chip" data-tint="teams" href="msteams://" target="_blank" rel="noopener noreferrer">
+                    <span class="ql-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="9" r="3" />
+                            <circle cx="16.5" cy="10" r="2.4" />
+                            <path d="M3.5 19c.4-3 2.7-5 5.5-5s5.1 2 5.5 5" />
+                            <path d="M14.5 14.3c2 .2 3.6 1.8 4 4.7" />
+                        </svg></span>
+                    <span>Teams</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <main class="dashboard">
+
+        <section class="hero">
+            <div class="hero-greeting">
+                <div class="hero-eyebrow"><span class="hero-date" id="heroDate">2026年6月29日（月）</span></div>
+                <h1 class="hero-headline" id="heroGreeting">おはようございます、<span>一郎</span>さん。</h1>
+                <p class="hero-sub">本日も一日よろしくお願いします。</p>
+
+                <div class="stat-rail">
+                    <a class="stat-block" href="#">
+                        <span class="stat-label">今月の勤怠</span>
+                        <span class="stat-value">未提出</span>
+                        <span class="stat-caption">出勤 14日 ／ <span id="curMonth">6</span>月分</span>
+                    </a>
+                    <div class="stat-rail-divider"></div>
+                    <a class="stat-block" href="#">
+                        <span class="stat-label">申請・承認</span>
+                        <span class="stat-value stat-value--alert">2件 承認待ち</span>
+                        <span class="stat-caption stat-caption--alert">差し戻し 1件</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="hero-status-panel">
+                <div class="hsp-glow"></div>
+                <div class="hsp-top">
+                    <span class="hsp-label">本日の勤務状況</span>
+                    <span class="hsp-live"><span class="pulse-dot"></span>勤務中</span>
+                </div>
+                <div class="hsp-timer" id="elapsedTimer">00:00:00</div>
+                <div class="hsp-timer-caption">出勤 09:02 から経過</div>
+                <div class="hsp-progress">
+                    <div class="hsp-progress-fill" id="progressFill"></div>
+                </div>
+                <a class="hsp-cta" href="#">勤怠詳細をみる →</a>
+            </div>
+        </section>
+
+        <section class="menu-section">
+            <div class="section-label">メニュー</div>
+            <div class="tile-grid">
+                <a class="tile tile-featured" href="#">
+                    <div>
+                        <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="8.5" />
+                            <path d="M12 7.5V12l3.2 1.8" />
+                        </svg>
+                        <div class="tile-label">打刻</div>
+                        <div class="tile-desc">出勤・退勤・休憩</div>
+                    </div>
+                    <div>
+                        <div class="tile-featured-time" id="featuredClock">--:--:--</div>
+                        <div class="tile-featured-foot">今すぐ打刻 →</div>
+                    </div>
+                </a>
+                <a class="tile" href="#">
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="3.5" y="5" width="17" height="15" rx="2.2" />
+                        <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+                    </svg>
+                    <div class="tile-label">月次勤務表</div>
+                    <div class="tile-desc">勤怠入力・提出</div>
+                </a>
+                <a class="tile" href="#">
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M4.5 16V12.6a2 2 0 0 1 1.2-1.83l1.6-.7A3 3 0 0 1 8.5 9.5h7a3 3 0 0 1 1.2.57l1.6.7A2 2 0 0 1 19.5 12.6V16" />
+                        <path d="M4 16h16" />
+                        <circle cx="7.8" cy="16.6" r="1.4" />
+                        <circle cx="16.2" cy="16.6" r="1.4" />
+                    </svg>
+                    <div class="tile-label">交通費</div>
+                    <div class="tile-desc">通勤・業務移動</div>
+                </a>
+                <a class="tile" href="#">
+                    <span class="tile-badge">2</span>
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="6" y="4.5" width="12" height="16" rx="2" />
+                        <rect x="9" y="2.7" width="6" height="3" rx="1" />
+                        <path d="M9 12.5l2 2 4-4.2" />
+                    </svg>
+                    <div class="tile-label">申請・承認</div>
+                    <div class="tile-desc">各種申請・承認</div>
+                </a>
+                <a class="tile" href="#">
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <circle cx="12" cy="10" r="3" />
+                        <path d="M6.8 17.8a5.6 5.6 0 0 1 10.4 0" />
+                    </svg>
+                    <div class="tile-label">マイページ</div>
+                    <div class="tile-desc">プロフィール確認</div>
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="site-footer">© IMS Hirosaki 社内グループウェア</footer>
+
+    <script>
+        const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+        const clockIn = new Date();
+        clockIn.setHours(9, 2, 0, 0);
+
+        function pad(n) { return String(n).padStart(2, '0'); }
+
+        function renderDate() {
+            const now = new Date();
+            document.getElementById('heroDate').textContent =
+                `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日（${WEEKDAYS[now.getDay()]}）`;
+            document.getElementById('curMonth').textContent = now.getMonth() + 1;
+
+            const h = now.getHours();
+            const greeting = h < 11 ? 'おはようございます' : h < 18 ? 'こんにちは' : 'こんばんは';
+            document.getElementById('heroGreeting').innerHTML = `${greeting}、<span>一郎</span>さん。`;
+        }
+
+        function renderClock() {
+            const now = new Date();
+            const diffMs = Math.max(0, now - clockIn);
+            const totalSec = Math.floor(diffMs / 1000);
+            const hh = Math.floor(totalSec / 3600);
+            const mm = Math.floor((totalSec % 3600) / 60);
+            const ss = totalSec % 60;
+            const display = `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+            document.getElementById('elapsedTimer').textContent = display;
+            document.getElementById('featuredClock').textContent =
+                `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+            const pct = Math.min(100, (totalSec / (8 * 3600)) * 100);
+            document.getElementById('progressFill').style.width = pct + '%';
+        }
+
+        renderDate();
+        renderClock();
+        setInterval(renderClock, 1000);
+        setInterval(renderDate, 60000);
+    </script>
+
+</body>
+
+</html>

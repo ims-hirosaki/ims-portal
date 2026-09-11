@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMS Hirosaki – 05 稟議・承認フロー ワイヤーフレーム</title>
+<style>
+:root {
+  --c-bg:      #F5F6F8;
+  --c-surface: #FFFFFF;
+  --c-border:  #DDE1E7;
+  --c-primary: #2563EB;
+  --c-text:    #111827;
+  --c-sub:     #6B7280;
+  --c-danger:  #DC2626;
+  --c-warn:    #D97706;
+  --c-success: #16A34A;
+  /* 事業カラー（03/04と共通） */
+  --biz-a: #D9A800;   /* 本社業務（黄色系） */
+  --biz-b: #16A34A;   /* 氷河期支援 */
+  --biz-c: #7C3AED;   /* 障がい者雇用 */
+  --biz-d: #EA580C;   /* ジョブカフェ */
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 14px rgba(0,0,0,.12);
+  --r: 8px;
+  --font: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--c-bg);color:var(--c-text);font-size:13px;}
+
+/* ── NAV ── */
+.page-nav{position:sticky;top:0;z-index:300;background:#1e293b;
+  display:flex;gap:2px;padding:8px 16px;overflow-x:auto;white-space:nowrap;}
+.page-nav button{background:rgba(255,255,255,.08);color:#cbd5e1;border:none;
+  padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font);}
+.page-nav button.active,.page-nav button:hover{background:var(--c-primary);color:#fff;}
+.page-nav .lbl{color:#64748b;font-size:11px;display:flex;align-items:center;padding:0 8px;}
+.screen{display:none;}.screen.active{display:block;}
+
+/* ── PORTAL HEADER ── */
+.hdr{background:var(--c-surface);border-bottom:1px solid var(--c-border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;height:52px;position:sticky;top:38px;z-index:90;box-shadow:var(--shadow);}
+.hdr .logo{font-weight:800;font-size:15px;color:var(--c-primary);}
+.hdr .ptitle{font-size:13px;color:var(--c-sub);}
+.hdr .uarea{display:flex;align-items:center;gap:10px;font-size:12px;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:6px;
+  border:none;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:500;}
+.btn-primary{background:var(--c-primary);color:#fff;}
+.btn-secondary{background:var(--c-bg);color:var(--c-text);border:1px solid var(--c-border);}
+.btn-danger{background:var(--c-danger);color:#fff;}
+.btn-success{background:var(--c-success);color:#fff;}
+.btn-warn{background:var(--c-warn);color:#fff;}
+.btn-sm{padding:3px 9px;font-size:11px;}
+.btn-ghost{background:transparent;color:var(--c-sub);border:1px solid var(--c-border);padding:3px 10px;font-size:11px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* ── ADMIN LAYOUT ── */
+.admin-layout{display:flex;min-height:calc(100vh - 90px);}
+.sidebar{width:210px;background:#1e293b;padding:14px 0;flex-shrink:0;
+  position:sticky;top:90px;height:calc(100vh - 90px);overflow-y:auto;}
+.sidebar .sec{padding:8px 16px 4px;font-size:10px;color:#64748b;letter-spacing:1px;text-transform:uppercase;}
+.sidebar .mi{display:block;padding:7px 18px;color:#cbd5e1;font-size:12px;cursor:pointer;
+  border:none;background:none;width:100%;text-align:left;font-family:var(--font);}
+.sidebar .mi:hover{background:rgba(255,255,255,.07);color:#fff;}
+.sidebar .mi.active{background:var(--c-primary);color:#fff;}
+.sidebar .mi.sub{padding-left:30px;font-size:11px;}
+.acontent{flex:1;padding:20px;overflow-x:auto;}
+
+/* ── CARD ── */
+.card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r);box-shadow:var(--shadow);}
+.ch{padding:12px 16px;border-bottom:1px solid var(--c-border);
+  display:flex;align-items:center;justify-content:space-between;}
+.ch h2{font-size:14px;font-weight:600;}
+.cb{padding:16px;}
+
+/* ── MISC ── */
+.flex-g{display:flex;align-items:center;gap:8px;}
+.flex-b{display:flex;align-items:center;justify-content:space-between;}
+.text-sub{color:var(--c-sub);}
+.bc{font-size:11px;color:var(--c-sub);margin-bottom:14px;}
+.bc span{color:var(--c-text);font-weight:500;}
+.alert{padding:9px 13px;border-radius:6px;font-size:12px;margin-bottom:12px;display:flex;gap:8px;line-height:1.6;}
+.alert-warn{background:#FFFBEB;border:1px solid #FDE68A;color:#92400E;}
+.alert-info{background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;}
+.alert-err {background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;}
+.alert-ok  {background:#F0FDF4;border:1px solid #BBF7D0;color:#166534;}
+.alert .ico{flex-shrink:0;}
+
+/* ── PORTAL WRAP ── */
+.pwrap{max-width:1100px;margin:0 auto;padding:18px 20px;}
+
+/* ── STATUS TAGS（05ステータス定義に準拠）── */
+.st{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.st-draft    {background:#F3F4F6;color:var(--c-sub);}           /* 下書き：グレー */
+.st-pending  {background:#EFF6FF;color:#1D4ED8;}                /* 審査中：青 */
+.st-rejected {background:#FFF7ED;color:#C2410C;}               /* 差し戻し：オレンジ */
+.st-dismissed{background:#FEF2F2;color:#991B1B;}               /* 却下：赤 */
+.st-withdrawn{background:#F3F4F6;color:#6B7280;}               /* 取り下げ：グレー */
+.st-confirmed{background:#ECFDF5;color:#065F46;}               /* 決裁完了：緑 */
+.st-cancelled{background:#F1F5F9;color:#475569;border:1px dashed #94A3B8;} /* 管理者取消 */
+
+/* 種別チップ */
+.tchip{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:5px;
+  font-size:11px;font-weight:600;background:#F1F5F9;color:#334155;}
+
+/* GW連携バッジ */
+.gw-badge{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:12px;
+  font-size:10px;font-weight:600;background:#EFF6FF;color:#1D4ED8;border:1px solid #DBEAFE;}
+.gw-badge.drive{background:#F0FDF4;color:#15803D;border-color:#BBF7D0;}
+.gw-badge.warn{background:#FFFBEB;color:#B45309;border-color:#FDE68A;}
+
+/* ═══════════════════════════════════════
+   ① スタッフ：申請・履歴
+═══════════════════════════════════════ */
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--c-border);}
+.tab{padding:9px 20px;border:none;background:none;font-size:13px;font-weight:600;
+  color:var(--c-sub);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;
+  font-family:var(--font);transition:all .12s;display:flex;align-items:center;gap:6px;}
+.tab:hover{color:var(--c-text);}
+.tab.active{color:var(--c-primary);border-bottom-color:var(--c-primary);}
+.tab .cnt{background:var(--c-danger);color:#fff;font-size:10px;border-radius:10px;
+  padding:0 6px;min-width:16px;text-align:center;font-weight:700;}
+.pane{animation:fadeIn .15s;}
+@keyframes fadeIn{from{opacity:.3;}to{opacity:1;}}
+
+/* 申請フォーム */
+.form-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r);
+  box-shadow:var(--shadow);max-width:780px;}
+.fc-head{padding:14px 18px;border-bottom:1px solid var(--c-border);}
+.fc-head h2{font-size:15px;font-weight:700;}
+.fc-head p{font-size:11px;color:var(--c-sub);margin-top:3px;}
+.fc-body{padding:18px;}
+.fc-foot{padding:14px 18px;border-top:1px solid var(--c-border);display:flex;justify-content:space-between;align-items:center;gap:8px;}
+
+.frow{display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:start;margin-bottom:16px;}
+.frow > label{font-size:12px;font-weight:600;color:var(--c-text);padding-top:7px;}
+.frow > label .req{color:var(--c-danger);margin-left:3px;}
+.fctl input[type=text],.fctl input[type=number],.fctl input[type=date],
+.fctl input[type=time],.fctl select,.fctl textarea{
+  width:100%;padding:7px 10px;border:1px solid var(--c-border);border-radius:6px;
+  font-size:13px;font-family:var(--font);background:var(--c-surface);}
+.fctl textarea{resize:vertical;min-height:62px;}
+.fctl .hint{font-size:11px;color:var(--c-sub);margin-top:4px;line-height:1.5;}
+.inline-2{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;}
+.inline-2 .tilde{color:var(--c-sub);}
+.radio-row{display:flex;gap:8px;flex-wrap:wrap;}
+.radio-pill{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border:1px solid var(--c-border);
+  border-radius:20px;cursor:pointer;font-size:12px;background:var(--c-surface);}
+.radio-pill input{accent-color:var(--c-primary);}
+.radio-pill.sel{border-color:var(--c-primary);background:#EFF6FF;color:#1D4ED8;font-weight:600;}
+
+/* 種別セレクタ（大きめ） */
+.type-select-wrap{margin-bottom:18px;}
+.type-select-wrap label{font-size:12px;font-weight:700;color:var(--c-sub);display:block;margin-bottom:6px;}
+.type-select{width:100%;max-width:360px;padding:10px 12px;border:2px solid var(--c-primary);border-radius:8px;
+  font-size:14px;font-weight:600;font-family:var(--font);background:#F8FAFF;color:var(--c-primary);cursor:pointer;}
+
+/* 添付アップロード */
+.upload-zone{border:2px dashed var(--c-border);border-radius:8px;padding:20px;text-align:center;
+  color:var(--c-sub);font-size:12px;background:#FAFBFC;cursor:pointer;}
+.upload-zone:hover{border-color:var(--c-primary);background:#F8FAFF;}
+.upload-zone .big{font-size:24px;margin-bottom:6px;}
+.file-chip{display:inline-flex;align-items:center;gap:6px;background:#F1F5F9;border:1px solid var(--c-border);
+  border-radius:6px;padding:5px 10px;font-size:12px;margin-top:8px;}
+
+/* 連携の説明ボックス（フォーム下部） */
+.link-info{margin-top:6px;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.7;
+  background:#F0F9FF;border:1px solid #BAE6FD;color:#075985;}
+.link-info .li-h{font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:6px;color:#0C4A6E;}
+.link-info ul{margin:0 0 0 4px;list-style:none;}
+.link-info li{padding:2px 0 2px 20px;position:relative;}
+.link-info li::before{content:"→";position:absolute;left:2px;color:#0EA5E9;font-weight:700;}
+.link-info .src{font-size:10px;background:#E0F2FE;color:#0369A1;border-radius:3px;padding:0 5px;margin-left:4px;font-weight:600;}
+
+/* 承認ルートプレビュー（フォーム内・01連携） */
+.route-preview{margin-top:6px;border:1px solid var(--c-border);border-radius:8px;overflow:hidden;}
+.rp-h{background:#F8FAFC;padding:9px 14px;font-size:12px;font-weight:700;border-bottom:1px solid var(--c-border);
+  display:flex;align-items:center;justify-content:space-between;}
+.rp-h .lock{font-size:10px;color:var(--c-sub);font-weight:500;}
+.route-stepper{display:flex;align-items:center;padding:16px 14px;overflow-x:auto;}
+.rstep{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:120px;flex-shrink:0;}
+.rstep .dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;border:2px solid;}
+.rstep.todo .dot{border-color:var(--c-border);color:var(--c-sub);background:var(--c-surface);}
+.rstep.current .dot{border-color:var(--c-primary);color:#fff;background:var(--c-primary);box-shadow:0 0 0 4px #DBEAFE;}
+.rstep.done .dot{border-color:var(--c-success);color:#fff;background:var(--c-success);}
+.rstep .who{font-size:12px;font-weight:600;text-align:center;}
+.rstep .role{font-size:10px;color:var(--c-sub);text-align:center;}
+.rstep .auto{font-size:9px;background:#FEF3C7;color:#92400E;border-radius:3px;padding:1px 5px;margin-top:2px;}
+.rline{flex:1;height:2px;background:var(--c-border);min-width:24px;margin:0 -8px;margin-bottom:36px;}
+.rline.done{background:var(--c-success);}
+
+/* ═══════════════════════════════════════
+   ② 申請履歴タイムライン
+═══════════════════════════════════════ */
+.tl{position:relative;padding-left:8px;}
+.tl-item{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r);
+  box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
+.tl-bar{height:4px;}
+.tl-summary{padding:13px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;}
+.tl-summary:hover{background:#FAFBFC;}
+.tl-date{font-size:11px;color:var(--c-sub);min-width:78px;}
+.tl-title{font-weight:600;font-size:13px;flex:1;}
+.tl-title .sub{font-weight:400;color:var(--c-sub);font-size:11px;margin-left:6px;}
+.tl-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.tl-caret{color:var(--c-sub);transition:transform .15s;font-size:12px;}
+.tl-item.open .tl-caret{transform:rotate(90deg);}
+.tl-detail{display:none;border-top:1px solid var(--c-border);padding:16px;background:#FAFBFC;}
+.tl-item.open .tl-detail{display:block;animation:fadeIn .15s;}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 20px;margin-bottom:14px;}
+.dg-item{font-size:12px;}
+.dg-item .k{color:var(--c-sub);font-size:11px;display:block;margin-bottom:2px;}
+.dg-item .v{font-weight:600;}
+
+/* 承認ログ */
+.log-list{border-top:1px dashed var(--c-border);padding-top:12px;}
+.log-h{font-size:11px;font-weight:700;color:var(--c-sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.log-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #F3F4F6;font-size:12px;}
+.log-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;color:#fff;}
+.log-icon.ok{background:var(--c-success);}
+.log-icon.rej{background:var(--c-warn);}
+.log-icon.dis{background:var(--c-danger);}
+.log-icon.sub{background:var(--c-primary);}
+.log-icon.sys{background:#94A3B8;}
+.log-body{flex:1;}
+.log-body .lt{font-weight:600;}
+.log-body .lc{color:var(--c-sub);margin-top:2px;background:#fff;border:1px solid var(--c-border);
+  border-radius:6px;padding:6px 9px;font-size:11px;}
+.log-time{color:var(--c-sub);font-size:11px;white-space:nowrap;}
+.tl-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px dashed var(--c-border);}
+
+/* 下書き通知 */
+.draft-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:#92400E;}
+
+/* ═══════════════════════════════════════
+   ③④ 承認者画面
+═══════════════════════════════════════ */
+.summary-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:18px;}
+.sc{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);}
+.sc .sc-l{font-size:11px;color:var(--c-sub);font-weight:600;margin-bottom:5px;}
+.sc .sc-v{font-size:22px;font-weight:800;}
+.sc .sc-s{font-size:11px;color:var(--c-sub);margin-top:3px;}
+.sc.b-blue{border-top:3px solid var(--c-primary);}
+.sc.b-orange{border-top:3px solid var(--c-warn);}
+.sc.b-green{border-top:3px solid var(--c-success);}
+
+.rev-table{width:100%;border-collapse:collapse;font-size:12px;}
+.rev-table th{padding:9px 12px;text-align:left;font-size:11px;color:var(--c-sub);font-weight:600;
+  border-bottom:2px solid var(--c-border);background:#F9FAFB;white-space:nowrap;}
+.rev-table td{padding:10px 12px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
+.rev-table tr:hover td{background:#F9FAFB;}
+.rev-table tr.urgent td{background:#FFFBF5;}
+.applicant{display:flex;align-items:center;gap:8px;}
+.avatar{width:28px;height:28px;border-radius:50%;background:#E2E8F0;color:#475569;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+
+/* ④詳細レイアウト */
+.review-layout{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;}
+@media(max-width:980px){.review-layout{grid-template-columns:1fr;}}
+.detail-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
+.dc-head{padding:14px 18px;border-bottom:1px solid var(--c-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.dc-body{padding:18px;}
+.def-table{width:100%;border-collapse:collapse;font-size:13px;}
+.def-table th{text-align:left;width:140px;padding:9px 8px;color:var(--c-sub);font-weight:600;font-size:12px;
+  vertical-align:top;border-bottom:1px solid #F3F4F6;}
+.def-table td{padding:9px 8px;border-bottom:1px solid #F3F4F6;font-weight:600;vertical-align:top;}
+
+/* 領収書プレビュー */
+.receipt-preview{border:1px solid var(--c-border);border-radius:8px;overflow:hidden;max-width:280px;}
+.receipt-img{height:160px;background:repeating-linear-gradient(45deg,#F1F5F9,#F1F5F9 10px,#E2E8F0 10px,#E2E8F0 20px);
+  display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:12px;}
+.receipt-bar{padding:8px 12px;display:flex;align-items:center;justify-content:space-between;font-size:11px;border-top:1px solid var(--c-border);}
+
+/* 決裁アクションパネル */
+.act-panel{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r);box-shadow:var(--shadow);position:sticky;top:108px;overflow:hidden;}
+.ap-head{padding:12px 16px;border-bottom:1px solid var(--c-border);font-size:13px;font-weight:700;}
+.ap-body{padding:16px;}
+.ap-comment{width:100%;border:1px solid var(--c-border);border-radius:6px;padding:8px 10px;font-size:12px;
+  font-family:var(--font);min-height:74px;resize:vertical;margin-bottom:6px;}
+.ap-btns{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.ap-btns .btn{justify-content:center;padding:9px;font-size:13px;}
+.req-note{font-size:11px;color:var(--c-warn);margin-bottom:10px;display:none;}
+
+/* 02打刻乖離ボックス */
+.punch-compare{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:8px;padding:12px 14px;margin-top:14px;}
+.pc-h{font-weight:700;color:#991B1B;font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pc-box{background:#fff;border:1px solid #FECACA;border-radius:6px;padding:8px 10px;}
+.pc-box .pl{font-size:10px;color:var(--c-sub);}
+.pc-box .pv{font-size:16px;font-weight:800;margin-top:2px;}
+.pc-box.actual .pv{color:var(--c-danger);}
+.pc-diff{margin-top:8px;font-size:11px;color:#991B1B;text-align:center;background:#FFF1F1;border-radius:6px;padding:5px;}
+
+/* ═══════════════════════════════════════
+   管理者画面共通
+═══════════════════════════════════════ */
+.filterbar{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:14px;}
+.filterbar label{font-size:11px;font-weight:600;color:var(--c-sub);display:block;margin-bottom:4px;}
+.filterbar input,.filterbar select{width:100%;border:1px solid var(--c-border);border-radius:6px;padding:7px 9px;font-size:12px;font-family:var(--font);}
+.admin-table{width:100%;border-collapse:collapse;font-size:12px;}
+.admin-table th{padding:9px 12px;text-align:left;font-size:11px;color:var(--c-sub);font-weight:600;
+  border-bottom:2px solid var(--c-border);background:#F9FAFB;white-space:nowrap;}
+.admin-table td{padding:9px 12px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
+.admin-table tr:hover td{background:#F9FAFB;}
+
+/* ⑤承認ルート設定 */
+.route-edit{border:1px solid var(--c-border);border-radius:8px;overflow:hidden;margin-bottom:16px;}
+.re-head{background:#F8FAFC;padding:11px 16px;border-bottom:1px solid var(--c-border);
+  display:flex;align-items:center;justify-content:space-between;}
+.re-head .rt{font-weight:700;font-size:13px;display:flex;align-items:center;gap:8px;}
+.re-body{padding:16px;}
+.step-card{display:flex;align-items:center;gap:12px;background:var(--c-bg);border:1px solid var(--c-border);
+  border-radius:8px;padding:10px 14px;margin-bottom:10px;}
+.step-num{width:30px;height:30px;border-radius:50%;background:var(--c-primary);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.step-ctl{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;}
+.step-ctl select{width:100%;border:1px solid var(--c-border);border-radius:6px;padding:7px 9px;font-size:12px;font-family:var(--font);background:var(--c-surface);}
+.step-del{color:var(--c-danger);cursor:pointer;font-size:16px;background:none;border:none;padding:4px;}
+.add-step{display:flex;align-items:center;gap:6px;border:1px dashed var(--c-primary);background:#F8FAFF;
+  color:var(--c-primary);border-radius:8px;padding:9px;width:100%;justify-content:center;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font);}
+.auto-tag{font-size:10px;background:#FEF3C7;color:#92400E;border-radius:3px;padding:2px 6px;font-weight:600;}
+
+/* ⑥設定セクション */
+.setting-section{margin-bottom:24px;}
+.ss-title{font-size:14px;font-weight:700;padding-bottom:8px;border-bottom:2px solid var(--c-border);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.setting-row{display:grid;grid-template-columns:240px 1fr;gap:16px;padding:13px 0;border-bottom:1px solid #F3F4F6;align-items:start;}
+.setting-row .sl{font-size:12px;font-weight:600;}
+.setting-row .sl .desc{font-weight:400;color:var(--c-sub);font-size:11px;margin-top:3px;line-height:1.5;}
+.setting-row input[type=text],.setting-row input[type=number],.setting-row select{
+  width:100%;max-width:420px;border:1px solid var(--c-border);border-radius:6px;padding:7px 10px;font-size:12px;font-family:var(--font);}
+.toggle{position:relative;display:inline-block;width:42px;height:24px;}
+.toggle input{display:none;}
+.toggle .tk{position:absolute;inset:0;background:#CBD5E1;border-radius:24px;transition:.2s;cursor:pointer;}
+.toggle .tk::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+.toggle input:checked + .tk{background:var(--c-success);}
+.toggle input:checked + .tk::before{transform:translateX(18px);}
+.type-master-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--c-border);border-radius:8px;margin-bottom:8px;background:var(--c-surface);}
+.type-master-row .grip{color:#CBD5E1;cursor:grab;}
+.type-master-row .tcode{font-family:monospace;font-size:11px;background:#F1F5F9;color:#475569;border-radius:4px;padding:2px 7px;}
+
+/* モーダル */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--c-surface);border-radius:12px;box-shadow:var(--shadow-md);max-width:480px;width:100%;overflow:hidden;}
+.mb-head{padding:16px 20px;border-bottom:1px solid var(--c-border);font-size:14px;font-weight:700;}
+.mb-body{padding:20px;font-size:13px;line-height:1.7;}
+.mb-foot{padding:14px 20px;border-top:1px solid var(--c-border);display:flex;justify-content:flex-end;gap:8px;}
+
+.divider{height:1px;background:var(--c-border);margin:16px 0;}
+@media(max-width:640px){
+  .frow{grid-template-columns:1fr;gap:6px;}
+  .frow > label{padding-top:0;}
+  .tl-summary{flex-wrap:wrap;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="page-nav">
+  <span class="lbl">画面選択 →</span>
+  <button class="active" onclick="show('staff')">① 申請・履歴（スタッフ）</button>
+  <button onclick="show('review-list')">② 承認待ち一覧（承認者）</button>
+  <button onclick="show('review-detail')">③ 決裁詳細（承認者）</button>
+  <button onclick="show('admin-list')">④ 稟議管理（管理者）</button>
+  <button onclick="show('admin-route')">⑤ 承認ルート設定（管理者）</button>
+  <button onclick="show('admin-settings')">⑥ 種別・通知設定（管理者）</button>
+</div>
+
+<!-- =============================================
+     ① スタッフ：申請・承認履歴（/portal/approval/）
+============================================= -->
+<div id="screen-staff" class="screen active">
+  <div class="hdr">
+    <div class="logo">IMS Hirosaki</div>
+    <div class="ptitle">申請・承認</div>
+    <div class="uarea">
+      <span>田中 一郎（一般社員）</span>
+      <button class="btn btn-ghost">ログアウト</button>
+    </div>
+  </div>
+  <div class="pwrap">
+
+    <!-- タブ -->
+    <div class="tabs">
+      <button class="tab active" id="tab-new" onclick="switchTab('new')">📝 新規申請</button>
+      <button class="tab" id="tab-history" onclick="switchTab('history')">📜 申請履歴 <span class="cnt">2</span></button>
+    </div>
+
+    <!-- ===== 新規申請ペイン ===== -->
+    <div id="pane-new" class="pane">
+
+      <!-- 下書き通知 -->
+      <div class="draft-banner">
+        <span>📄 保存中の下書きが <b>1件</b> あります（経費精算・6/20発生分）。続きから入力できます。</span>
+        <button class="btn btn-ghost btn-sm">下書きを開く</button>
+      </div>
+
+      <div class="form-card">
+        <div class="fc-head">
+          <h2>新しい申請を作成</h2>
+          <p>申請の種類を選ぶと、入力する項目が切り替わります。</p>
+        </div>
+        <div class="fc-body">
+
+          <!-- 種別セレクタ（動的切替） -->
+          <div class="type-select-wrap">
+            <label>申請の種類</label>
+            <select class="type-select" id="app-type-select" onchange="switchAppType(this.value)">
+              <option value="paid_leave">🌴 有給休暇申請</option>
+              <option value="late_early">⏰ 遅刻・早退申請</option>
+              <option value="expense">🧾 経費精算申請</option>
+              <option value="overtime">🌙 残業申請</option>
+              <option value="business_trip">✈️ 出張申請</option>
+              <option value="trip_allowance">💴 出張手当申請</option>
+            </select>
+          </div>
+
+          <!-- ① 有給休暇 -->
+          <div id="form-paid_leave" class="type-form">
+            <div class="frow">
+              <label>対象日<span class="req">*</span></label>
+              <div class="fctl">
+                <div class="inline-2">
+                  <input type="date" value="2025-07-22">
+                  <span class="tilde">〜</span>
+                  <input type="date" value="2025-07-22">
+                </div>
+                <div class="hint">1日のみの場合は開始・終了を同じ日に。</div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>区分<span class="req">*</span></label>
+              <div class="fctl">
+                <div class="radio-row">
+                  <label class="radio-pill sel" onclick="selPill('leave',this)" data-val="full"><input type="radio" name="lt" checked>全日</label>
+                  <label class="radio-pill" onclick="selPill('leave',this)" data-val="half_am"><input type="radio" name="lt">半日（午前）</label>
+                  <label class="radio-pill" onclick="selPill('leave',this)" data-val="half_pm"><input type="radio" name="lt">半日（午後）</label>
+                  <label class="radio-pill" onclick="selPill('leave',this)" data-val="hourly"><input type="radio" name="lt">時間休</label>
+                </div>
+              </div>
+            </div>
+            <div class="frow" id="hourly-leave-row" style="display:none;">
+              <label>取得時間帯</label>
+              <div class="fctl">
+                <div class="inline-2">
+                  <input type="time" value="09:00">
+                  <span class="tilde">〜</span>
+                  <input type="time" value="11:00">
+                </div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>取得理由</label>
+              <div class="fctl"><textarea placeholder="私用のため（任意）"></textarea></div>
+            </div>
+            <div class="link-info">
+              <div class="li-h">🔗 この申請が承認されると</div>
+              <ul>
+                <li>勤務表のその日が「有給」になります <span class="src">03 勤怠</span></li>
+                <li>所定労働時間が「本社業務」の事業時間に自動で割り当てられます <span class="src">03 勤怠</span></li>
+                <li>その日の交通費が自動で0円になります（通勤しないため）<span class="src">04 交通費</span></li>
+                <li>あなたと承認者のGoogleカレンダーに「有給休暇」が登録されます <span class="src">Calendar</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- ② 遅刻・早退 -->
+          <div id="form-late_early" class="type-form" style="display:none;">
+            <div class="frow">
+              <label>対象日<span class="req">*</span></label>
+              <div class="fctl"><input type="date" value="2025-07-15"></div>
+            </div>
+            <div class="frow">
+              <label>種別<span class="req">*</span></label>
+              <div class="fctl">
+                <div class="radio-row">
+                  <label class="radio-pill sel" onclick="selPill('le',this)"><input type="radio" name="le" checked>遅刻</label>
+                  <label class="radio-pill" onclick="selPill('le',this)"><input type="radio" name="le">早退</label>
+                </div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>予定時刻<span class="req">*</span></label>
+              <div class="fctl">
+                <input type="time" value="10:30" style="max-width:160px;">
+                <div class="hint">遅刻なら出勤予定時刻、早退なら退勤予定時刻を入力します。</div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>理由<span class="req">*</span></label>
+              <div class="fctl"><textarea placeholder="通院のため など"></textarea></div>
+            </div>
+            <div class="link-info">
+              <div class="li-h">🔗 この申請が承認されると</div>
+              <ul>
+                <li>勤務表のその日の備考に遅刻／早退の記録が追記されます <span class="src">03 勤怠</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- ③ 経費精算 -->
+          <div id="form-expense" class="type-form" style="display:none;">
+            <div class="frow">
+              <label>発生日<span class="req">*</span></label>
+              <div class="fctl"><input type="date" value="2025-06-20" style="max-width:200px;"></div>
+            </div>
+            <div class="frow">
+              <label>支払先<span class="req">*</span></label>
+              <div class="fctl"><input type="text" placeholder="例：○○商事"></div>
+            </div>
+            <div class="frow">
+              <label>金額<span class="req">*</span></label>
+              <div class="fctl"><input type="number" value="3200" style="max-width:160px;"> 円</div>
+            </div>
+            <div class="frow">
+              <label>紐付け事業<span class="req">*</span></label>
+              <div class="fctl">
+                <select style="max-width:280px;">
+                  <option>本社業務</option>
+                  <option>氷河期支援</option>
+                  <option>障がい者雇用</option>
+                  <option>ジョブカフェ</option>
+                </select>
+                <div class="hint">どの事業の経費かを選びます（事業マスタから取得）<span class="src">03 勤怠</span></div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>目的</label>
+              <div class="fctl"><textarea placeholder="会議用備品の購入 など"></textarea></div>
+            </div>
+            <div class="frow">
+              <label>領収書<span class="req">*</span></label>
+              <div class="fctl">
+                <div class="upload-zone">
+                  <div class="big">📎</div>
+                  ここにファイルをドラッグ、またはクリックして選択<br>
+                  <span style="font-size:11px;">JPEG・PNG・PDF（10MBまで）</span>
+                </div>
+                <div class="file-chip">🧾 receipt_0620.jpg <span style="color:var(--c-sub);">1.2MB</span> ✕</div>
+              </div>
+            </div>
+            <div class="link-info">
+              <div class="li-h">🔗 この申請が承認されると</div>
+              <ul>
+                <li>選んだ事業の経費として月次集計に計上されます <span class="src">03 勤怠</span></li>
+                <li>領収書がGoogle Driveの「経費領収書」フォルダに保存されます <span class="src">Drive</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- ④ 残業 -->
+          <div id="form-overtime" class="type-form" style="display:none;">
+            <div class="frow">
+              <label>対象日<span class="req">*</span></label>
+              <div class="fctl"><input type="date" value="2025-06-15" style="max-width:200px;"></div>
+            </div>
+            <div class="frow">
+              <label>予定時刻<span class="req">*</span></label>
+              <div class="fctl">
+                <div class="inline-2" style="max-width:300px;">
+                  <input type="time" value="17:30">
+                  <span class="tilde">〜</span>
+                  <input type="time" value="18:00">
+                </div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>申請理由<span class="req">*</span></label>
+              <div class="fctl"><textarea placeholder="月次レポート作成のため など"></textarea></div>
+            </div>
+            <div class="link-info" style="background:#FFFBEB;border-color:#FDE68A;color:#92400E;">
+              <div class="li-h" style="color:#92400E;">🔗 この申請と「打刻」の関係</div>
+              <ul>
+                <li>実際の労働時間は<b>打刻ツールの記録</b>が正です（この申請は承認記録として扱われます）<span class="src" style="background:#FDE68A;color:#92400E;">02 打刻</span></li>
+                <li>申請した予定終了時刻と実際の退勤打刻が<b>30分以上</b>ずれた場合、あなたと承認者に自動でお知らせが届きます <span class="src" style="background:#FDE68A;color:#92400E;">02 打刻</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- ⑤ 出張 -->
+          <div id="form-business_trip" class="type-form" style="display:none;">
+            <div class="frow">
+              <label>日程<span class="req">*</span></label>
+              <div class="fctl">
+                <div class="inline-2">
+                  <input type="date" value="2025-07-10">
+                  <span class="tilde">〜</span>
+                  <input type="date" value="2025-07-11">
+                </div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>目的地<span class="req">*</span></label>
+              <div class="fctl"><input type="text" placeholder="例：仙台市・東北厚生局"></div>
+            </div>
+            <div class="frow">
+              <label>出張目的<span class="req">*</span></label>
+              <div class="fctl"><textarea placeholder="ブロック会議への出席 など"></textarea></div>
+            </div>
+            <div class="frow">
+              <label>概算費用</label>
+              <div class="fctl"><input type="number" value="18000" style="max-width:160px;"> 円</div>
+            </div>
+            <div class="link-info">
+              <div class="li-h">🔗 この申請が承認されると</div>
+              <ul>
+                <li>あなたと承認者のGoogleカレンダーに「出張：目的地」が登録されます <span class="src">Calendar</span></li>
+                <li>交通費・出張手当は別途それぞれの申請が必要です</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- ⑥ 出張手当 -->
+          <div id="form-trip_allowance" class="type-form" style="display:none;">
+            <div class="frow">
+              <label>対象期間<span class="req">*</span></label>
+              <div class="fctl">
+                <div class="inline-2">
+                  <input type="date" value="2025-07-10">
+                  <span class="tilde">〜</span>
+                  <input type="date" value="2025-07-11">
+                </div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>紐付け出張申請</label>
+              <div class="fctl">
+                <select style="max-width:340px;">
+                  <option>（任意）申請 #1042 ／ 仙台市・7/10〜7/11</option>
+                  <option>紐付けない</option>
+                </select>
+                <div class="hint">関連する出張申請があれば選びます。</div>
+              </div>
+            </div>
+            <div class="frow">
+              <label>手当金額<span class="req">*</span></label>
+              <div class="fctl"><input type="number" value="6000" style="max-width:160px;"> 円</div>
+            </div>
+            <div class="frow">
+              <label>紐付け事業<span class="req">*</span></label>
+              <div class="fctl">
+                <select style="max-width:280px;">
+                  <option>氷河期支援</option>
+                  <option>本社業務</option>
+                  <option>障がい者雇用</option>
+                  <option>ジョブカフェ</option>
+                </select>
+              </div>
+            </div>
+            <div class="frow">
+              <label>内容</label>
+              <div class="fctl"><textarea placeholder="宿泊を伴う県外出張のため など"></textarea></div>
+            </div>
+            <div class="link-info">
+              <div class="li-h">🔗 この申請が承認されると</div>
+              <ul>
+                <li>選んだ事業の経費として月次集計に計上されます <span class="src">03 勤怠</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- 承認ルートプレビュー（01連携） -->
+          <div class="route-preview">
+            <div class="rp-h">
+              <span>この申請の承認ルート</span>
+              <span class="lock">🔒 提出した時点のルートで固定されます</span>
+            </div>
+            <div class="route-stepper">
+              <div class="rstep current">
+                <div class="dot">1</div>
+                <div class="who">佐藤 健一</div>
+                <div class="role">確認者（直属上長）</div>
+                <div class="auto">マイページの設定から自動</div>
+              </div>
+              <div class="rline"></div>
+              <div class="rstep todo">
+                <div class="dot">2</div>
+                <div class="who">山本 美咲</div>
+                <div class="role">最終承認者（人事部長）</div>
+                <div class="auto">マイページの設定から自動</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--c-sub);margin-top:8px;line-height:1.6;">
+            ※ 承認者はあなたのプロフィールの「確認者・最終承認者」設定<span style="background:#F1F5F9;border-radius:3px;padding:0 5px;">01 ユーザー管理</span>から自動で決まります。変更が必要な場合は人事部へご連絡ください。
+          </div>
+
+        </div>
+        <div class="fc-foot">
+          <button class="btn btn-secondary">下書き保存</button>
+          <button class="btn btn-primary">提出する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 申請履歴ペイン ===== -->
+    <div id="pane-history" class="pane" style="display:none;">
+
+      <!-- 1. 審査中（出張） -->
+      <div class="tl-item open">
+        <div class="tl-bar" style="background:var(--c-primary);"></div>
+        <div class="tl-summary" onclick="toggleTl(this)">
+          <div class="tl-date">7/10〜7/11</div>
+          <div class="tl-title">✈️ 出張申請 <span class="sub">仙台市・東北厚生局</span></div>
+          <div class="tl-meta">
+            <span class="st st-pending">● 審査中</span>
+            <span class="tl-caret">▶</span>
+          </div>
+        </div>
+        <div class="tl-detail">
+          <div class="detail-grid">
+            <div class="dg-item"><span class="k">日程</span><span class="v">2025/07/10 〜 07/11</span></div>
+            <div class="dg-item"><span class="k">目的地</span><span class="v">仙台市・東北厚生局</span></div>
+            <div class="dg-item"><span class="k">出張目的</span><span class="v">ブロック会議への出席</span></div>
+            <div class="dg-item"><span class="k">概算費用</span><span class="v">18,000円</span></div>
+          </div>
+          <!-- ルート進捗 -->
+          <div class="route-preview" style="margin-bottom:14px;">
+            <div class="rp-h"><span>承認の進みぐあい</span></div>
+            <div class="route-stepper">
+              <div class="rstep done"><div class="dot">✓</div><div class="who">佐藤 健一</div><div class="role">確認者</div></div>
+              <div class="rline done"></div>
+              <div class="rstep current"><div class="dot">2</div><div class="who">山本 美咲</div><div class="role">最終承認者（審査中）</div></div>
+            </div>
+          </div>
+          <div class="log-list">
+            <div class="log-h">これまでの記録</div>
+            <div class="log-row">
+              <div class="log-icon ok">✓</div>
+              <div class="log-body"><div class="lt">佐藤 健一 が承認しました（ステップ1）</div></div>
+              <div class="log-time">7/3 14:20</div>
+            </div>
+            <div class="log-row">
+              <div class="log-icon sub">↑</div>
+              <div class="log-body"><div class="lt">田中 一郎 が提出しました</div></div>
+              <div class="log-time">7/3 09:15</div>
+            </div>
+          </div>
+          <div class="tl-actions">
+            <button class="btn btn-ghost">取り下げる</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 差し戻し（経費精算） -->
+      <div class="tl-item">
+        <div class="tl-bar" style="background:var(--c-warn);"></div>
+        <div class="tl-summary" onclick="toggleTl(this)">
+          <div class="tl-date">6/20発生</div>
+          <div class="tl-title">🧾 経費精算申請 <span class="sub">○○商事・3,200円</span></div>
+          <div class="tl-meta">
+            <span class="st st-rejected">↩ 差し戻し</span>
+            <span class="tl-caret">▶</span>
+          </div>
+        </div>
+        <div class="tl-detail">
+          <div class="alert alert-warn">
+            <span class="ico">↩</span>
+            <div><b>佐藤 健一 から差し戻されました：</b><br>領収書の宛名が確認できません。宛名入りの領収書を再添付してください。</div>
+          </div>
+          <div class="detail-grid">
+            <div class="dg-item"><span class="k">発生日</span><span class="v">2025/06/20</span></div>
+            <div class="dg-item"><span class="k">支払先</span><span class="v">○○商事</span></div>
+            <div class="dg-item"><span class="k">金額</span><span class="v">3,200円</span></div>
+            <div class="dg-item"><span class="k">紐付け事業</span><span class="v">本社業務</span></div>
+          </div>
+          <div class="tl-actions">
+            <button class="btn btn-ghost">取り下げる</button>
+            <button class="btn btn-primary">修正して再提出</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 決裁完了（有給・カレンダー登録済み） -->
+      <div class="tl-item">
+        <div class="tl-bar" style="background:var(--c-success);"></div>
+        <div class="tl-summary" onclick="toggleTl(this)">
+          <div class="tl-date">6/30</div>
+          <div class="tl-title">🌴 有給休暇申請 <span class="sub">全日</span></div>
+          <div class="tl-meta">
+            <span class="gw-badge">📅 カレンダー登録済み</span>
+            <span class="st st-confirmed">✓ 決裁完了</span>
+            <span class="tl-caret">▶</span>
+          </div>
+        </div>
+        <div class="tl-detail">
+          <div class="alert alert-ok">
+            <span class="ico">✓</span>
+            <div>決裁が完了しました。勤務表が「有給」に更新され、6/30の交通費は0円になりました。</div>
+          </div>
+          <div class="detail-grid">
+            <div class="dg-item"><span class="k">対象日</span><span class="v">2025/06/30（全日）</span></div>
+            <div class="dg-item"><span class="k">取得理由</span><span class="v">私用のため</span></div>
+          </div>
+          <div class="log-list">
+            <div class="log-h">これまでの記録</div>
+            <div class="log-row"><div class="log-icon ok">✓</div><div class="log-body"><div class="lt">山本 美咲 が最終承認しました → 決裁完了</div></div><div class="log-time">6/25 11:02</div></div>
+            <div class="log-row"><div class="log-icon ok">✓</div><div class="log-body"><div class="lt">佐藤 健一 が承認しました（ステップ1）</div></div><div class="log-time">6/24 16:40</div></div>
+            <div class="log-row"><div class="log-icon sub">↑</div><div class="log-body"><div class="lt">田中 一郎 が提出しました</div></div><div class="log-time">6/24 10:00</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- =============================================
+     ② 承認者：承認待ち一覧（/portal/approval/review/）
+============================================= -->
+<div id="screen-review-list" class="screen">
+  <div class="hdr">
+    <div class="logo">IMS Hirosaki</div>
+    <div class="ptitle">稟議の確認・決裁</div>
+    <div class="uarea">
+      <span>佐藤 健一（承認者）</span>
+      <button class="btn btn-ghost">ログアウト</button>
+    </div>
+  </div>
+  <div class="pwrap" style="max-width:1200px;">
+
+    <div class="summary-cards">
+      <div class="sc b-blue"><div class="sc-l">あなたへの承認待ち</div><div class="sc-v">4 件</div><div class="sc-s">うち2件はあなたが第1承認者</div></div>
+      <div class="sc b-orange"><div class="sc-l">差し戻し中（あなた起因）</div><div class="sc-v">1 件</div><div class="sc-s">再提出待ち</div></div>
+      <div class="sc b-green"><div class="sc-l">今月あなたが決裁</div><div class="sc-v">12 件</div><div class="sc-s">承認10・差戻1・却下1</div></div>
+    </div>
+
+    <div class="card">
+      <div class="ch">
+        <h2>あなたの承認待ち一覧</h2>
+        <div class="flex-g">
+          <select class="btn btn-secondary" style="padding:5px 10px;"><option>すべての種別</option><option>有給休暇</option><option>経費精算</option><option>残業</option></select>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="rev-table">
+          <thead>
+            <tr>
+              <th>申請者</th><th>種別</th><th>対象日</th><th>要約</th><th>ステップ</th><th>提出日</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="urgent">
+              <td><div class="applicant"><div class="avatar">田</div>田中 一郎</div></td>
+              <td><span class="tchip">🌙 残業</span></td>
+              <td>6/15</td>
+              <td>17:30〜18:00（予定終了18:00）</td>
+              <td>1 / 2（あなた）</td>
+              <td>6/16</td>
+              <td><button class="btn btn-primary btn-sm" onclick="show('review-detail')">確認・決裁</button></td>
+            </tr>
+            <tr>
+              <td><div class="applicant"><div class="avatar">鈴</div>鈴木 花子</div></td>
+              <td><span class="tchip">🧾 経費精算</span></td>
+              <td>6/18発生</td>
+              <td>△△文具・1,800円（本社業務）</td>
+              <td>1 / 2（あなた）</td>
+              <td>6/19</td>
+              <td><button class="btn btn-primary btn-sm" onclick="show('review-detail')">確認・決裁</button></td>
+            </tr>
+            <tr>
+              <td><div class="applicant"><div class="avatar">高</div>高橋 健</div></td>
+              <td><span class="tchip">🌴 有給休暇</span></td>
+              <td>7/4</td>
+              <td>全日</td>
+              <td>1 / 2（あなた）</td>
+              <td>6/20</td>
+              <td><button class="btn btn-primary btn-sm" onclick="show('review-detail')">確認・決裁</button></td>
+            </tr>
+            <tr>
+              <td><div class="applicant"><div class="avatar">伊</div>伊藤 由美</div></td>
+              <td><span class="tchip">⏰ 遅刻・早退</span></td>
+              <td>6/22</td>
+              <td>遅刻・出勤予定10:30（通院）</td>
+              <td>1 / 1（あなた）</td>
+              <td>6/21</td>
+              <td><button class="btn btn-primary btn-sm" onclick="show('review-detail')">確認・決裁</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--c-sub);margin-top:12px;line-height:1.6;">
+      ※ ここに表示されるのは、あなたが承認ルート上の「現在のステップ」の承認者になっている申請のみです。承認者はあなたが部下の「確認者」または「最終承認者」に設定されているか<span style="background:#F1F5F9;border-radius:3px;padding:0 5px;">01 ユーザー管理</span>、または承認ルート設定で個別指定されているかで決まります。
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     ③ 承認者：決裁詳細（残業申請の例・02打刻連携を表示）
+============================================= -->
+<div id="screen-review-detail" class="screen">
+  <div class="hdr">
+    <div class="logo">IMS Hirosaki</div>
+    <div class="ptitle">稟議の確認・決裁</div>
+    <div class="uarea">
+      <span>佐藤 健一（承認者）</span>
+      <button class="btn btn-ghost">ログアウト</button>
+    </div>
+  </div>
+  <div class="pwrap" style="max-width:1100px;">
+    <div class="bc"><span onclick="show('review-list')" style="cursor:pointer;">承認待ち一覧</span> ＞ 田中 一郎 の残業申請</div>
+
+    <div class="review-layout">
+      <!-- 左：申請内容 -->
+      <div>
+        <div class="detail-card" style="margin-bottom:16px;">
+          <div class="dc-head">
+            <div class="flex-g"><span class="tchip">🌙 残業申請</span><span class="st st-pending">● 審査中</span></div>
+            <div style="font-size:11px;color:var(--c-sub);">申請ID #1051</div>
+          </div>
+          <div class="dc-body">
+            <table class="def-table">
+              <tr><th>申請者</th><td>田中 一郎（本社業務部）</td></tr>
+              <tr><th>対象日</th><td>2025年6月15日（日）</td></tr>
+              <tr><th>予定時刻</th><td>17:30 〜 18:00</td></tr>
+              <tr><th>申請理由</th><td>月次レポート作成のため</td></tr>
+              <tr><th>提出日時</th><td>2025/06/16 09:15</td></tr>
+            </table>
+
+            <!-- 02打刻連携：乖離検知 -->
+            <div class="punch-compare">
+              <div class="pc-h">⚠ 打刻ツールとの乖離を検知しました</div>
+              <div class="pc-grid">
+                <div class="pc-box">
+                  <div class="pl">申請の予定終了</div>
+                  <div class="pv">18:00</div>
+                </div>
+                <div class="pc-box actual">
+                  <div class="pl">実際の退勤打刻 <span style="font-size:9px;background:#FEE2E2;border-radius:3px;padding:0 4px;">02 打刻ログ</span></div>
+                  <div class="pv">19:32</div>
+                </div>
+              </div>
+              <div class="pc-diff">差異 ＋1時間32分（しきい値30分超）／ 申請者と承認者へ自動通知済み</div>
+              <div style="font-size:11px;color:#7F1D1D;margin-top:8px;line-height:1.6;">
+                勤怠の労働時間は<b>実打刻（打刻ツールの記録）を正</b>として集計されます。この残業申請は「承認の記録」として扱われ、勤怠表には承認済みフラグが付きます。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 承認ルート進捗 -->
+        <div class="detail-card">
+          <div class="dc-head"><h2 style="font-size:14px;">承認の進みぐあい</h2></div>
+          <div class="dc-body" style="padding-bottom:8px;">
+            <div class="route-stepper" style="padding:8px 0;">
+              <div class="rstep current"><div class="dot">1</div><div class="who">佐藤 健一</div><div class="role">確認者（あなた・審査中）</div></div>
+              <div class="rline"></div>
+              <div class="rstep todo"><div class="dot">2</div><div class="who">山本 美咲</div><div class="role">最終承認者</div></div>
+            </div>
+            <div class="log-list">
+              <div class="log-h">これまでの記録</div>
+              <div class="log-row">
+                <div class="log-icon sys">🔔</div>
+                <div class="log-body"><div class="lt">残業時間の乖離アラートを送信しました</div><div class="lc">実退勤 19:32 が予定終了 18:00 を1時間32分超過</div></div>
+                <div class="log-time">6/15 19:32</div>
+              </div>
+              <div class="log-row">
+                <div class="log-icon sub">↑</div>
+                <div class="log-body"><div class="lt">田中 一郎 が提出しました</div></div>
+                <div class="log-time">6/16 09:15</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：決裁アクションパネル -->
+      <div class="act-panel">
+        <div class="ap-head">この申請を決裁する</div>
+        <div class="ap-body">
+          <label style="font-size:11px;font-weight:600;color:var(--c-sub);display:block;margin-bottom:5px;">コメント</label>
+          <div class="req-note" id="req-note">⚠ 差し戻し・却下にはコメントの入力が必須です</div>
+          <textarea class="ap-comment" placeholder="承認時は任意。差し戻し・却下は必須。"></textarea>
+          <div class="ap-btns">
+            <button class="btn btn-success" onclick="showReqNote('approve')">✓ 承認する（次のステップへ）</button>
+            <button class="btn btn-warn" onclick="showReqNote('reject')">↩ 差し戻す（修正を依頼）</button>
+            <button class="btn btn-danger" onclick="showReqNote('dismiss')">✕ 却下する（再申請不可）</button>
+          </div>
+          <div style="margin-top:14px;font-size:11px;color:var(--c-sub);line-height:1.6;border-top:1px solid var(--c-border);padding-top:12px;">
+            <b>承認</b>：次の承認者（山本 美咲）へ進みます。<br>
+            <b>差し戻し</b>：申請者が修正して再提出できます。<br>
+            <b>却下</b>：この申請は終了し、同じ申請の再提出はできません。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     ④ 管理者：稟議管理（wp-admin / 社員管理 ＞ 稟議管理）
+============================================= -->
+<div id="screen-admin-list" class="screen">
+  <div class="hdr">
+    <div class="logo">IMS Hirosaki <span style="font-size:11px;color:var(--c-sub);font-weight:400;">管理</span></div>
+    <div class="ptitle">WordPress 管理画面</div>
+    <div class="uarea"><span>山本 美咲（人事管理担当者）</span><button class="btn btn-ghost">ログアウト</button></div>
+  </div>
+  <div class="admin-layout">
+    <div class="sidebar">
+      <div class="sec">社員管理</div>
+      <button class="mi">社員一覧・編集</button>
+      <button class="mi">各種マスタ</button>
+      <button class="mi active">稟議管理</button>
+      <button class="mi sub">承認ルート設定</button>
+      <button class="mi">退職者一覧</button>
+      <div class="sec">設定</div>
+      <button class="mi">申請種別・通知設定</button>
+    </div>
+    <div class="acontent">
+      <div class="bc"><span>社員管理</span> ＞ 稟議管理</div>
+
+      <div class="summary-cards" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));">
+        <div class="sc b-blue"><div class="sc-l">承認待ち（全社）</div><div class="sc-v">23 件</div></div>
+        <div class="sc b-orange"><div class="sc-l">差し戻し中</div><div class="sc-v">5 件</div></div>
+        <div class="sc b-green"><div class="sc-l">今月決裁完了</div><div class="sc-v">87 件</div></div>
+        <div class="sc"><div class="sc-l">管理者取消</div><div class="sc-v">2 件</div><div class="sc-s">ロールバック済み</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="cb">
+          <div class="filterbar">
+            <div><label>申請種別</label><select><option>すべて</option><option>有給休暇</option><option>遅刻・早退</option><option>経費精算</option><option>残業</option><option>出張</option><option>出張手当</option></select></div>
+            <div><label>ステータス</label><select><option>すべて</option><option>審査中</option><option>差し戻し</option><option>決裁完了</option><option>却下</option><option>取り下げ</option><option>管理者取消</option></select></div>
+            <div><label>申請者</label><input type="text" placeholder="氏名 / 社員番号"></div>
+            <div><label>対象期間（開始）</label><input type="date"></div>
+            <div><label>対象期間（終了）</label><input type="date"></div>
+          </div>
+          <div class="flex-g">
+            <button class="btn btn-primary">検索する</button>
+            <button class="btn btn-secondary">条件をリセット</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><h2>申請一覧 <small class="text-sub">115件</small></h2></div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr><th>ID</th><th>申請者</th><th>種別</th><th>対象日</th><th>金額/区分</th><th>ステータス</th><th>現在ステップ</th><th>連携</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>#1051</td><td>田中 一郎</td><td><span class="tchip">🌙 残業</span></td><td>6/15</td><td>17:30-18:00</td>
+                <td><span class="st st-pending">審査中</span></td><td>1/2 佐藤</td>
+                <td><span class="gw-badge warn">⚠ 打刻乖離</span></td>
+                <td><button class="btn btn-ghost btn-sm">詳細</button></td>
+              </tr>
+              <tr>
+                <td>#1048</td><td>鈴木 花子</td><td><span class="tchip">🧾 経費精算</span></td><td>6/18</td><td>1,800円</td>
+                <td><span class="st st-pending">審査中</span></td><td>1/2 佐藤</td><td></td>
+                <td><button class="btn btn-ghost btn-sm">詳細</button></td>
+              </tr>
+              <tr>
+                <td>#1042</td><td>田中 一郎</td><td><span class="tchip">🌴 有給休暇</span></td><td>6/30</td><td>全日</td>
+                <td><span class="st st-confirmed">決裁完了</span></td><td>完了</td>
+                <td><span class="gw-badge">📅 登録済</span></td>
+                <td>
+                  <button class="btn btn-ghost btn-sm">詳細</button>
+                  <button class="btn btn-danger btn-sm" onclick="openModal('modal-cancel')">取消</button>
+                </td>
+              </tr>
+              <tr>
+                <td>#1039</td><td>高橋 健</td><td><span class="tchip">🧾 経費精算</span></td><td>6/10</td><td>5,400円</td>
+                <td><span class="st st-confirmed">決裁完了</span></td><td>完了</td>
+                <td><span class="gw-badge drive">📁 Drive保存済</span></td>
+                <td>
+                  <button class="btn btn-ghost btn-sm">詳細</button>
+                  <button class="btn btn-danger btn-sm" onclick="openModal('modal-cancel')">取消</button>
+                </td>
+              </tr>
+              <tr>
+                <td>#1035</td><td>伊藤 由美</td><td><span class="tchip">🧾 経費精算</span></td><td>6/5</td><td>2,200円</td>
+                <td><span class="st st-cancelled">管理者取消</span></td><td>—</td>
+                <td><span class="gw-badge warn">📁 Drive残存</span></td>
+                <td><button class="btn btn-ghost btn-sm">詳細</button></td>
+              </tr>
+              <tr>
+                <td>#1031</td><td>鈴木 花子</td><td><span class="tchip">⏰ 遅刻・早退</span></td><td>6/3</td><td>早退16:00</td>
+                <td><span class="st st-rejected">差し戻し</span></td><td>1/2 佐藤</td><td></td>
+                <td><button class="btn btn-ghost btn-sm">詳細</button></td>
+              </tr>
+              <tr>
+                <td>#1028</td><td>高橋 健</td><td><span class="tchip">✈️ 出張</span></td><td>5/28</td><td>盛岡市</td>
+                <td><span class="st st-dismissed">却下</span></td><td>—</td><td></td>
+                <td><button class="btn btn-ghost btn-sm">詳細</button></td>
+              </tr>
+              <tr>
+                <td>#1024</td><td>田中 一郎</td><td><span class="tchip">🌴 有給休暇</span></td><td>5/20</td><td>半日AM</td>
+                <td><span class="st st-withdrawn">取り下げ</span></td><td>—</td><td></td>
+                <td><button class="btn btn-ghost btn-sm">詳細</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--c-sub);margin-top:12px;line-height:1.6;">
+        ※ すべての申請（取消・却下・取り下げを含む）は監査証跡として永続保存され、物理削除はできません。<br>
+        ※「取消」は決裁完了済みの申請のみ表示され、押すと連携先データ（勤怠・交通費・カレンダー）が自動で元に戻ります。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     ⑤ 管理者：承認ルート設定（社員管理 ＞ 承認ルート設定）
+============================================= -->
+<div id="screen-admin-route" class="screen">
+  <div class="hdr">
+    <div class="logo">IMS Hirosaki <span style="font-size:11px;color:var(--c-sub);font-weight:400;">管理</span></div>
+    <div class="ptitle">WordPress 管理画面</div>
+    <div class="uarea"><span>管理者（システム管理者）</span><button class="btn btn-ghost">ログアウト</button></div>
+  </div>
+  <div class="admin-layout">
+    <div class="sidebar">
+      <div class="sec">社員管理</div>
+      <button class="mi">社員一覧・編集</button>
+      <button class="mi">各種マスタ</button>
+      <button class="mi" onclick="show('admin-list')">稟議管理</button>
+      <button class="mi sub active">承認ルート設定</button>
+      <button class="mi">退職者一覧</button>
+      <div class="sec">設定</div>
+      <button class="mi" onclick="show('admin-settings')">申請種別・通知設定</button>
+    </div>
+    <div class="acontent" style="max-width:880px;">
+      <div class="bc"><span>社員管理</span> ＞ 承認ルート設定</div>
+
+      <div class="alert alert-info">
+        <span class="ico">ℹ</span>
+        <div>
+          各申請の種類ごとに、誰がどの順番で承認するかを決めます。承認者は「特定の人を指名」するか、申請者ごとに変わる「申請者の確認者」「申請者の最終管理者」を選べます。<br>
+          「申請者の確認者／最終管理者」は、各社員のプロフィールの承認者設定<span style="background:#DBEAFE;border-radius:3px;padding:0 5px;">01 ユーザー管理</span>を申請時に自動参照します。
+        </div>
+      </div>
+
+      <!-- 有給休暇のルート -->
+      <div class="route-edit">
+        <div class="re-head">
+          <div class="rt">🌴 有給休暇申請 <span class="tchip" style="background:#ECFDF5;color:#065F46;">2ステップ</span></div>
+          <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+        </div>
+        <div class="re-body">
+          <div class="step-card">
+            <div class="step-num">1</div>
+            <div class="step-ctl">
+              <select>
+                <option selected>申請者の確認者（直属上長）</option>
+                <option>申請者の最終管理者</option>
+                <option>特定の人を指名</option>
+              </select>
+              <div style="font-size:11px;color:var(--c-sub);display:flex;align-items:center;gap:6px;">
+                <span class="auto-tag">自動参照</span> first_approver_id を実行時に参照
+              </div>
+            </div>
+            <button class="step-del" title="削除">🗑</button>
+          </div>
+          <div class="step-card">
+            <div class="step-num">2</div>
+            <div class="step-ctl">
+              <select>
+                <option>申請者の確認者（直属上長）</option>
+                <option selected>申請者の最終管理者</option>
+                <option>特定の人を指名</option>
+              </select>
+              <div style="font-size:11px;color:var(--c-sub);display:flex;align-items:center;gap:6px;">
+                <span class="auto-tag">自動参照</span> final_approver_id を実行時に参照
+              </div>
+            </div>
+            <button class="step-del" title="削除">🗑</button>
+          </div>
+          <button class="add-step">＋ ステップを追加</button>
+        </div>
+      </div>
+
+      <!-- 経費精算のルート（特定ユーザー指名の例） -->
+      <div class="route-edit">
+        <div class="re-head">
+          <div class="rt">🧾 経費精算申請 <span class="tchip" style="background:#ECFDF5;color:#065F46;">2ステップ</span></div>
+          <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+        </div>
+        <div class="re-body">
+          <div class="step-card">
+            <div class="step-num">1</div>
+            <div class="step-ctl">
+              <select>
+                <option selected>申請者の確認者（直属上長）</option>
+                <option>申請者の最終管理者</option>
+                <option>特定の人を指名</option>
+              </select>
+              <div style="font-size:11px;color:var(--c-sub);display:flex;align-items:center;gap:6px;">
+                <span class="auto-tag">自動参照</span> first_approver_id
+              </div>
+            </div>
+            <button class="step-del" title="削除">🗑</button>
+          </div>
+          <div class="step-card">
+            <div class="step-num">2</div>
+            <div class="step-ctl">
+              <select>
+                <option>申請者の確認者（直属上長）</option>
+                <option>申請者の最終管理者</option>
+                <option selected>特定の人を指名</option>
+              </select>
+              <select>
+                <option selected>経理部 渡辺 主任</option>
+                <option>人事部 山本 美咲</option>
+                <option>本社 佐藤 健一</option>
+              </select>
+            </div>
+            <button class="step-del" title="削除">🗑</button>
+          </div>
+          <button class="add-step">＋ ステップを追加</button>
+        </div>
+      </div>
+
+      <!-- 遅刻・早退（1ステップの例） -->
+      <div class="route-edit">
+        <div class="re-head">
+          <div class="rt">⏰ 遅刻・早退申請 <span class="tchip" style="background:#ECFDF5;color:#065F46;">1ステップ</span></div>
+          <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+        </div>
+        <div class="re-body">
+          <div class="step-card">
+            <div class="step-num">1</div>
+            <div class="step-ctl">
+              <select>
+                <option selected>申請者の確認者（直属上長）</option>
+                <option>申請者の最終管理者</option>
+                <option>特定の人を指名</option>
+              </select>
+              <div style="font-size:11px;color:var(--c-sub);display:flex;align-items:center;gap:6px;">
+                <span class="auto-tag">自動参照</span> first_approver_id
+              </div>
+            </div>
+            <button class="step-del" title="削除">🗑</button>
+          </div>
+          <button class="add-step">＋ ステップを追加</button>
+        </div>
+      </div>
+
+      <div class="alert alert-warn">
+        <span class="ico">🔒</span>
+        <div>ルートを変更しても、すでに提出済み（審査中以降）の申請には影響しません。提出した時点のルートが各申請に固定されているため、新しいルートは変更後に提出された申請から適用されます。</div>
+      </div>
+
+      <div class="flex-b" style="margin-top:16px;">
+        <button class="btn btn-secondary">＋ 他の種別のルートを追加</button>
+        <button class="btn btn-primary">変更を保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     ⑥ 管理者：申請種別マスター・各種設定（設定）
+============================================= -->
+<div id="screen-admin-settings" class="screen">
+  <div class="hdr">
+    <div class="logo">IMS Hirosaki <span style="font-size:11px;color:var(--c-sub);font-weight:400;">管理</span></div>
+    <div class="ptitle">WordPress 管理画面</div>
+    <div class="uarea"><span>管理者（システム管理者）</span><button class="btn btn-ghost">ログアウト</button></div>
+  </div>
+  <div class="admin-layout">
+    <div class="sidebar">
+      <div class="sec">社員管理</div>
+      <button class="mi" onclick="show('admin-list')">稟議管理</button>
+      <button class="mi sub" onclick="show('admin-route')">承認ルート設定</button>
+      <div class="sec">設定</div>
+      <button class="mi active">申請種別・通知設定</button>
+    </div>
+    <div class="acontent" style="max-width:860px;">
+      <div class="bc"><span>設定</span> ＞ 申請種別・通知設定</div>
+
+      <!-- 申請種別マスター -->
+      <div class="card setting-section" style="padding:18px;">
+        <div class="ss-title">📋 申請種別の管理</div>
+        <p style="font-size:12px;color:var(--c-sub);margin-bottom:14px;">使用する申請の種類を管理します。並べ替え・無効化ができます。</p>
+        <div class="type-master-row"><span class="grip">⠿</span><span class="tcode">paid_leave</span><span style="flex:1;font-weight:600;">🌴 有給休暇申請</span><label class="toggle"><input type="checkbox" checked><span class="tk"></span></label></div>
+        <div class="type-master-row"><span class="grip">⠿</span><span class="tcode">late_early</span><span style="flex:1;font-weight:600;">⏰ 遅刻・早退申請</span><label class="toggle"><input type="checkbox" checked><span class="tk"></span></label></div>
+        <div class="type-master-row"><span class="grip">⠿</span><span class="tcode">expense</span><span style="flex:1;font-weight:600;">🧾 経費精算申請</span><label class="toggle"><input type="checkbox" checked><span class="tk"></span></label></div>
+        <div class="type-master-row"><span class="grip">⠿</span><span class="tcode">overtime</span><span style="flex:1;font-weight:600;">🌙 残業申請</span><label class="toggle"><input type="checkbox" checked><span class="tk"></span></label></div>
+        <div class="type-master-row"><span class="grip">⠿</span><span class="tcode">business_trip</span><span style="flex:1;font-weight:600;">✈️ 出張申請</span><label class="toggle"><input type="checkbox" checked><span class="tk"></span></label></div>
+        <div class="type-master-row"><span class="grip">⠿</span><span class="tcode">trip_allowance</span><span style="flex:1;font-weight:600;">💴 出張手当申請</span><label class="toggle"><input type="checkbox" checked><span class="tk"></span></label></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px;">＋ 種別を追加</button>
+      </div>
+
+      <!-- 通知設定 -->
+      <div class="card setting-section" style="padding:18px;">
+        <div class="ss-title">🔔 通知設定（Google Chat）</div>
+        <div class="setting-row">
+          <div class="sl">共通の通知先<div class="desc">すべての申請の通知を送るチャットルームのWebhook URL</div></div>
+          <div><input type="text" value="https://chat.googleapis.com/v1/spaces/AAA.../messages?..." placeholder="https://chat.googleapis.com/..."></div>
+        </div>
+        <div class="setting-row">
+          <div class="sl">種別ごとに通知先を分ける<div class="desc">申請の種類ごとに別のルームへ通知したい場合</div></div>
+          <div><label class="toggle"><input type="checkbox"><span class="tk"></span></label></div>
+        </div>
+        <div class="setting-row">
+          <div class="sl">メール通知の代替送信<div class="desc">Chat通知が3回失敗したとき、Gmailでメール通知に切り替える（Tier 2）</div></div>
+          <div>
+            <label class="toggle"><input type="checkbox" checked><span class="tk"></span></label>
+            <div style="font-size:11px;color:var(--c-sub);margin-top:6px;">送信元：noreply@ims-hirosaki.com</div>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="sl">残業の乖離アラートのしきい値<div class="desc">予定終了と実打刻の差がこの時間以上で申請者・承認者に通知 <span style="background:#FEF3C7;border-radius:3px;padding:0 5px;">02 打刻</span></div></div>
+          <div><input type="number" value="30" style="max-width:90px;"> 分以上</div>
+        </div>
+      </div>
+
+      <!-- ファイル保存設定 -->
+      <div class="card setting-section" style="padding:18px;">
+        <div class="ss-title">📁 領収書ファイルの保存先</div>
+        <div class="setting-row">
+          <div class="sl">保存先<div class="desc">経費精算の領収書をどこに保存するか</div></div>
+          <div><select style="max-width:280px;"><option>Google Drive に保存</option><option>このサーバーに保存（ローカル）</option></select></div>
+        </div>
+        <div class="setting-row">
+          <div class="sl">Drive 保存先フォルダID<div class="desc">アップロード先ルートフォルダのID</div></div>
+          <div><input type="text" value="1AbCdEfGhIjKlMnOpQrStUvWxYz" placeholder="Google DriveのURLから取得"></div>
+        </div>
+        <div class="setting-row">
+          <div class="sl">ファイルサイズ上限</div>
+          <div><input type="number" value="10" style="max-width:90px;"> MB</div>
+        </div>
+        <div class="setting-row">
+          <div class="sl">許可する形式</div>
+          <div style="font-size:12px;color:var(--c-text);">JPEG ・ PNG ・ PDF</div>
+        </div>
+      </div>
+
+      <!-- カレンダー同期設定 -->
+      <div class="card setting-section" style="padding:18px;margin-bottom:8px;">
+        <div class="ss-title">📅 カレンダー同期設定（Tier 1）</div>
+        <div class="setting-row">
+          <div class="sl">カレンダー同期<div class="desc">決裁完了したとき、申請者・承認者のGoogleカレンダーに予定を作成する</div></div>
+          <div><label class="toggle"><input type="checkbox" checked><span class="tk"></span></label></div>
+        </div>
+        <div class="setting-row">
+          <div class="sl">同期する申請の種類</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;">
+            <label class="flex-g"><input type="checkbox" checked> 🌴 有給休暇</label>
+            <label class="flex-g"><input type="checkbox" checked> ✈️ 出張</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-b" style="margin-top:16px;">
+        <span style="font-size:11px;color:var(--c-sub);">サービスアカウントキーは暗号化して保存され、外部には公開されません。</span>
+        <button class="btn btn-primary">設定を保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 共通モーダル -->
+<div class="modal-overlay" id="modal-cancel">
+  <div class="modal-box">
+    <div class="mb-head" style="color:var(--c-danger);">⚠ この決裁を取り消しますか？</div>
+    <div class="mb-body">
+      <p style="margin-bottom:12px;">決裁完了済みの申請を取り消すと、<b>連動先のデータ変更も自動で元に戻されます。</b></p>
+      <div class="alert alert-warn" style="margin-bottom:0;">
+        <span class="ico">↩</span>
+        <div>
+          <b>自動で元に戻る内容：</b><br>
+          ・勤怠表の「有給」フラグを解除<br>
+          ・有給日に自動割り当てした事業時間を削除<br>
+          ・0円化していた交通費を元の金額に再計算<br>
+          ・Googleカレンダーの有給イベントを削除
+        </div>
+      </div>
+    </div>
+    <div class="mb-foot">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cancel')">やめる</button>
+      <button class="btn btn-danger" onclick="closeModal('modal-cancel')">取り消す（ロールバック実行）</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  const map={'staff':0,'review-list':1,'review-detail':2,'admin-list':3,'admin-route':4,'admin-settings':5};
+  document.querySelectorAll('.page-nav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page-nav button')[map[name]].classList.add('active');
+  window.scrollTo(0,0);
+}
+function switchTab(pane){
+  document.querySelectorAll('#screen-staff .tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+pane).classList.add('active');
+  document.querySelectorAll('#screen-staff .pane').forEach(p=>p.style.display='none');
+  document.getElementById('pane-'+pane).style.display='block';
+}
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function toggleTl(el){el.closest('.tl-item').classList.toggle('open');}
+
+/* 申請種別フォームの動的切り替え（3.1） */
+const TYPE_FORMS = ['paid_leave','late_early','expense','overtime','business_trip','trip_allowance'];
+function switchAppType(code, skipConfirm){
+  if(!skipConfirm){
+    if(!confirm('申請種別を切り替えると、入力中の内容はクリアされます。よろしいですか？')){
+      document.getElementById('app-type-select').value = window._curType || 'paid_leave';
+      return;
+    }
+  }
+  window._curType = code;
+  TYPE_FORMS.forEach(t=>{
+    const el=document.getElementById('form-'+t);
+    if(el) el.style.display = (t===code)?'block':'none';
+  });
+}
+/* 区分ピル切替（有給） */
+function selPill(group, el){
+  el.closest('.radio-row').querySelectorAll('.radio-pill').forEach(p=>p.classList.remove('sel'));
+  el.classList.add('sel');
+  if(group==='leave'){
+    const hourly = el.dataset.val==='hourly';
+    document.getElementById('hourly-leave-row').style.display = hourly?'grid':'none';
+  }
+}
+/* 決裁アクションのコメント必須表示 */
+function showReqNote(kind){
+  document.getElementById('req-note').style.display = (kind==='reject'||kind==='dismiss')?'block':'none';
+}
+window._curType='paid_leave';
+</script>
+</body>
+</html>

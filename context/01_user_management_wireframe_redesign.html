@@ -1,0 +1,3415 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMS Hirosaki – 01 社員管理 ワイヤーフレーム（リデザイン）</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --paper: #F3ECDD;
+            --surface: #FFFCF5;
+            --surface-raised: #FFFFFF;
+            --ink: #211D17;
+            --ink-soft: #4A4339;
+            --sub: #897D69;
+            --line: #E1D5B7;
+            --line-soft: #ECE3CC;
+            --indigo: #1E3A5F;
+            --indigo-deep: #0F2034;
+            --indigo-soft: #34557F;
+            --indigo-tint: #EAEEF2;
+            --vermillion: #B8472F;
+            --vermillion-tint: #F6E3DB;
+            --gold: #A87C2E;
+            --moss: #5C7A4E;
+            --shadow-sm: 0 1px 2px rgba(33, 22, 10, .08);
+            --shadow-md: 0 10px 28px rgba(33, 22, 10, .12);
+            --shadow-lg: 0 26px 60px rgba(15, 32, 52, .30);
+            --r-sm: 6px;
+            --r-md: 14px;
+            --r-lg: 22px;
+            --f-display: 'Shippori Mincho', 'Hiragino Mincho ProN', serif;
+            --f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--f-body);
+            background: var(--paper);
+            color: var(--ink);
+            font-size: 14.5px;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        button,
+        input,
+        select {
+            font-family: inherit;
+        }
+
+        *:focus-visible {
+            outline: 2px solid var(--indigo);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* paper grain overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            pointer-events: none;
+            opacity: .035;
+            mix-blend-mode: multiply;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        /* ===== DEV SCREEN-SWITCHER (utility bar, visually distinct from product chrome) ===== */
+        .dev-nav {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            background: #2B2A28;
+            border-bottom: 1px solid #44423D;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .dev-nav .dev-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: .14em;
+            color: #8B8576;
+            flex-shrink: 0;
+            text-transform: uppercase;
+        }
+
+        .dev-nav .dev-seg {
+            display: flex;
+            gap: 2px;
+            background: #1E1D1B;
+            border-radius: 8px;
+            padding: 3px;
+            flex-shrink: 0;
+        }
+
+        .dev-nav .dev-seg button {
+            background: transparent;
+            color: #B9B3A2;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11.5px;
+            font-family: var(--f-body);
+            font-weight: 500;
+            transition: background .15s, color .15s;
+        }
+
+        .dev-nav .dev-seg button.active {
+            background: #565248;
+            color: #FCFAF3;
+            font-weight: 700;
+        }
+
+        .dev-nav .dev-seg button:hover:not(.active) {
+            background: #3A3833;
+            color: #FCFAF3;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* ===== BRAND STRIP ===== */
+        .brand-strip {
+            height: 4px;
+            background: linear-gradient(90deg, var(--indigo-deep), var(--indigo) 55%, var(--gold));
+        }
+
+        /* ===== PRODUCT HEADER ===== */
+        .site-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            position: sticky;
+            top: 38px;
+            z-index: 90;
+        }
+
+        .header-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            height: 60px;
+            padding: 0 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .brand-mark {
+            font-family: var(--f-display);
+            font-weight: 700;
+            font-size: 21px;
+            color: var(--indigo);
+            letter-spacing: .02em;
+        }
+
+        .brand-sub {
+            font-size: 9.5px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .14em;
+        }
+
+        .admin-chip {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--vermillion);
+            background: var(--vermillion-tint);
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: .03em;
+        }
+
+        .page-chip {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--indigo);
+            background: var(--indigo-tint);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .icon-btn {
+            position: relative;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-soft);
+            transition: border-color .15s, color .15s;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--indigo);
+            color: var(--indigo);
+        }
+
+        .icon-btn svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        .ping-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--vermillion);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 5px;
+            border-radius: 10px;
+            box-shadow: 0 0 0 2px var(--surface);
+        }
+
+        .btn-ghost {
+            background: none;
+            border: none;
+            font-size: 12.5px;
+            color: var(--sub);
+            cursor: pointer;
+            padding: 6px 4px;
+            border-bottom: 1px solid transparent;
+            transition: color .15s, border-color .15s;
+        }
+
+        .btn-ghost:hover {
+            color: var(--ink);
+            border-color: var(--sub);
+        }
+
+        /* ===== ICONS (shared) ===== */
+        svg.ico {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 1.7;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: var(--r-sm);
+            border: 1px solid transparent;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            transition: background .15s, border-color .15s, color .15s, transform .15s, box-shadow .15s;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--indigo);
+            color: #fff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            background: var(--indigo-deep);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--surface-raised);
+            color: var(--ink-soft);
+            border: 1px solid var(--line);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--indigo-soft);
+            color: var(--indigo);
+        }
+
+        .btn-danger {
+            background: var(--vermillion);
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background: #9C3A24;
+        }
+
+        .btn-success {
+            background: var(--moss);
+            color: #fff;
+        }
+
+        .btn-success:hover {
+            background: #4A6440;
+        }
+
+        .btn-warn {
+            background: var(--vermillion-tint);
+            color: #8A3A22;
+            border: 1px solid #E0BBA8;
+        }
+
+        .btn-warn:hover {
+            background: #EFD2C2;
+        }
+
+        .btn-ghost-u {
+            background: none;
+            border: none;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--indigo);
+            cursor: pointer;
+            padding: 2px 0;
+            border-bottom: 1px solid var(--indigo-soft);
+        }
+
+        .btn-ghost-u:hover {
+            color: var(--indigo-deep);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-block {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-logout {
+            background: transparent;
+            color: var(--sub);
+            border: 1px solid var(--line);
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+
+        .btn-logout:hover {
+            border-color: var(--vermillion);
+            color: var(--vermillion);
+        }
+
+        /* ===== ADMIN LAYOUT ===== */
+        .admin-layout {
+            display: flex;
+            min-height: calc(100vh - 98px);
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .admin-sidebar {
+            width: 232px;
+            background: var(--surface);
+            border-right: 1px solid var(--line);
+            padding: 24px 0;
+            flex-shrink: 0;
+            position: sticky;
+            top: 98px;
+            height: calc(100vh - 98px);
+            overflow-y: auto;
+        }
+
+        .admin-sidebar .menu-section {
+            padding: 6px 22px 8px;
+            font-size: 10px;
+            color: var(--sub);
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-top: 14px;
+        }
+
+        .admin-sidebar .menu-section:first-child {
+            margin-top: 0;
+        }
+
+        .admin-sidebar .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 22px;
+            color: var(--ink-soft);
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            border-left: 3px solid transparent;
+            transition: background .15s, color .15s, border-color .15s;
+        }
+
+        .admin-sidebar .menu-item svg.ico {
+            width: 15px;
+            height: 15px;
+            color: var(--sub);
+        }
+
+        .admin-sidebar .menu-item:hover {
+            background: var(--line-soft);
+            color: var(--ink);
+        }
+
+        .admin-sidebar .menu-item.active {
+            background: var(--indigo-tint);
+            color: var(--indigo);
+            border-left-color: var(--indigo);
+            font-weight: 700;
+        }
+
+        .admin-sidebar .menu-item.active svg.ico {
+            color: var(--indigo);
+        }
+
+        .admin-sidebar .menu-item.sub {
+            padding-left: 40px;
+            font-size: 12.5px;
+        }
+
+        .admin-content {
+            flex: 1;
+            padding: 28px 32px 60px;
+            overflow-x: auto;
+            min-width: 0;
+        }
+
+        /* ===== BREADCRUMB ===== */
+        .breadcrumb {
+            font-size: 12px;
+            color: var(--sub);
+            margin-bottom: 18px;
+        }
+
+        .breadcrumb span {
+            color: var(--ink);
+            font-weight: 700;
+        }
+
+        /* ===== SECTION LABEL ===== */
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .12em;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+        }
+
+        .section-label::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--line);
+        }
+
+        .section-label svg.ico {
+            width: 14px;
+            height: 14px;
+            color: var(--indigo);
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-header {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .card-header h2 {
+            font-family: var(--f-display);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .card-header .hint {
+            font-size: 12px;
+            color: var(--sub);
+        }
+
+        .card-body {
+            padding: 22px;
+        }
+
+        /* ===== TABLE ===== */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .data-table th {
+            padding: 11px 14px;
+            text-align: left;
+            font-size: 10.5px;
+            color: var(--indigo-soft);
+            font-weight: 700;
+            letter-spacing: .04em;
+            border-bottom: 1px solid var(--line);
+            background: var(--indigo-tint);
+        }
+
+        .data-table td {
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--line-soft);
+            vertical-align: middle;
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table tbody tr {
+            transition: background .12s;
+        }
+
+        .data-table tbody tr:hover td {
+            background: var(--line-soft);
+        }
+
+        .data-table .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--indigo);
+            color: #fff;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 8px;
+            vertical-align: middle;
+            font-family: var(--f-display);
+        }
+
+        /* ===== TAGS ===== */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .tag-google {
+            background: var(--indigo-tint);
+            color: var(--indigo);
+        }
+
+        .tag-pw {
+            background: #EFE7D8;
+            color: var(--gold);
+        }
+
+        .tag-active {
+            background: #E7EEE2;
+            color: var(--moss);
+        }
+
+        .tag-retire {
+            background: var(--line-soft);
+            color: var(--sub);
+        }
+
+        .tag-leave {
+            background: var(--vermillion-tint);
+            color: var(--vermillion);
+        }
+
+        .tag-on {
+            background: #E7EEE2;
+            color: var(--moss);
+        }
+
+        .tag-off {
+            background: var(--line-soft);
+            color: var(--sub);
+        }
+
+        /* ===== FORM ===== */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--ink-soft);
+            margin-bottom: 6px;
+            letter-spacing: .02em;
+        }
+
+        .form-label .req {
+            color: var(--vermillion);
+            margin-left: 2px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 9px 13px;
+            border: 1px solid var(--line-soft);
+            border-radius: var(--r-sm);
+            font-size: 13px;
+            font-family: var(--f-body);
+            background: var(--surface);
+            color: var(--ink);
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--indigo-soft);
+            box-shadow: 0 0 0 3px var(--indigo-tint);
+            background: var(--surface-raised);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 9px 13px;
+            border: 1px solid var(--line-soft);
+            border-radius: var(--r-sm);
+            font-size: 13px;
+            font-family: var(--f-body);
+            background: var(--surface);
+            color: var(--ink);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23897D69' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 30px;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--indigo-soft);
+            box-shadow: 0 0 0 3px var(--indigo-tint);
+        }
+
+        .form-row {
+            display: grid;
+            gap: 18px;
+        }
+
+        .form-row.cols-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .form-row.cols-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .form-section-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .08em;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 18px;
+            text-transform: uppercase;
+        }
+
+        .form-hint {
+            font-size: 11px;
+            color: var(--sub);
+            margin-top: 5px;
+            line-height: 1.5;
+        }
+
+        .login-toggle {
+            display: flex;
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            overflow: hidden;
+        }
+
+        .login-toggle label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 12.5px;
+            font-weight: 600;
+            border-right: 1px solid var(--line);
+            color: var(--ink-soft);
+            transition: background .15s, color .15s;
+        }
+
+        .login-toggle label:last-child {
+            border-right: none;
+        }
+
+        .login-toggle input {
+            display: none;
+        }
+
+        .login-toggle label.sel-g {
+            background: var(--indigo-tint);
+            color: var(--indigo);
+        }
+
+        .login-toggle label.sel-pw {
+            background: #EFE7D8;
+            color: var(--gold);
+        }
+
+        /* ===== SEARCH / TOOLBAR ===== */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .search-input-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 220px;
+        }
+
+        .search-input-wrap .si {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--sub);
+            display: flex;
+        }
+
+        .search-input-wrap input {
+            width: 100%;
+            padding: 9px 13px 9px 36px;
+            border: 1px solid var(--line-soft);
+            border-radius: var(--r-sm);
+            font-size: 13px;
+            font-family: var(--f-body);
+            background: var(--surface);
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .search-input-wrap input:focus {
+            outline: none;
+            border-color: var(--indigo-soft);
+            box-shadow: 0 0 0 3px var(--indigo-tint);
+            background: var(--surface-raised);
+        }
+
+        .filter-select {
+            width: auto;
+            min-width: 130px;
+        }
+
+        /* ===== LOGIN SCREEN ===== */
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(155deg, var(--indigo) 0%, var(--indigo-deep) 100%);
+            position: relative;
+            overflow: hidden;
+            padding: 40px 20px;
+        }
+
+        .login-wrapper::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient(115deg, rgba(255, 255, 255, .04) 0 1px, transparent 1px 26px);
+            pointer-events: none;
+        }
+
+        .login-glow {
+            position: absolute;
+            width: 380px;
+            height: 380px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168, 124, 46, .30), transparent 70%);
+            top: -120px;
+            right: -80px;
+            filter: blur(6px);
+        }
+
+        .login-card {
+            position: relative;
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 48px 44px;
+            width: 420px;
+            animation: fadeUp .6s ease backwards;
+            animation-delay: .05s;
+        }
+
+        .login-brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .login-logo {
+            font-family: var(--f-display);
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--indigo);
+            letter-spacing: .02em;
+        }
+
+        .login-logo-sub {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--sub);
+            letter-spacing: .16em;
+        }
+
+        .login-sub {
+            font-size: 12.5px;
+            color: var(--sub);
+            text-align: center;
+            margin-bottom: 34px;
+            margin-top: 10px;
+        }
+
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin: 26px 0;
+            color: var(--sub);
+            font-size: 11px;
+            letter-spacing: .05em;
+        }
+
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--line);
+        }
+
+        .btn-google {
+            width: 100%;
+            padding: 12px;
+            background: var(--indigo);
+            color: #fff;
+            border: none;
+            border-radius: var(--r-sm);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background .15s, box-shadow .15s, transform .15s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-google:hover {
+            background: var(--indigo-deep);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .g-icon {
+            width: 22px;
+            height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 900;
+            color: var(--indigo);
+        }
+
+        .login-note {
+            font-size: 11px;
+            color: var(--sub);
+            text-align: center;
+            margin-top: 14px;
+            line-height: 1.6;
+        }
+
+        /* ===== PORTAL DASHBOARD ===== */
+        .dashboard-wrap {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 40px 28px 64px;
+        }
+
+        .launcher-area {
+            margin-bottom: 28px;
+            padding: 12px 16px;
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            animation: fadeUp .5s ease backwards;
+            animation-delay: .05s;
+        }
+
+        .launcher-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            min-width: 64px;
+            border: 1px solid transparent;
+            transition: background .15s, border-color .15s, transform .15s;
+        }
+
+        .launcher-item:hover {
+            background: var(--indigo-tint);
+            border-color: var(--line);
+            transform: translateY(-2px);
+        }
+
+        .launcher-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .launcher-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .launcher-item[data-tint="mail"] .launcher-icon {
+            background: #F5DCD6;
+            color: #A8392A;
+        }
+
+        .launcher-item[data-tint="drive"] .launcher-icon {
+            background: #F4E6BE;
+            color: #97711C;
+        }
+
+        .launcher-item[data-tint="chat"] .launcher-icon {
+            background: #DCEBDD;
+            color: #2E6B40;
+        }
+
+        .launcher-item[data-tint="cal"] .launcher-icon {
+            background: #DDE6F2;
+            color: #2C5184;
+        }
+
+        .launcher-item[data-tint="teams"] .launcher-icon {
+            background: #E5E1F0;
+            color: #4F4685;
+        }
+
+        .launcher-item span {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+        }
+
+        .launcher-divider {
+            width: 1px;
+            height: 36px;
+            background: var(--line);
+            margin: 0 8px;
+            flex-shrink: 0;
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .status-card {
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
+            padding: 22px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: box-shadow .2s, transform .2s, border-color .2s;
+            animation: fadeUp .5s ease backwards;
+        }
+
+        .status-card:nth-of-type(1) {
+            animation-delay: .1s;
+        }
+
+        .status-card:nth-of-type(2) {
+            animation-delay: .15s;
+        }
+
+        .status-card:nth-of-type(3) {
+            animation-delay: .2s;
+        }
+
+        .status-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-3px);
+            border-color: var(--indigo-soft);
+        }
+
+        .sc-label {
+            font-size: 11px;
+            color: var(--sub);
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: .04em;
+        }
+
+        .sc-value {
+            font-family: var(--f-display);
+            font-size: 22px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+        }
+
+        .sc-sub {
+            font-size: 12px;
+            color: var(--sub);
+            margin-top: 6px;
+        }
+
+        .sc-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .dot-in {
+            background: #7FD893;
+            box-shadow: 0 0 0 0 rgba(127, 216, 147, .6);
+            animation: pulse 2s infinite;
+        }
+
+        .sc-accent {
+            border-left: 4px solid var(--indigo);
+        }
+
+        .sc-value--alert {
+            color: var(--vermillion);
+        }
+
+        .tile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 16px;
+        }
+
+        .tile {
+            background: var(--surface-raised);
+            border: 1px solid var(--line);
+            border-radius: var(--r-md);
+            padding: 24px 18px;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: box-shadow .2s, transform .2s, border-color .2s;
+            box-shadow: var(--shadow-sm);
+            animation: fadeUp .5s ease backwards;
+        }
+
+        .tile:nth-of-type(1) {
+            animation-delay: .25s;
+        }
+
+        .tile:nth-of-type(2) {
+            animation-delay: .3s;
+        }
+
+        .tile:nth-of-type(3) {
+            animation-delay: .35s;
+        }
+
+        .tile:nth-of-type(4) {
+            animation-delay: .4s;
+        }
+
+        .tile:nth-of-type(5) {
+            animation-delay: .45s;
+        }
+
+        .tile:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-3px);
+            border-color: var(--indigo-soft);
+        }
+
+        .tile .tile-icon {
+            width: 26px;
+            height: 26px;
+            color: var(--indigo);
+            margin: 0 auto 12px;
+            stroke-width: 1.6;
+        }
+
+        .tile .tile-label {
+            font-family: var(--f-display);
+            font-size: 14.5px;
+            font-weight: 700;
+        }
+
+        .tile .tile-desc {
+            font-size: 11px;
+            color: var(--sub);
+            margin-top: 5px;
+        }
+
+        .tile-badge {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            display: inline-block;
+            background: var(--vermillion);
+            color: #fff;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+
+        /* ===== MYPAGE ===== */
+        .mypage-wrap {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 40px 28px 64px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            margin-bottom: 24px;
+            padding: 28px;
+            background: linear-gradient(155deg, var(--indigo), var(--indigo-deep) 80%);
+            color: #fff;
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+            animation: fadeUp .6s ease backwards;
+        }
+
+        .profile-header::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient(115deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 26px);
+            pointer-events: none;
+        }
+
+        .profile-avatar {
+            position: relative;
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .15);
+            border: 1px solid rgba(255, 255, 255, .3);
+            color: #fff;
+            font-family: var(--f-display);
+            font-size: 26px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .profile-name {
+            position: relative;
+            font-family: var(--f-display);
+            font-size: 21px;
+            font-weight: 700;
+        }
+
+        .profile-meta {
+            position: relative;
+            font-size: 12px;
+            color: rgba(255, 255, 255, .7);
+            margin-top: 5px;
+        }
+
+        .profile-tags {
+            position: relative;
+            margin-top: 10px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .profile-tags .tag-google {
+            background: rgba(255, 255, 255, .18);
+            color: #fff;
+        }
+
+        .profile-tags .tag-active {
+            background: rgba(127, 216, 147, .25);
+            color: #DFF6E2;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .info-item {
+            padding: 16px;
+            background: var(--paper);
+            border-radius: var(--r-sm);
+            border: 1px solid var(--line);
+        }
+
+        .info-item .info-label {
+            font-size: 10.5px;
+            color: var(--sub);
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+
+        .info-item .info-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .notice-box {
+            background: var(--indigo-tint);
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            padding: 14px 18px;
+            font-size: 12.5px;
+            color: var(--indigo);
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            line-height: 1.6;
+        }
+
+        .notice-box svg.ico {
+            color: var(--indigo);
+            width: 16px;
+            height: 16px;
+            margin-top: 1px;
+        }
+
+        /* ===== EDIT SCREEN ===== */
+        .edit-wrap {
+            max-width: 880px;
+        }
+
+        .sensitive-area {
+            background: var(--vermillion-tint);
+            border: 1px solid #E0BBA8;
+            border-radius: var(--r-sm);
+            padding: 18px;
+        }
+
+        .sensitive-label {
+            font-size: 11px;
+            color: #8A3A22;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .sensitive-label svg.ico {
+            color: #8A3A22;
+            width: 14px;
+            height: 14px;
+        }
+
+        .hr-only-note {
+            font-size: 11.5px;
+            color: var(--vermillion);
+            margin-left: 8px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ===== MASTER TABS ===== */
+        .master-tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 24px;
+        }
+
+        .mtab {
+            padding: 11px 22px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 13.5px;
+            color: var(--sub);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            font-weight: 600;
+            transition: color .15s, border-color .15s;
+        }
+
+        .mtab.active {
+            color: var(--indigo);
+            border-bottom-color: var(--indigo);
+            font-weight: 700;
+        }
+
+        .mtab:hover:not(.active) {
+            color: var(--ink);
+        }
+
+        .mtab-panel {
+            display: none;
+        }
+
+        .mtab-panel.active {
+            display: block;
+        }
+
+        .master-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .add-form {
+            position: sticky;
+            top: 114px;
+        }
+
+        .master-subhead {
+            font-family: var(--f-display);
+            font-size: 14.5px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--indigo);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .master-subhead svg.ico {
+            width: 16px;
+            height: 16px;
+            color: var(--indigo);
+        }
+
+        /* ===== MISC ===== */
+        .flex-between {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .flex-gap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .text-sub {
+            color: var(--sub);
+            font-size: 12px;
+        }
+
+        .mt-16 {
+            margin-top: 16px;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .page-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--line);
+            border-radius: var(--r-sm);
+            background: var(--surface-raised);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-soft);
+            transition: all .15s;
+        }
+
+        .page-btn:hover {
+            border-color: var(--indigo-soft);
+            color: var(--indigo);
+        }
+
+        .page-btn.active {
+            background: var(--indigo);
+            color: #fff;
+            border-color: var(--indigo);
+        }
+
+        .alert {
+            padding: 13px 16px;
+            border-radius: var(--r-sm);
+            font-size: 12.5px;
+            margin-bottom: 18px;
+            display: flex;
+            gap: 10px;
+            line-height: 1.6;
+        }
+
+        .alert-warn {
+            background: var(--vermillion-tint);
+            border: 1px solid #E0BBA8;
+            color: #8A3A22;
+        }
+
+        .alert-warn svg.ico {
+            color: #8A3A22;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .salary-history-link {
+            font-size: 12px;
+            color: var(--indigo);
+            cursor: pointer;
+            font-weight: 700;
+            border-bottom: 1px solid var(--indigo-soft);
+        }
+
+        /* ===== MOTION ===== */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(127, 216, 147, .55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 7px rgba(127, 216, 147, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(127, 216, 147, 0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .admin-layout {
+                flex-direction: column;
+            }
+
+            .admin-sidebar {
+                width: 100%;
+                position: static;
+                height: auto;
+                display: flex;
+                flex-wrap: wrap;
+                padding: 12px;
+            }
+
+            .admin-sidebar .menu-section {
+                width: 100%;
+            }
+
+            .master-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .add-form {
+                position: static;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .launcher-area {
+                display: none !important;
+            }
+
+            .status-cards {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .tile-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .dashboard-wrap,
+            .mypage-wrap {
+                padding: 24px 16px 48px;
+            }
+
+            .form-row.cols-2,
+            .form-row.cols-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== DEV-ONLY SCREEN SELECTOR (wireframe review tool, not product chrome) ===== -->
+    <div class="dev-nav">
+        <span class="dev-label">画面選択（確認用）</span>
+        <div class="dev-seg">
+            <button class="active" onclick="showScreen('login')">① ログイン</button>
+            <button onclick="showScreen('dashboard')">② ダッシュボード</button>
+            <button onclick="showScreen('mypage')">③ マイページ</button>
+            <button onclick="showScreen('user-list')">④ 社員一覧（管理）</button>
+            <button onclick="showScreen('user-edit')">⑤ 社員編集（管理）</button>
+            <button onclick="showScreen('master')">⑥ 各種マスタ（管理）</button>
+            <button onclick="showScreen('launcher')">⑦ 外部ツール設定（管理）</button>
+        </div>
+    </div>
+
+    <!-- ① ログイン -->
+    <div id="screen-login" class="screen active">
+        <div class="login-wrapper">
+            <div class="login-glow"></div>
+            <div class="login-card">
+                <div class="login-brand">
+                    <span class="login-logo">IMS Hirosaki</span>
+                    <span class="login-logo-sub">HIROSAKI INTERNAL SYSTEM</span>
+                </div>
+                <div class="login-sub">社内業務ポータル</div>
+                <button class="btn-google">
+                    <span class="g-icon">G</span>
+                    Googleアカウントでログイン
+                </button>
+                <div class="login-note">会社のGoogleアカウント（@ims-hirosaki.com）でログインします</div>
+                <div class="login-divider">または</div>
+                <div class="form-group">
+                    <label class="form-label">メールアドレス</label>
+                    <input class="form-input" type="email" placeholder="example@example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">パスワード</label>
+                    <input class="form-input" type="password" placeholder="••••••••">
+                </div>
+                <div style="text-align:right; margin-bottom:18px;">
+                    <a class="btn-ghost-u" style="cursor:pointer;">パスワードをお忘れの方</a>
+                </div>
+                <button class="btn btn-primary btn-block">ログイン</button>
+                <div class="login-note" style="margin-top:14px;">Googleアカウントをお持ちの方は上のボタンからログインしてください</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ② ダッシュボード -->
+    <div id="screen-dashboard" class="screen">
+        <div class="brand-strip"></div>
+        <header class="site-header" style="top:38px;">
+            <div class="header-inner">
+                <a class="brand" href="#">
+                    <span class="brand-mark">IMS</span>
+                    <span class="brand-sub">HIROSAKI</span>
+                </a>
+                <div class="page-chip">ホーム</div>
+                <div class="header-actions">
+                    <span class="user-name">田中 一郎</span>
+                    <button class="icon-btn" aria-label="通知">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M12 4a5 5 0 0 0-5 5v3.2c0 .9-.34 1.77-.95 2.45L5 16h14l-1.05-1.35A3.8 3.8 0 0 1 17 12.2V9a5 5 0 0 0-5-5Z" />
+                            <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
+                        </svg>
+                        <span class="ping-badge">2</span>
+                    </button>
+                    <button class="btn-ghost">ログアウト</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="dashboard-wrap">
+            <!-- 外部ツールランチャー -->
+            <div class="launcher-area">
+                <a class="launcher-item" data-tint="mail" href="https://mail.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+                            <path d="M4 6.5l8 6.5 8-6.5" />
+                        </svg></span>
+                    <span>Gmail</span>
+                </a>
+                <a class="launcher-item" data-tint="drive" href="https://drive.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M3.5 7.2A1.7 1.7 0 0 1 5.2 5.5h4.1l1.7 2h7.3a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z" />
+                        </svg></span>
+                    <span>Drive</span>
+                </a>
+                <a class="launcher-item" data-tint="chat" href="https://chat.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M4 6a1.6 1.6 0 0 1 1.6-1.6h12.8A1.6 1.6 0 0 1 20 6v8a1.6 1.6 0 0 1-1.6 1.6H9l-3.6 3v-3H5.6A1.6 1.6 0 0 1 4 14Z" />
+                        </svg></span>
+                    <span>Chat</span>
+                </a>
+                <a class="launcher-item" data-tint="cal" href="https://calendar.google.com/" target="_blank"
+                    rel="noopener noreferrer">
+                    <span class="launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3.5" y="5" width="17" height="15" rx="2.2" />
+                            <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+                        </svg></span>
+                    <span>カレンダー</span>
+                </a>
+                <div class="launcher-divider"></div>
+                <a class="launcher-item" data-tint="teams" href="msteams://" target="_blank" rel="noopener noreferrer">
+                    <span class="launcher-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="9" r="3" />
+                            <circle cx="16.5" cy="10" r="2.4" />
+                            <path d="M3.5 19c.4-3 2.7-5 5.5-5s5.1 2 5.5 5" />
+                            <path d="M14.5 14.3c2 .2 3.6 1.8 4 4.7" />
+                        </svg></span>
+                    <span>Teams</span>
+                </a>
+            </div>
+
+            <div class="status-cards">
+                <div class="status-card sc-accent">
+                    <div class="sc-label">本日の勤務状況</div>
+                    <div class="sc-value"><span class="sc-dot dot-in"></span>勤務中</div>
+                    <div class="sc-sub">出勤 09:02 ／ 経過 5h32m</div>
+                </div>
+                <div class="status-card">
+                    <div class="sc-label">今月の勤怠</div>
+                    <div class="sc-value">未提出</div>
+                    <div class="sc-sub">出勤 14日 ／ 6月分</div>
+                </div>
+                <div class="status-card">
+                    <div class="sc-label">申請・承認</div>
+                    <div class="sc-value sc-value--alert">2件 承認待ち</div>
+                    <div class="sc-sub" style="color:var(--vermillion);">差し戻し 1件</div>
+                </div>
+            </div>
+
+            <div class="section-label">メニュー</div>
+            <div class="tile-grid">
+                <div class="tile">
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <path d="M12 7.5V12l3.2 1.8" />
+                    </svg>
+                    <div class="tile-label">打刻</div>
+                    <div class="tile-desc">出勤・退勤・休憩</div>
+                </div>
+                <div class="tile">
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="3.5" y="5" width="17" height="15" rx="2.2" />
+                        <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+                    </svg>
+                    <div class="tile-label">月次勤務表</div>
+                    <div class="tile-desc">勤怠入力・提出</div>
+                </div>
+                <div class="tile">
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M4.5 16V12.6a2 2 0 0 1 1.2-1.83l1.6-.7A3 3 0 0 1 8.5 9.5h7a3 3 0 0 1 1.2.57l1.6.7A2 2 0 0 1 19.5 12.6V16" />
+                        <path d="M4 16h16" />
+                        <circle cx="7.8" cy="16.6" r="1.4" />
+                        <circle cx="16.2" cy="16.6" r="1.4" />
+                    </svg>
+                    <div class="tile-label">交通費</div>
+                    <div class="tile-desc">通勤・業務移動</div>
+                </div>
+                <div class="tile">
+                    <span class="tile-badge">2</span>
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="6" y="4.5" width="12" height="16" rx="2" />
+                        <rect x="9" y="2.7" width="6" height="3" rx="1" />
+                        <path d="M9 12.5l2 2 4-4.2" />
+                    </svg>
+                    <div class="tile-label">申請・承認</div>
+                    <div class="tile-desc">各種申請・承認</div>
+                </div>
+                <div class="tile">
+                    <svg class="tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <circle cx="12" cy="10" r="3" />
+                        <path d="M6.8 17.8a5.6 5.6 0 0 1 10.4 0" />
+                    </svg>
+                    <div class="tile-label">マイページ</div>
+                    <div class="tile-desc">プロフィール確認</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ③ マイページ -->
+    <div id="screen-mypage" class="screen">
+        <div class="brand-strip"></div>
+        <header class="site-header" style="top:38px;">
+            <div class="header-inner">
+                <a class="brand" href="#">
+                    <span class="brand-mark">IMS</span>
+                    <span class="brand-sub">HIROSAKI</span>
+                </a>
+                <div class="page-chip">マイページ</div>
+                <div class="header-actions">
+                    <span class="user-name">田中 一郎</span>
+                    <button class="icon-btn" aria-label="通知">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M12 4a5 5 0 0 0-5 5v3.2c0 .9-.34 1.77-.95 2.45L5 16h14l-1.05-1.35A3.8 3.8 0 0 1 17 12.2V9a5 5 0 0 0-5-5Z" />
+                            <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
+                        </svg>
+                        <span class="ping-badge">2</span>
+                    </button>
+                    <button class="btn-ghost">ログアウト</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="mypage-wrap">
+            <div class="profile-header">
+                <div class="profile-avatar">田</div>
+                <div>
+                    <div class="profile-name">田中 一郎</div>
+                    <div class="profile-meta">社員番号：EMP-0042</div>
+                    <div class="profile-tags">
+                        <span class="tag tag-google">Googleアカウント</span>
+                        <span class="tag tag-active">在籍</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2>基本情報</h2>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">氏名</div>
+                            <div class="info-value">田中 一郎</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">社員番号</div>
+                            <div class="info-value">EMP-0042</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">所属</div>
+                            <div class="info-value">弘前本部</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">部署</div>
+                            <div class="info-value">営業部</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">役職</div>
+                            <div class="info-value">主任</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">職種</div>
+                            <div class="info-value">営業職</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">雇用形態</div>
+                            <div class="info-value">正社員</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">在籍状況</div>
+                            <div class="info-value"><span class="tag tag-active">在籍</span></div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">担当上長（確認者）</div>
+                            <div class="info-value">佐藤 花子</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">最終承認者</div>
+                            <div class="info-value">鈴木 部長</div>
+                        </div>
+                    </div>
+                    <div class="notice-box">
+                        <svg class="ico" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="8.5" />
+                            <path d="M12 11v5M12 8.2v.2" />
+                        </svg>
+                        内容の変更が必要な場合は、担当の管理者（人事部）にご連絡ください。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ④ 社員一覧 -->
+    <div id="screen-user-list" class="screen">
+        <div class="brand-strip"></div>
+        <header class="site-header" style="top:38px;">
+            <div class="header-inner">
+                <a class="brand" href="#">
+                    <span class="brand-mark">IMS</span>
+                    <span class="brand-sub">HIROSAKI</span>
+                </a>
+                <div class="admin-chip">管理画面</div>
+                <div class="header-actions">
+                    <span class="user-name">システム管理者</span>
+                    <button class="btn-ghost">ログアウト</button>
+                </div>
+            </div>
+        </header>
+        <div class="admin-layout">
+            <nav class="admin-sidebar">
+                <div class="menu-section">社員管理</div>
+                <button class="menu-item active">
+                    <svg class="ico" viewBox="0 0 24 24">
+                        <circle cx="9" cy="8" r="3.2" />
+                        <path d="M3.5 19c.4-3.2 2.7-5.4 5.5-5.4s5.1 2.2 5.5 5.4" />
+                        <circle cx="17" cy="9" r="2.4" />
+                        <path d="M14.8 13.8c2 .3 3.5 2 3.9 4.8" />
+                    </svg>
+                    社員一覧
+                </button>
+                <button class="menu-item sub">各種マスタ</button>
+                <button class="menu-item sub">退職者一覧</button>
+                <div class="menu-section">ポータル設定</div>
+                <button class="menu-item">
+                    <svg class="ico" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.7a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H2.3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.06a1.7 1.7 0 0 0 1.04-1.56V2.3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1.04 1.56h.06a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.06a1.7 1.7 0 0 0 1.56 1.04h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.56 1.04Z" />
+                    </svg>
+                    外部ツール設定
+                </button>
+                <button class="menu-item">システム設定</button>
+            </nav>
+            <div class="admin-content">
+                <div class="breadcrumb">社員管理 &gt; <span>社員一覧</span></div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>社員一覧 <span class="hint" style="font-weight:400;">全 32 名</span></h2>
+                        <div class="flex-gap">
+                            <button class="btn btn-secondary btn-sm">
+                                <svg class="ico" viewBox="0 0 24 24">
+                                    <path d="M12 4v11M8 11l4 4 4-4" />
+                                    <path d="M4.5 17v2a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-2" />
+                                </svg>
+                                一括取り込み（CSV）
+                            </button>
+                            <button class="btn btn-secondary btn-sm">
+                                <svg class="ico" viewBox="0 0 24 24">
+                                    <path d="M12 15V4M8 8l4-4 4 4" />
+                                    <path d="M4.5 17v2a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-2" />
+                                </svg>
+                                一覧ダウンロード
+                            </button>
+                            <button class="btn btn-primary btn-sm">
+                                <svg class="ico" viewBox="0 0 24 24" stroke="#fff">
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 8v8M8 12h8" />
+                                </svg>
+                                新規社員登録
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="search-input-wrap">
+                                <span class="si"><svg class="ico" viewBox="0 0 24 24">
+                                        <circle cx="11" cy="11" r="6.5" />
+                                        <path d="M20 20l-4.3-4.3" />
+                                    </svg></span>
+                                <input type="text" placeholder="氏名・社員番号・メールアドレスで検索">
+                            </div>
+                            <select class="form-select filter-select">
+                                <option>所属：すべて</option>
+                                <option>弘前本部</option>
+                                <option>青森支部</option>
+                            </select>
+                            <select class="form-select filter-select">
+                                <option>部署：すべて</option>
+                                <option>営業部</option>
+                                <option>総務部</option>
+                                <option>開発部</option>
+                            </select>
+                            <select class="form-select filter-select" style="min-width:150px;">
+                                <option>ログイン方法：すべて</option>
+                                <option>Googleアカウント</option>
+                                <option>ID・パスワード</option>
+                            </select>
+                            <select class="form-select filter-select">
+                                <option>在籍中のみ</option>
+                                <option>退職者も含む</option>
+                            </select>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>社員番号</th>
+                                    <th>氏名</th>
+                                    <th>所属・部署</th>
+                                    <th>役職</th>
+                                    <th>雇用形態</th>
+                                    <th>在籍状況</th>
+                                    <th>ログイン方法</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="color:var(--sub);font-size:12px;">EMP-0001</td>
+                                    <td><span class="avatar">佐</span>佐藤 花子</td>
+                                    <td>弘前本部・営業部</td>
+                                    <td>課長</td>
+                                    <td>正社員</td>
+                                    <td><span class="tag tag-active">在籍</span></td>
+                                    <td><span class="tag tag-google">Googleアカウント</span></td>
+                                    <td><button class="btn btn-secondary btn-sm">編集</button></td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--sub);font-size:12px;">EMP-0042</td>
+                                    <td><span class="avatar">田</span>田中 一郎</td>
+                                    <td>弘前本部・営業部</td>
+                                    <td>主任</td>
+                                    <td>正社員</td>
+                                    <td><span class="tag tag-active">在籍</span></td>
+                                    <td><span class="tag tag-google">Googleアカウント</span></td>
+                                    <td><button class="btn btn-secondary btn-sm">編集</button></td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--sub);font-size:12px;">EMP-0087</td>
+                                    <td><span class="avatar" style="background:var(--sub);">山</span>山田 次郎</td>
+                                    <td>弘前本部・総務部</td>
+                                    <td>—</td>
+                                    <td>パート・アルバイト</td>
+                                    <td><span class="tag tag-active">在籍</span></td>
+                                    <td><span class="tag tag-pw">ID・パスワード</span></td>
+                                    <td><button class="btn btn-secondary btn-sm">編集</button></td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--sub);font-size:12px;">EMP-0055</td>
+                                    <td><span class="avatar" style="background:var(--gold);">伊</span>伊藤 美咲</td>
+                                    <td>弘前本部・開発部</td>
+                                    <td>係長</td>
+                                    <td>契約社員</td>
+                                    <td><span class="tag tag-leave">育児休業中</span></td>
+                                    <td><span class="tag tag-google">Googleアカウント</span></td>
+                                    <td><button class="btn btn-secondary btn-sm">編集</button></td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--sub);font-size:12px;">EMP-0019</td>
+                                    <td><span class="avatar" style="background:#9CA3AF;">小</span>小林 健</td>
+                                    <td>—・—</td>
+                                    <td>—</td>
+                                    <td>業務委託</td>
+                                    <td><span class="tag tag-active">在籍</span></td>
+                                    <td><span class="tag tag-pw">ID・パスワード</span></td>
+                                    <td><button class="btn btn-secondary btn-sm">編集</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="pagination">
+                            <button class="page-btn active">1</button>
+                            <button class="page-btn">2</button>
+                            <button class="page-btn">3</button>
+                            <span style="color:var(--sub);font-size:12px;margin:0 4px;">…</span>
+                            <button class="page-btn">7</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⑤ 社員編集 -->
+    <div id="screen-user-edit" class="screen">
+        <div class="brand-strip"></div>
+        <header class="site-header" style="top:38px;">
+            <div class="header-inner">
+                <a class="brand" href="#">
+                    <span class="brand-mark">IMS</span>
+                    <span class="brand-sub">HIROSAKI</span>
+                </a>
+                <div class="admin-chip">管理画面</div>
+                <div class="header-actions">
+                    <span class="user-name">システム管理者</span>
+                    <button class="btn-ghost">ログアウト</button>
+                </div>
+            </div>
+        </header>
+        <div class="admin-layout">
+            <nav class="admin-sidebar">
+                <div class="menu-section">社員管理</div>
+                <button class="menu-item active">
+                    <svg class="ico" viewBox="0 0 24 24">
+                        <circle cx="9" cy="8" r="3.2" />
+                        <path d="M3.5 19c.4-3.2 2.7-5.4 5.5-5.4s5.1 2.2 5.5 5.4" />
+                        <circle cx="17" cy="9" r="2.4" />
+                        <path d="M14.8 13.8c2 .3 3.5 2 3.9 4.8" />
+                    </svg>
+                    社員一覧
+                </button>
+                <button class="menu-item sub">各種マスタ</button>
+                <button class="menu-item sub">退職者一覧</button>
+                <div class="menu-section">ポータル設定</div>
+                <button class="menu-item">外部ツール設定</button>
+            </nav>
+            <div class="admin-content">
+                <div class="breadcrumb">社員管理 &gt; 社員一覧 &gt; <span>田中 一郎 の編集</span></div>
+                <div class="edit-wrap">
+
+                    <!-- 基本情報・ログイン設定 -->
+                    <div class="card" style="margin-bottom:18px;">
+                        <div class="card-header">
+                            <h2>基本情報・ログイン設定</h2>
+                            <span class="tag tag-google">Googleアカウント</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-section-title">ログイン方法</div>
+                            <div class="login-toggle" style="margin-bottom:8px;">
+                                <label class="sel-g">
+                                    <input type="radio" name="login" checked>
+                                    <svg class="ico" viewBox="0 0 24 24">
+                                        <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+                                        <path d="M4 6.5l8 6.5 8-6.5" />
+                                    </svg>
+                                    Googleアカウント（@ims-hirosaki.com）
+                                </label>
+                                <label>
+                                    <input type="radio" name="login">
+                                    <svg class="ico" viewBox="0 0 24 24">
+                                        <rect x="5" y="10.5" width="14" height="9" rx="2" />
+                                        <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+                                    </svg>
+                                    ID・パスワード
+                                </label>
+                            </div>
+                            <div class="form-hint" style="margin-bottom:18px;">Googleアカウントを選択した場合、パスワードの設定は不要です</div>
+                            <div class="form-row cols-2">
+                                <div class="form-group">
+                                    <label class="form-label">社員番号<span class="req">*</span></label>
+                                    <input class="form-input" value="EMP-0042">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">メールアドレス<span class="req">*</span></label>
+                                    <input class="form-input" value="tanaka@ims-hirosaki.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">姓<span class="req">*</span></label>
+                                    <input class="form-input" value="田中">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">名<span class="req">*</span></label>
+                                    <input class="form-input" value="一郎">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 所属・雇用情報 -->
+                    <div class="card" style="margin-bottom:18px;">
+                        <div class="card-header">
+                            <h2>所属・雇用情報</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row cols-2">
+                                <div class="form-group">
+                                    <label class="form-label">所属</label>
+                                    <select class="form-select">
+                                        <option selected>弘前本部</option>
+                                        <option>青森支部</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">部署</label>
+                                    <select class="form-select">
+                                        <option selected>営業部</option>
+                                        <option>総務部</option>
+                                        <option>開発部</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">役職</label>
+                                    <select class="form-select">
+                                        <option>—（なし）</option>
+                                        <option selected>主任</option>
+                                        <option>係長</option>
+                                        <option>課長</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">職種</label>
+                                    <select class="form-select">
+                                        <option selected>営業職</option>
+                                        <option>事務職</option>
+                                        <option>技術職</option>
+                                        <option>介護職</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">雇用形態</label>
+                                    <select class="form-select">
+                                        <option selected>正社員</option>
+                                        <option>契約社員</option>
+                                        <option>パート・アルバイト</option>
+                                        <option>業務委託</option>
+                                        <option>派遣</option>
+                                        <option>嘱託</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">在籍状況</label>
+                                    <select class="form-select">
+                                        <option selected>在籍</option>
+                                        <option>休職</option>
+                                        <option>育児休業中</option>
+                                        <option>出向</option>
+                                        <option>退職</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">1日の所定労働時間</label>
+                                    <input class="form-input" value="8.00" type="number" step="0.25">
+                                    <div class="form-hint">時間単位で入力（例：8時間 → 8.00）</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">このシステムでの権限</label>
+                                    <select class="form-select">
+                                        <option selected>一般社員</option>
+                                        <option>承認者（上長）</option>
+                                        <option>人事管理担当者</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 承認者設定 -->
+                    <div class="card" style="margin-bottom:18px;">
+                        <div class="card-header">
+                            <h2>申請の承認者設定</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row cols-2">
+                                <div class="form-group">
+                                    <label class="form-label">確認者（第1承認者）</label>
+                                    <select class="form-select">
+                                        <option selected>佐藤 花子</option>
+                                        <option>鈴木 部長</option>
+                                    </select>
+                                    <div class="form-hint">承認者以上の権限を持つ方のみ設定できます</div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">最終承認者（第2承認者）</label>
+                                    <select class="form-select">
+                                        <option selected>鈴木 部長</option>
+                                    </select>
+                                    <div class="form-hint">人事管理担当者以上の方のみ設定できます</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 給与・手当設定 -->
+                    <div class="card" style="margin-bottom:18px;">
+                        <div class="card-header">
+                            <h2>給与・手当設定 <span class="hr-only-note">
+                                    <svg class="ico" viewBox="0 0 24 24" style="width:13px;height:13px;">
+                                        <path d="M12 9v4M12 16v.2" />
+                                        <circle cx="12" cy="12" r="9" />
+                                    </svg>
+                                    人事管理担当者以上のみ表示</span></h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="sensitive-area">
+                                <div class="sensitive-label">
+                                    <svg class="ico" viewBox="0 0 24 24">
+                                        <rect x="5" y="10.5" width="14" height="9" rx="2" />
+                                        <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+                                    </svg>
+                                    この情報は人事管理担当者・システム管理者のみ確認・編集できます
+                                </div>
+                                <div class="form-row cols-3" style="margin-bottom:18px;">
+                                    <div class="form-group">
+                                        <label class="form-label">基本給（円）</label>
+                                        <input class="form-input" value="280,000">
+                                        <div class="form-hint">現在の金額 ／ <span
+                                                class="salary-history-link">変更履歴を確認する</span></div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">通勤の片道距離（km）</label>
+                                        <input class="form-input" value="12.4">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">交通費単価（円/km）</label>
+                                        <input class="form-input" value="27.0">
+                                    </div>
+                                </div>
+                                <div
+                                    style="background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--r-sm);padding:16px;margin-bottom:18px;">
+                                    <div
+                                        style="font-size:12.5px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px;">
+                                        <svg class="ico" viewBox="0 0 24 24" style="color:var(--indigo);">
+                                            <path d="M5 19l1-4L16.5 4.5a2 2 0 0 1 2.8 2.8L9 18l-4 1Z" />
+                                            <path d="M14 6.5l3 3" />
+                                        </svg>
+                                        基本給を変更する
+                                    </div>
+                                    <div class="form-row cols-2">
+                                        <div class="form-group">
+                                            <label class="form-label">新しい基本給（円）</label>
+                                            <input class="form-input" placeholder="例：300000">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">適用開始日<span class="req">*</span></label>
+                                            <input class="form-input" type="date">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">変更理由・備考</label>
+                                        <input class="form-input" placeholder="例：定期昇給">
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm">変更を記録する</button>
+                                </div>
+                                <div>
+                                    <div style="font-size:12.5px;font-weight:700;margin-bottom:10px;">手当設定</div>
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>手当の種類</th>
+                                                <th>現在の金額（円）</th>
+                                                <th>適用開始日</th>
+                                                <th>変更</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>役職手当</td>
+                                                <td>15,000</td>
+                                                <td>2024-04-01</td>
+                                                <td><button class="btn btn-secondary btn-sm">変更</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td>資格手当</td>
+                                                <td>5,000</td>
+                                                <td>2023-10-01</td>
+                                                <td><button class="btn btn-secondary btn-sm">変更</button></td>
+                                            </tr>
+                                            <tr>
+                                                <td>家族手当</td>
+                                                <td>0</td>
+                                                <td>—</td>
+                                                <td><button class="btn btn-secondary btn-sm">変更</button></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- アクションボタン -->
+                    <div class="flex-gap" style="justify-content:space-between;margin-top:10px;">
+                        <button class="btn btn-danger btn-sm">退職処理</button>
+                        <div class="flex-gap">
+                            <button class="btn btn-secondary">キャンセル</button>
+                            <button class="btn btn-success">変更を保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⑥ 各種マスタ管理 -->
+    <div id="screen-master" class="screen">
+        <div class="brand-strip"></div>
+        <header class="site-header" style="top:38px;">
+            <div class="header-inner">
+                <a class="brand" href="#">
+                    <span class="brand-mark">IMS</span>
+                    <span class="brand-sub">HIROSAKI</span>
+                </a>
+                <div class="admin-chip">管理画面</div>
+                <div class="header-actions">
+                    <span class="user-name">システム管理者</span>
+                    <button class="btn-ghost">ログアウト</button>
+                </div>
+            </div>
+        </header>
+        <div class="admin-layout">
+            <nav class="admin-sidebar">
+                <div class="menu-section">社員管理</div>
+                <button class="menu-item">社員一覧</button>
+                <button class="menu-item sub active">各種マスタ</button>
+                <button class="menu-item sub">退職者一覧</button>
+                <div class="menu-section">ポータル設定</div>
+                <button class="menu-item">外部ツール設定</button>
+            </nav>
+            <div class="admin-content">
+                <div class="breadcrumb">社員管理 &gt; <span>各種マスタ</span></div>
+
+                <!-- タブ -->
+                <div class="master-tabs">
+                    <button class="mtab active" onclick="switchTab('tab-affiliation', this)">所属情報</button>
+                    <button class="mtab" onclick="switchTab('tab-employment', this)">雇用形態</button>
+                    <button class="mtab" onclick="switchTab('tab-allowance', this)">手当設定</button>
+                </div>
+
+                <!-- ===== 所属情報タブ ===== -->
+                <div id="tab-affiliation" class="mtab-panel active">
+                    <!-- 所属 -->
+                    <div class="master-subhead">
+                        <svg class="ico" viewBox="0 0 24 24">
+                            <path d="M4 20V6.5L12 3l8 3.5V20" />
+                            <path d="M9 20v-5h6v5M4 11h16M4 15.5h16" />
+                        </svg>
+                        所属
+                    </div>
+                    <div class="master-grid" style="margin-bottom:36px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>所属一覧</h2><span class="text-sub">有効 3 / 無効 0</span>
+                            </div>
+                            <div class="card-body" style="padding:0;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>所属名</th>
+                                            <th>所属人数</th>
+                                            <th>状態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>弘前本部</td>
+                                            <td>24名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>青森支部</td>
+                                            <td>6名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>八戸事務所</td>
+                                            <td>2名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="add-form card">
+                            <div class="card-header">
+                                <h2>所属を追加</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group"><label class="form-label">所属名<span
+                                            class="req">*</span></label><input class="form-input" placeholder="例：弘前本部">
+                                </div>
+                                <div class="form-group"><label class="form-label">表示順</label><input class="form-input"
+                                        type="number" placeholder="例：1"></div>
+                                <button class="btn btn-primary btn-block">追加する</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 部署 -->
+                    <div class="master-subhead">
+                        <svg class="ico" viewBox="0 0 24 24">
+                            <rect x="3.5" y="6.5" width="17" height="13" rx="2" />
+                            <path d="M3.5 10.5h17" />
+                            <path d="M8 6.5V5a1.5 1.5 0 0 1 1.5-1.5h5A1.5 1.5 0 0 1 16 5v1.5" />
+                        </svg>
+                        部署
+                    </div>
+                    <div class="master-grid" style="margin-bottom:36px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>部署一覧</h2><span class="text-sub">有効 5 / 無効 1</span>
+                            </div>
+                            <div class="card-body" style="padding:0;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>部署名</th>
+                                            <th>所属</th>
+                                            <th>在籍人数</th>
+                                            <th>状態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>営業部</td>
+                                            <td>弘前本部</td>
+                                            <td>12名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>総務部</td>
+                                            <td>弘前本部</td>
+                                            <td>6名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>開発部</td>
+                                            <td>弘前本部</td>
+                                            <td>8名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>介護サービス部</td>
+                                            <td>青森支部</td>
+                                            <td>18名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>経営管理部</td>
+                                            <td>弘前本部</td>
+                                            <td>4名</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr style="opacity:.55;">
+                                            <td>情報システム部（旧）</td>
+                                            <td>—</td>
+                                            <td>0名</td>
+                                            <td><span class="tag tag-off">停止中</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">再開</button><button
+                                                    class="btn btn-danger btn-sm">削除</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="add-form card">
+                            <div class="card-header">
+                                <h2>部署を追加</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group"><label class="form-label">部署名<span
+                                            class="req">*</span></label><input class="form-input" placeholder="例：営業部">
+                                </div>
+                                <div class="form-group"><label class="form-label">所属</label>
+                                    <select class="form-select">
+                                        <option>弘前本部</option>
+                                        <option>青森支部</option>
+                                        <option>八戸事務所</option>
+                                    </select>
+                                </div>
+                                <div class="form-group"><label class="form-label">表示順</label><input class="form-input"
+                                        type="number" placeholder="例：10"></div>
+                                <button class="btn btn-primary btn-block">追加する</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 役職 -->
+                    <div class="master-subhead">
+                        <svg class="ico" viewBox="0 0 24 24">
+                            <path d="M4 9.5l8-5 8 5-8 5-8-5Z" />
+                            <path d="M7 11.3V16c0 1 2.2 2 5 2s5-1 5-2v-4.7" />
+                        </svg>
+                        役職
+                    </div>
+                    <div class="master-grid" style="margin-bottom:36px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>役職一覧</h2><span class="text-sub">有効 5</span>
+                            </div>
+                            <div class="card-body" style="padding:0;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>役職名</th>
+                                            <th>表示順</th>
+                                            <th>状態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>部長</td>
+                                            <td>1</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>課長</td>
+                                            <td>2</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>係長</td>
+                                            <td>3</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>主任</td>
+                                            <td>4</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>リーダー</td>
+                                            <td>5</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="add-form card">
+                            <div class="card-header">
+                                <h2>役職を追加</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group"><label class="form-label">役職名<span
+                                            class="req">*</span></label><input class="form-input" placeholder="例：主任">
+                                </div>
+                                <div class="form-group"><label class="form-label">表示順</label><input class="form-input"
+                                        type="number" placeholder="例：5"></div>
+                                <button class="btn btn-primary btn-block">追加する</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 職種 -->
+                    <div class="master-subhead">
+                        <svg class="ico" viewBox="0 0 24 24">
+                            <rect x="3.5" y="8" width="17" height="11" rx="2" />
+                            <path d="M8.5 8V6.3A1.8 1.8 0 0 1 10.3 4.5h3.4A1.8 1.8 0 0 1 15.5 6.3V8" />
+                            <path d="M3.5 12.5h17" />
+                        </svg>
+                        職種
+                    </div>
+                    <div class="master-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>職種一覧</h2><span class="text-sub">有効 5</span>
+                            </div>
+                            <div class="card-body" style="padding:0;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>職種名</th>
+                                            <th>表示順</th>
+                                            <th>状態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>営業職</td>
+                                            <td>1</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>事務職</td>
+                                            <td>2</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>技術職</td>
+                                            <td>3</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>介護職</td>
+                                            <td>4</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>相談支援専門員</td>
+                                            <td>5</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="add-form card">
+                            <div class="card-header">
+                                <h2>職種を追加</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group"><label class="form-label">職種名<span
+                                            class="req">*</span></label><input class="form-input" placeholder="例：介護職">
+                                </div>
+                                <div class="form-group"><label class="form-label">表示順</label><input class="form-input"
+                                        type="number" placeholder="例：5"></div>
+                                <button class="btn btn-primary btn-block">追加する</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warn mt-16">
+                        <svg class="ico" viewBox="0 0 24 24">
+                            <path d="M12 3l9.5 17H2.5Z" />
+                            <path d="M12 10v4M12 16.8v.2" />
+                        </svg>
+                        「営業部」には 12名の社員が所属しています。停止すると新規社員登録時の選択肢から除外されますが、すでに登録している社員のデータはそのまま保持されます。
+                    </div>
+                </div>
+
+                <!-- ===== 雇用形態タブ ===== -->
+                <div id="tab-employment" class="mtab-panel">
+                    <div class="master-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>雇用形態一覧</h2><span class="text-sub">有効 6</span>
+                            </div>
+                            <div class="card-body" style="padding:0;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>雇用形態名</th>
+                                            <th>表示順</th>
+                                            <th>状態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>正社員</td>
+                                            <td>1</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>契約社員</td>
+                                            <td>2</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>パート・アルバイト</td>
+                                            <td>3</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>業務委託</td>
+                                            <td>4</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>派遣</td>
+                                            <td>5</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>嘱託</td>
+                                            <td>6</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="add-form card">
+                            <div class="card-header">
+                                <h2>雇用形態を追加</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group"><label class="form-label">雇用形態名<span
+                                            class="req">*</span></label><input class="form-input" placeholder="例：嘱託">
+                                </div>
+                                <div class="form-group"><label class="form-label">表示順</label><input class="form-input"
+                                        type="number" placeholder="例：6"></div>
+                                <button class="btn btn-primary btn-block">追加する</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 手当設定タブ ===== -->
+                <div id="tab-allowance" class="mtab-panel">
+                    <div class="master-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>手当の種類一覧</h2><span class="text-sub">有効 5</span>
+                            </div>
+                            <div class="card-body" style="padding:0;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>手当名</th>
+                                            <th>表示順</th>
+                                            <th>状態</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>役職手当</td>
+                                            <td>1</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>資格手当</td>
+                                            <td>2</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>家族手当</td>
+                                            <td>3</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>住宅手当</td>
+                                            <td>4</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>皆勤手当</td>
+                                            <td>5</td>
+                                            <td><span class="tag tag-on">有効</span></td>
+                                            <td class="flex-gap"><button
+                                                    class="btn btn-secondary btn-sm">編集</button><button
+                                                    class="btn btn-warn btn-sm">停止</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="add-form card">
+                            <div class="card-header">
+                                <h2>手当の種類を追加</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label class="form-label">手当名<span class="req">*</span></label>
+                                    <input class="form-input" placeholder="例：資格手当">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">表示順</label>
+                                    <input class="form-input" type="number" placeholder="例：3">
+                                </div>
+                                <button class="btn btn-primary btn-block">追加する</button>
+                            </div>
+                            <div style="padding:16px 22px;border-top:1px solid var(--line);">
+                                <div style="font-size:12px;color:var(--sub);line-height:1.7;">
+                                    ここでは手当の「種類」を登録します。各社員への金額設定は<br>社員編集画面の「給与・手当設定」から行ってください。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ⑦ 外部ツール設定 -->
+    <div id="screen-launcher" class="screen">
+        <div class="brand-strip"></div>
+        <header class="site-header" style="top:38px;">
+            <div class="header-inner">
+                <a class="brand" href="#">
+                    <span class="brand-mark">IMS</span>
+                    <span class="brand-sub">HIROSAKI</span>
+                </a>
+                <div class="admin-chip">管理画面</div>
+                <div class="header-actions">
+                    <span class="user-name">システム管理者</span>
+                    <button class="btn-ghost">ログアウト</button>
+                </div>
+            </div>
+        </header>
+        <div class="admin-layout">
+            <nav class="admin-sidebar">
+                <div class="menu-section">社員管理</div>
+                <button class="menu-item">社員一覧</button>
+                <button class="menu-item sub">各種マスタ</button>
+                <button class="menu-item sub">退職者一覧</button>
+                <div class="menu-section">ポータル設定</div>
+                <button class="menu-item active">
+                    <svg class="ico" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.7a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H2.3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.56-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.06a1.7 1.7 0 0 0 1.04-1.56V2.3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1.04 1.56h.06a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.06a1.7 1.7 0 0 0 1.56 1.04h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.56 1.04Z" />
+                    </svg>
+                    外部ツール設定
+                </button>
+            </nav>
+            <div class="admin-content">
+                <div class="breadcrumb">ポータル設定 &gt; <span>外部ツール設定</span></div>
+
+                <div style="display:grid;grid-template-columns:1fr 380px;gap:22px;align-items:start;">
+
+                    <!-- ===== 登録済みツール一覧 ===== -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>登録済みツール一覧</h2>
+                            <span class="hint">登録 5件 ／ ドラッグで並べ替え可</span>
+                        </div>
+                        <div class="card-body" style="padding:0;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:32px;"></th>
+                                        <th style="width:52px;">アイコン</th>
+                                        <th>ツール名</th>
+                                        <th>リンク先 URL</th>
+                                        <th style="width:90px;">起動方法</th>
+                                        <th style="width:60px;">表示順</th>
+                                        <th style="width:60px;">状態</th>
+                                        <th style="width:80px;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Gmail -->
+                                    <tr>
+                                        <td style="color:var(--line);cursor:grab;text-align:center;">
+                                            <svg class="ico" viewBox="0 0 24 24"
+                                                style="color:var(--sub);margin:0 auto;">
+                                                <circle cx="9" cy="7" r="1" />
+                                                <circle cx="9" cy="12" r="1" />
+                                                <circle cx="9" cy="17" r="1" />
+                                                <circle cx="15" cy="7" r="1" />
+                                                <circle cx="15" cy="12" r="1" />
+                                                <circle cx="15" cy="17" r="1" />
+                                            </svg>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <div style="width:36px;height:36px;border-radius:8px;background:#F5DCD6;color:#A8392A;
+                      display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                                                <svg class="ico" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                                    <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+                                                    <path d="M4 6.5l8 6.5 8-6.5" />
+                                                </svg>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:700;">Gmail</td>
+                                        <td style="font-size:11px;color:var(--sub);">https://mail.google.com/</td>
+                                        <td style="font-size:12px;">別タブ</td>
+                                        <td style="text-align:center;font-size:13px;">1</td>
+                                        <td><span class="tag tag-on">表示中</span></td>
+                                        <td class="flex-gap">
+                                            <button class="btn btn-secondary btn-sm">編集</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Google Drive -->
+                                    <tr>
+                                        <td style="color:var(--line);cursor:grab;text-align:center;">
+                                            <svg class="ico" viewBox="0 0 24 24"
+                                                style="color:var(--sub);margin:0 auto;">
+                                                <circle cx="9" cy="7" r="1" />
+                                                <circle cx="9" cy="12" r="1" />
+                                                <circle cx="9" cy="17" r="1" />
+                                                <circle cx="15" cy="7" r="1" />
+                                                <circle cx="15" cy="12" r="1" />
+                                                <circle cx="15" cy="17" r="1" />
+                                            </svg>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <div style="width:36px;height:36px;border-radius:8px;background:#F4E6BE;color:#97711C;
+                      display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                                                <svg class="ico" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                                    <path
+                                                        d="M3.5 7.2A1.7 1.7 0 0 1 5.2 5.5h4.1l1.7 2h7.3a1.7 1.7 0 0 1 1.7 1.7v8.1a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7Z" />
+                                                </svg>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:700;">Drive</td>
+                                        <td style="font-size:11px;color:var(--sub);">https://drive.google.com/</td>
+                                        <td style="font-size:12px;">別タブ</td>
+                                        <td style="text-align:center;font-size:13px;">2</td>
+                                        <td><span class="tag tag-on">表示中</span></td>
+                                        <td class="flex-gap">
+                                            <button class="btn btn-secondary btn-sm">編集</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Google Chat -->
+                                    <tr>
+                                        <td style="color:var(--line);cursor:grab;text-align:center;">
+                                            <svg class="ico" viewBox="0 0 24 24"
+                                                style="color:var(--sub);margin:0 auto;">
+                                                <circle cx="9" cy="7" r="1" />
+                                                <circle cx="9" cy="12" r="1" />
+                                                <circle cx="9" cy="17" r="1" />
+                                                <circle cx="15" cy="7" r="1" />
+                                                <circle cx="15" cy="12" r="1" />
+                                                <circle cx="15" cy="17" r="1" />
+                                            </svg>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <div style="width:36px;height:36px;border-radius:8px;background:#DCEBDD;color:#2E6B40;
+                      display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                                                <svg class="ico" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                                    <path
+                                                        d="M4 6a1.6 1.6 0 0 1 1.6-1.6h12.8A1.6 1.6 0 0 1 20 6v8a1.6 1.6 0 0 1-1.6 1.6H9l-3.6 3v-3H5.6A1.6 1.6 0 0 1 4 14Z" />
+                                                </svg>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:700;">Chat</td>
+                                        <td style="font-size:11px;color:var(--sub);">https://chat.google.com/</td>
+                                        <td style="font-size:12px;">別タブ</td>
+                                        <td style="text-align:center;font-size:13px;">3</td>
+                                        <td><span class="tag tag-on">表示中</span></td>
+                                        <td class="flex-gap">
+                                            <button class="btn btn-secondary btn-sm">編集</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Google Calendar -->
+                                    <tr>
+                                        <td style="color:var(--line);cursor:grab;text-align:center;">
+                                            <svg class="ico" viewBox="0 0 24 24"
+                                                style="color:var(--sub);margin:0 auto;">
+                                                <circle cx="9" cy="7" r="1" />
+                                                <circle cx="9" cy="12" r="1" />
+                                                <circle cx="9" cy="17" r="1" />
+                                                <circle cx="15" cy="7" r="1" />
+                                                <circle cx="15" cy="12" r="1" />
+                                                <circle cx="15" cy="17" r="1" />
+                                            </svg>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <div style="width:36px;height:36px;border-radius:8px;background:#DDE6F2;color:#2C5184;
+                      display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                                                <svg class="ico" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                                    <rect x="3.5" y="5" width="17" height="15" rx="2.2" />
+                                                    <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+                                                </svg>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:700;">カレンダー</td>
+                                        <td style="font-size:11px;color:var(--sub);">https://calendar.google.com/</td>
+                                        <td style="font-size:12px;">別タブ</td>
+                                        <td style="text-align:center;font-size:13px;">4</td>
+                                        <td><span class="tag tag-on">表示中</span></td>
+                                        <td class="flex-gap">
+                                            <button class="btn btn-secondary btn-sm">編集</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Microsoft Teams -->
+                                    <tr>
+                                        <td style="color:var(--line);cursor:grab;text-align:center;">
+                                            <svg class="ico" viewBox="0 0 24 24"
+                                                style="color:var(--sub);margin:0 auto;">
+                                                <circle cx="9" cy="7" r="1" />
+                                                <circle cx="9" cy="12" r="1" />
+                                                <circle cx="9" cy="17" r="1" />
+                                                <circle cx="15" cy="7" r="1" />
+                                                <circle cx="15" cy="12" r="1" />
+                                                <circle cx="15" cy="17" r="1" />
+                                            </svg>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <div style="width:36px;height:36px;border-radius:8px;background:#E5E1F0;color:#4F4685;
+                      display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                                                <svg class="ico" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                                    <circle cx="9" cy="9" r="3" />
+                                                    <circle cx="16.5" cy="10" r="2.4" />
+                                                    <path d="M3.5 19c.4-3 2.7-5 5.5-5s5.1 2 5.5 5" />
+                                                    <path d="M14.5 14.3c2 .2 3.6 1.8 4 4.7" />
+                                                </svg>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:700;">Teams</td>
+                                        <td style="font-size:11px;color:var(--sub);">https://teams.microsoft.com/</td>
+                                        <td style="font-size:12px;">デスクトップアプリ</td>
+                                        <td style="text-align:center;font-size:13px;">5</td>
+                                        <td><span class="tag tag-on">表示中</span></td>
+                                        <td class="flex-gap">
+                                            <button class="btn btn-secondary btn-sm">編集</button>
+                                        </td>
+                                    </tr>
+                                    <!-- 非表示の例 -->
+                                    <tr style="opacity:.55;">
+                                        <td style="color:var(--line);cursor:grab;text-align:center;">
+                                            <svg class="ico" viewBox="0 0 24 24"
+                                                style="color:var(--sub);margin:0 auto;">
+                                                <circle cx="9" cy="7" r="1" />
+                                                <circle cx="9" cy="12" r="1" />
+                                                <circle cx="9" cy="17" r="1" />
+                                                <circle cx="15" cy="7" r="1" />
+                                                <circle cx="15" cy="12" r="1" />
+                                                <circle cx="15" cy="17" r="1" />
+                                            </svg>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <div style="width:36px;height:36px;border-radius:8px;background:var(--line-soft);color:var(--sub);
+                      display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                                                <svg class="ico" viewBox="0 0 24 24" style="width:18px;height:18px;">
+                                                    <path
+                                                        d="M4 19V9.5l5-3 5 3V19M4 19h10M14 19V13l4-2.5 2 1.2V19M14 19h6" />
+                                                </svg>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:700;color:var(--sub);">Looker Studio</td>
+                                        <td style="font-size:11px;color:var(--sub);">https://lookerstudio.google.com/
+                                        </td>
+                                        <td style="font-size:12px;">別タブ</td>
+                                        <td style="text-align:center;font-size:13px;">6</td>
+                                        <td><span class="tag tag-off">非表示</span></td>
+                                        <td class="flex-gap">
+                                            <button class="btn btn-secondary btn-sm">編集</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div
+                                style="padding:12px 18px;font-size:11px;color:var(--sub);border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;">
+                                <svg class="ico" viewBox="0 0 24 24" style="width:13px;height:13px;color:var(--sub);">
+                                    <circle cx="9" cy="7" r="1" />
+                                    <circle cx="9" cy="12" r="1" />
+                                    <circle cx="9" cy="17" r="1" />
+                                    <circle cx="15" cy="7" r="1" />
+                                    <circle cx="15" cy="12" r="1" />
+                                    <circle cx="15" cy="17" r="1" />
+                                </svg>
+                                アイコンをドラッグすると並べ替えができます。変更はランチャーバーに即時反映されます。
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ===== 追加フォーム ===== -->
+                    <div style="position:sticky;top:114px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>ツールを追加・編集</h2>
+                            </div>
+                            <div class="card-body">
+
+                                <!-- アイコン画像 -->
+                                <div class="form-group">
+                                    <label class="form-label">アイコン画像<span class="req">*</span></label>
+                                    <!-- プレビューエリア -->
+                                    <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:10px;">
+                                        <div id="icon-preview" style="width:56px;height:56px;border-radius:10px;background:var(--indigo-tint);
+                      border:2px dashed var(--indigo-soft);display:flex;align-items:center;
+                      justify-content:center;flex-shrink:0;cursor:pointer;color:var(--indigo);
+                      transition:background .15s;" onmouseover="this.style.background='#DCE3EC'"
+                                            onmouseout="this.style.background='var(--indigo-tint)'" title="クリックして画像を選択">
+                                            <svg class="ico" viewBox="0 0 24 24" style="width:22px;height:22px;">
+                                                <circle cx="12" cy="12" r="9" />
+                                                <path d="M12 8v8M8 12h8" />
+                                            </svg>
+                                        </div>
+                                        <div style="font-size:11px;color:var(--sub);padding-top:4px;line-height:1.8;">
+                                            PNG または SVG ファイルを選択<br>
+                                            推奨サイズ：64×64 px 以上<br>
+                                            最大ファイルサイズ：2 MB
+                                        </div>
+                                    </div>
+                                    <input type="file" accept=".png,.svg" class="form-input"
+                                        style="font-size:12px;padding:8px 12px;">
+                                    <div class="form-hint">Googleアプリなど公式アイコンは変形・色変更禁止。公式サイトから入手してください。</div>
+                                </div>
+
+                                <!-- ツール名 -->
+                                <div class="form-group">
+                                    <label class="form-label">ツール名<span class="req">*</span></label>
+                                    <input class="form-input" placeholder="例：Gmail" maxlength="50">
+                                    <div class="form-hint">バーに表示されるラベルです（50文字以内）</div>
+                                </div>
+
+                                <!-- リンク先URL -->
+                                <div class="form-group">
+                                    <label class="form-label">リンク先 URL<span class="req">*</span></label>
+                                    <input class="form-input" placeholder="例：https://mail.google.com/" type="url">
+                                    <div class="form-hint">https:// または http:// で始まるURLを入力してください</div>
+                                </div>
+
+                                <!-- 起動方法 -->
+                                <div class="form-group">
+                                    <label class="form-label">起動方法</label>
+                                    <div style="display:flex;gap:18px;margin-top:6px;">
+                                        <label
+                                            style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                                            <input type="radio" name="launch" checked> 別タブで開く
+                                        </label>
+                                        <label
+                                            style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                                            <input type="radio" name="launch"> デスクトップアプリを起動
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- アプリ起動URL（条件表示） -->
+                                <div
+                                    style="background:#E7EEE2;border:1px solid #C7D6BC;border-radius:6px;padding:14px;margin-bottom:18px;">
+                                    <div
+                                        style="font-size:11px;font-weight:700;color:#3E5535;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                                        <svg class="ico" viewBox="0 0 24 24"
+                                            style="width:13px;height:13px;color:#3E5535;">
+                                            <rect x="3" y="5" width="18" height="13" rx="2" />
+                                            <path d="M8 21h8M12 18v3" />
+                                        </svg>
+                                        デスクトップアプリ起動 URL（任意）
+                                    </div>
+                                    <input class="form-input" placeholder="例：msteams://" style="font-size:12px;">
+                                    <div class="form-hint" style="color:#3E5535;">入力した場合、クリック時にアプリ起動を優先し、起動できなければ上の URL
+                                        に切り替えます</div>
+                                </div>
+
+                                <!-- 表示順 -->
+                                <div class="form-group">
+                                    <label class="form-label">表示順</label>
+                                    <input class="form-input" type="number" placeholder="例：6" style="width:120px;">
+                                    <div class="form-hint">数字が小さいほど左側に表示されます。一覧からドラッグでも変更できます。</div>
+                                </div>
+
+                                <!-- 表示状態 -->
+                                <div class="form-group">
+                                    <label class="form-label">バーへの表示</label>
+                                    <div style="display:flex;gap:18px;margin-top:6px;">
+                                        <label
+                                            style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                                            <input type="radio" name="visibility" checked> 表示する
+                                        </label>
+                                        <label
+                                            style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                                            <input type="radio" name="visibility"> 非表示にする
+                                        </label>
+                                    </div>
+                                    <div class="form-hint">非表示にしてもデータは削除されません。後から再表示できます。</div>
+                                </div>
+
+                                <div class="flex-gap" style="justify-content:space-between;margin-top:6px;">
+                                    <button class="btn btn-danger btn-sm">削除</button>
+                                    <div class="flex-gap">
+                                        <button class="btn btn-secondary">キャンセル</button>
+                                        <button class="btn btn-success">保存する</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- プレビューカード -->
+                        <div class="card" style="margin-top:18px;">
+                            <div class="card-header">
+                                <h2>バー上のプレビュー</h2>
+                            </div>
+                            <div class="card-body" style="padding:14px 18px;">
+                                <div
+                                    style="background:var(--indigo);border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:4px;">
+                                    <span style="font-size:10px;font-weight:800;color:#fff;padding-right:12px;
+                  border-right:1px solid rgba(255,255,255,.2);margin-right:6px;white-space:nowrap;">I・M・S</span>
+                                    <!-- プレビューアイテム例 -->
+                                    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;
+                  padding:5px 10px;border-radius:5px;background:rgba(255,255,255,.12);min-width:50px;">
+                                        <div style="width:26px;height:26px;border-radius:5px;background:rgba(255,255,255,.15);
+                    display:flex;align-items:center;justify-content:center;color:#fff;">
+                                            <svg class="ico" viewBox="0 0 24 24" style="width:14px;height:14px;">
+                                                <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+                                                <path d="M4 6.5l8 6.5 8-6.5" />
+                                            </svg>
+                                        </div>
+                                        <div style="font-size:9px;color:#fff;font-weight:600;">Gmail</div>
+                                    </div>
+                                    <div style="font-size:10px;color:rgba(255,255,255,.4);margin-left:8px;">←
+                                        このように表示されます</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showScreen(name) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.dev-seg button').forEach(b => b.classList.remove('active'));
+            document.getElementById('screen-' + name).classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
+
+            window.scrollTo(0, 0);
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.mtab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.mtab').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+    </script>
+</body>
+
+</html>
