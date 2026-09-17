@@ -199,7 +199,9 @@ final class StatusCalculator
      * ・punched_at が厳密な単調増加であること（同時刻・逆転を許さない）
      * ・clock_in があるなら先頭・1件のみ
      * ・clock_out があるなら末尾・1件のみ
-     * ・break_in の直後は必ず break_out（休憩は開始→終了の対で並ぶ）
+     * ・break_in の直後に別の打刻が続く場合、それは必ず break_out（休憩は開始→終了の
+     *   対で並ぶ）。ただし break_in が最後のログなら「休憩中のまま」であり矛盾ではない
+     *   （clock_out や別モジュールが未完了の1日を修正しようとするケースを弾かないため）。
      *
      * @param array<int, array{punch_type:string, punched_at:string}> $logs punched_at昇順
      */
@@ -243,11 +245,12 @@ final class StatusCalculator
             return false;
         }
 
-        // break_in の直後は必ず break_out（対で並ぶ）
+        // break_in の直後に何か続くなら、それは必ず break_out（対で並ぶ）。
+        // break_in が最後のログ（$next === null）は「休憩中のまま」で矛盾ではない。
         foreach ($logs as $i => $log) {
             if (($log['punch_type'] ?? '') === self::BREAK_IN) {
                 $next = $logs[$i + 1] ?? null;
-                if ($next === null || ($next['punch_type'] ?? '') !== self::BREAK_OUT) {
+                if ($next !== null && ($next['punch_type'] ?? '') !== self::BREAK_OUT) {
                     return false;
                 }
             }
