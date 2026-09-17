@@ -15,9 +15,10 @@ if (!defined('ABSPATH')) {
  *
  * core を改修せず、フックで自己登録する（08 §6・§10.3 準拠）：
  * ・ims_register_schema … 独自テーブルDDLの寄与（attendance_logs / attendance_corrections）
- * ・ims_portal_register_page … /portal/timecard/ の登録（→ 2b で有効化）
- * ・ims_portal_register_tile … ダッシュボードタイル（→ 2g で有効化）
- * ・ims_portal_summary_contribute … サマリー/バッジへの寄与（→ 2g で有効化）
+ * ・ims_portal_register_page … /portal/timecard/ の登録（2b）
+ * ・ims_portal_register_tile … ダッシュボードタイル（2g）
+ * ・ims_portal_summary_contribute … サマリー/バッジへの寄与（2g）
+ * ・ims_portal_dashboard_top … ダッシュボードのステータスカード（2g）
  *
  * ims-portal.php の boot() から Bootstrap::init() を呼ぶ。
  */
@@ -38,13 +39,13 @@ final class Bootstrap
         // WP-Cron は管理画面以外の文脈でも走るため、is_admin() の外で登録する。
         ChatNotifier::init();
 
+        // ダッシュボード連携（タイル・summary・ステータスカード）(2g)
+        DashboardIntegration::init();
+
         // 管理画面
         if (is_admin()) {
             AdminSettingsPage::init();   // ポータル設定 > 打刻システム設定 (2a)
             AdminLogSearchPage::init();  // 社員管理 > 打刻ログ照会 (2f)
         }
-
-        // 今後この module に追加していくもの（各スライスで有効化）：
-        // 2g: タイル登録・summary 寄与・ダッシュボードのステータスカード
     }
 }

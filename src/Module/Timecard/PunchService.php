@@ -59,6 +59,9 @@ final class PunchService
     public const LABOR_BREAK_TIER1_MINUTES = 45;
     public const LABOR_BREAK_TIER2_MINUTES = 60;
 
+    /** 打刻漏れ通知の判定時刻（00_portal.md §3.3「出勤前状態のまま16時以降」）。 */
+    private const MISSING_TIMECARD_HOUR = 16;
+
     /**
      * 打刻を1件記録する。
      *
@@ -445,6 +448,47 @@ final class PunchService
             'worked_label'   => StatusCalculator::format_duration($worked),
             'server_now'     => $now_ts,
         ];
+    }
+
+    /**
+     * ダッシュボード連携用の要約（2g）。ステータスカード（00_portal.md §3.2.2）・
+     * タイルバッジ（§3.2.4）・summary API（§5.3）の3箇所が同じ判定を見るよう、
+     * ここ1か所に集約する（UI側とAPI側で二重実装しない・原則）。
+     *
+     * @return array{
+     *   status:string, status_label:string, status_variant:string,
+     *   clock_in:?string, clock_out:?string, missing_timecard:bool
+     * }
+     */
+    public static function dashboard_summary(int $user_id): array
+    {
+        $work_date = self::console_work_date($user_id);
+        $logs      = Repository::logs_for_date($user_id, $work_date);
+        $status    = StatusCalculator::status($logs);
+
+        $clock_in_ts  = self::last_punch_ts($logs, StatusCalculator::CLOCK_IN);
+        $clock_out_ts = self::last_punch_ts($logs, StatusCalculator::CLOCK_OUT);
+
+        $now_ts = (int) current_time('timestamp');
+
+        return [
+            'status'           => $status,
+            'status_label'     => StatusCalculator::status_label($status),
+            'status_variant'   => StatusCalculator::status_variant($status),
+            'clock_in'         => $clock_in_ts !== null ? gmdate('H:i', $clock_in_ts) : null,
+            'clock_out'        => $clock_out_ts !== null ? gmdate('H:i', $clock_out_ts) : null,
+            'missing_timecard' => self::is_missing_timecard($status, (int) gmdate('G', $now_ts)),
+        ];
+    }
+
+    /**
+     * 打刻漏れ判定の純粋ロジック（00_portal.md §3.3「出勤前状態のまま16時以降」）。
+     * DB/WPに触れないため、ヘッダーバッジ・タイルバッジ・ステータスカードが
+     * すべてここを通れば判定が食い違わない。
+     */
+    private static function is_missing_timecard(string $status, int $hour): bool
+    {
+        return $status === StatusCalculator::BEFORE && $hour >= self::MISSING_TIMECARD_HOUR;
     }
 
     // ── 打刻修正（2e） ──────────────────────────────────────
