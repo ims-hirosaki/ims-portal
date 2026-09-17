@@ -191,6 +191,72 @@ final class StatusCalculator
     }
 
     /**
+     * 1日分の打刻ログ（punched_at昇順に並べ直したもの）が時系列として矛盾していないかを
+     * 検証する（§3.4 手順5「修正後の整合性チェック」）。打刻修正で1件の時刻を書き換えた後、
+     * 呼び出し側が並べ直した配列を渡して使う。
+     *
+     * 検証する不変条件：
+     * ・punched_at が厳密な単調増加であること（同時刻・逆転を許さない）
+     * ・clock_in があるなら先頭・1件のみ
+     * ・clock_out があるなら末尾・1件のみ
+     * ・break_in の直後は必ず break_out（休憩は開始→終了の対で並ぶ）
+     *
+     * @param array<int, array{punch_type:string, punched_at:string}> $logs punched_at昇順
+     */
+    public static function is_chronologically_consistent(array $logs): bool
+    {
+        if ($logs === []) {
+            return true;
+        }
+
+        $count = count($logs);
+        $prev_ts = null;
+        $clock_in_count  = 0;
+        $clock_out_count = 0;
+
+        foreach ($logs as $i => $log) {
+            $ts = self::ts((string) ($log['punched_at'] ?? ''));
+            if ($ts === null) {
+                return false;
+            }
+            if ($prev_ts !== null && $ts <= $prev_ts) {
+                return false; // 同時刻・逆転
+            }
+            $prev_ts = $ts;
+
+            $type = (string) ($log['punch_type'] ?? '');
+            if ($type === self::CLOCK_IN) {
+                $clock_in_count++;
+                if ($i !== 0) {
+                    return false; // clock_in は先頭のみ
+                }
+            }
+            if ($type === self::CLOCK_OUT) {
+                $clock_out_count++;
+                if ($i !== $count - 1) {
+                    return false; // clock_out は末尾のみ
+                }
+            }
+        }
+
+        if ($clock_in_count > 1 || $clock_out_count > 1) {
+            return false;
+        }
+
+        // break_in の直後は必ず break_out（対で並ぶ）
+        foreach ($logs as $i => $log) {
+            if (($log['punch_type'] ?? '') === self::BREAK_IN) {
+                $next = $logs[$i + 1] ?? null;
+                if ($next === null || ($next['punch_type'] ?? '') !== self::BREAK_OUT) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * 実労働時間（秒）を算出する：勤務時間 − 総休憩時間（§5.2「実勤務時間（経過）」）。
      *
      * ・clock_in がなければ 0。

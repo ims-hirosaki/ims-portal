@@ -33,11 +33,15 @@ final class RestController
     private const ROUTE_COMPLETE_BREAK = '/timecard/punch/complete-break';
     /** ケースB・ボタンA（休憩の開始・終了を指定して退勤）。§3.2 ケースB。 */
     private const ROUTE_CLOCK_OUT_WITH_BREAK = '/timecard/punch/clock-out-with-break';
+    /** 打刻修正（§3.4）。log_id はルート内の数値パラメータ。 */
+    private const ROUTE_CORRECT = '/timecard/logs/(?P<log_id>\d+)/correct';
 
     /**
      * エラーコード → HTTPステータス。§7.1 は重複を 409 Conflict と定めている。
      * `currently_on_break`・`break_already_recorded`・`invalid_break_minutes`・
-     * `invalid_break_range` は 2d（休憩補完付き退勤）のエラーコード。
+     * `invalid_break_range` は 2d（休憩補完付き退勤）、
+     * `reason_required`・`not_found`・`invalid_datetime`・`month_closed`・
+     * `correction_not_allowed`・`inconsistent` は 2e（打刻修正）のエラーコード。
      */
     private const STATUS_MAP = [
         'retired'                   => 403,
@@ -53,6 +57,12 @@ final class RestController
         'invalid_break_minutes'     => 400,
         'invalid_break_range'       => 400,
         'unknown_punch_type'        => 400,
+        'reason_required'           => 400,
+        'not_found'                 => 404,
+        'invalid_datetime'          => 400,
+        'month_closed'              => 403,
+        'correction_not_allowed'    => 403,
+        'inconsistent'              => 400,
         'db_error'                  => 500,
     ];
 
@@ -114,6 +124,27 @@ final class RestController
                     'type'     => 'string',
                 ],
                 'break_out' => [
+                    'required' => true,
+                    'type'     => 'string',
+                ],
+            ],
+        ]);
+
+        // 打刻修正（§3.4）。権限・締めロック・整合性チェックは PunchService が行う。
+        register_rest_route(self::NAMESPACE, self::ROUTE_CORRECT, [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'handle_correct_punch'],
+            'permission_callback' => [self::class, 'can_punch'],
+            'args'                => [
+                'log_id' => [
+                    'required' => true,
+                    'type'     => 'integer',
+                ],
+                'corrected_datetime' => [
+                    'required' => true,
+                    'type'     => 'string',
+                ],
+                'reason' => [
                     'required' => true,
                     'type'     => 'string',
                 ],
@@ -198,6 +229,50 @@ final class RestController
 
         $result = PunchService::clock_out_with_break_range($user_id, $break_in, $break_out);
         return self::respond_clock_out_result($user_id, $result);
+    }
+
+    /**
+     * 打刻修正（§3.4）。対象ログは必ずログイン中の本人のものに限る
+     * （なりすまし防止のため、対象ユーザーはセッションから取り、リクエストからは
+     * log_id のみ受け取る。所有者チェックは PunchService::correct_punch() が行う）。
+     */
+    public static function handle_correct_punch(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $user_id            = get_current_user_id();
+        $log_id             = (int) $request->get_param('log_id');
+        $corrected_datetime = (string) $request->get_param('corrected_datetime');
+        $reason             = (string) $request->get_param('reason');
+
+        $result = PunchService::correct_punch($user_id, $log_id, $corrected_datetime, $reason);
+
+        if (!$result['ok']) {
+            $code   = (string) $result['code'];
+            $status = self::STATUS_MAP[$code] ?? 400;
+
+            $body = [
+                'ok'      => false,
+                'code'    => $code,
+                'message' => (string) $result['message'],
+            ];
+            if (isset($result['work_date'])) {
+                $body['state'] = PunchService::current_state($user_id, (string) $result['work_date']);
+            }
+
+            return new \WP_REST_Response($body, $status);
+        }
+
+        return new \WP_REST_Response([
+            'ok'      => true,
+            'message' => (string) $result['message'],
+            'punch'   => [
+                'log_id'     => (int) $result['log_id'],
+                'punch_type' => (string) $result['punch_type'],
+                'punched_at' => (string) $result['punched_at'],
+                'time'       => date('H:i', strtotime((string) $result['punched_at'])),
+                'work_date'  => (string) $result['work_date'],
+            ],
+            'state'   => PunchService::current_state($user_id, (string) $result['work_date']),
+        ], 200);
     }
 
     /**

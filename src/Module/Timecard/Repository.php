@@ -12,7 +12,9 @@ if (!defined('ABSPATH')) {
  * 打刻ログの読み書き（02 §5.1）。2b で参照系、2c で挿入（punch）を実装した。
  * 修正（UPDATE + corrections への追記）は 2e で追加する。
  *
- * すべてのクエリは $wpdb->prepare を通し、user_id で必ず絞る（他人のログを読ませない）。
+ * すべてのクエリは $wpdb->prepare を通す。読み取り系は基本的に user_id で絞り、
+ * 他人のログを読ませない（例外：2f の管理者向け照会 search_logs() は
+ * 監査目的で全社員を横断検索する。呼び出し側で ims_manage_users を必ず要求する）。
  * 物理削除するメソッドは意図的に置かない（§3.5・§7.5 の保持要件）。
  */
 final class Repository
@@ -225,6 +227,226 @@ final class Repository
         return [
             'work_date'   => (string) $row['work_date'],
             'clock_in_at' => (string) $row['clock_in_at'],
+        ];
+    }
+
+    // ── 打刻修正（2e） ──────────────────────────────────────
+
+    /**
+     * log_id 指定で1件取得する（§3.4：対象ログの本人確認・現在値表示に使う）。
+     *
+     * @return array{log_id:int, user_id:int, work_date:string, punch_type:string, punched_at:string, is_auto_filled:int}|null
+     */
+    public static function find_log(int $log_id): ?array
+    {
+        global $wpdb;
+        $table = Schema::logs_table();
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT log_id, user_id, work_date, punch_type, punched_at, is_auto_filled
+                 FROM {$table} WHERE log_id = %d",
+                $log_id
+            ),
+            ARRAY_A
+        );
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        return [
+            'log_id'         => (int) $row['log_id'],
+            'user_id'        => (int) $row['user_id'],
+            'work_date'      => (string) $row['work_date'],
+            'punch_type'     => (string) $row['punch_type'],
+            'punched_at'     => (string) $row['punched_at'],
+            'is_auto_filled' => (int) $row['is_auto_filled'],
+        ];
+    }
+
+    /**
+     * 打刻修正を1トランザクションで保存する（§3.4 手順4）。
+     * 先に修正履歴（attendance_corrections）へ記録してから、対象ログを新しい日時で
+     * 上書きする。どちらかが失敗すればロールバックする（監査証跡だけ残ることを防ぐ）。
+     */
+    public static function correct_punch(
+        int $log_id,
+        string $original_datetime,
+        string $corrected_datetime,
+        string $reason,
+        int $corrected_by
+    ): bool {
+        global $wpdb;
+        $logs_table = self::logs_table();
+        $corr_table = self::corrections_table();
+
+        $wpdb->query('START TRANSACTION');
+
+        $inserted = $wpdb->insert(
+            $corr_table,
+            [
+                'log_id'             => $log_id,
+                'original_datetime'  => $original_datetime,
+                'corrected_datetime' => $corrected_datetime,
+                'reason'             => $reason,
+                'corrected_by'       => $corrected_by,
+            ],
+            ['%d', '%s', '%s', '%s', '%d']
+        );
+        if (!$inserted) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
+        $updated = $wpdb->update(
+            $logs_table,
+            ['punched_at' => $corrected_datetime],
+            ['log_id' => $log_id],
+            ['%s'],
+            ['%d']
+        );
+        if ($updated === false) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
+        $wpdb->query('COMMIT');
+        return true;
+    }
+
+    /**
+     * 指定ログの修正履歴を古い順で取得する（§3.4「修正履歴の記録」・§4.2 証跡確認用）。
+     *
+     * @return array<int, array{id:int, original_datetime:string, corrected_datetime:string, reason:string, corrected_by:int, corrected_at:string}>
+     */
+    public static function corrections_for_log(int $log_id): array
+    {
+        global $wpdb;
+        $table = self::corrections_table();
+
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT id, original_datetime, corrected_datetime, reason, corrected_by, corrected_at
+                 FROM {$table} WHERE log_id = %d ORDER BY corrected_at ASC, id ASC",
+                $log_id
+            ),
+            ARRAY_A
+        );
+
+        if (!is_array($rows)) {
+            return [];
+        }
+        return array_map(static function (array $row): array {
+            return [
+                'id'                 => (int) $row['id'],
+                'original_datetime'  => (string) $row['original_datetime'],
+                'corrected_datetime' => (string) $row['corrected_datetime'],
+                'reason'             => (string) $row['reason'],
+                'corrected_by'       => (int) $row['corrected_by'],
+                'corrected_at'       => (string) $row['corrected_at'],
+            ];
+        }, $rows);
+    }
+
+    // ── 管理者向け打刻ログ照会（2f） ─────────────────────────
+
+    /** search_logs() の既定・上限件数（§4.2 に明記なし。監査画面の暴走防止のため設ける）。 */
+    private const SEARCH_DEFAULT_LIMIT = 500;
+
+    /**
+     * 打刻ログの横断検索（社員管理＞打刻ログ照会・§4.2）。
+     *
+     * 社員名・社員番号による絞り込みは呼び出し側（AdminLogSearchPage）で
+     * user_id の配列に解決してから渡すこと（Repository は自身のテーブルの
+     * SQL だけを担当し、wp_users/wp_usermeta への参照は持ち込まない）。
+     *
+     * @param array{
+     *   user_ids?: array<int,int>, date_from?: string, date_to?: string,
+     *   punch_type?: string, is_auto_filled?: bool, has_correction?: bool, limit?: int
+     * } $filters
+     * @return array{rows: array<int, array<string, mixed>>, total: int}
+     *         total は LIMIT 適用前の一致件数（rows が LIMIT で切られたかを画面側が判断できるように）。
+     */
+    public static function search_logs(array $filters): array
+    {
+        global $wpdb;
+        $logs_table = self::logs_table();
+        $corr_table = self::corrections_table();
+        $has_correction_expr = "EXISTS (SELECT 1 FROM {$corr_table} c WHERE c.log_id = l.log_id)";
+
+        $where  = ['1=1'];
+        $params = [];
+
+        if (!empty($filters['user_ids'])) {
+            $ids = array_values(array_map('intval', (array) $filters['user_ids']));
+            $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+            $where[] = "l.user_id IN ({$placeholders})";
+            array_push($params, ...$ids);
+        }
+        if (!empty($filters['date_from'])) {
+            $where[] = 'l.work_date >= %s';
+            $params[] = (string) $filters['date_from'];
+        }
+        if (!empty($filters['date_to'])) {
+            $where[] = 'l.work_date <= %s';
+            $params[] = (string) $filters['date_to'];
+        }
+        if (!empty($filters['punch_type'])) {
+            $where[] = 'l.punch_type = %s';
+            $params[] = (string) $filters['punch_type'];
+        }
+        if (array_key_exists('is_auto_filled', $filters) && $filters['is_auto_filled'] !== null) {
+            $where[] = 'l.is_auto_filled = %d';
+            $params[] = $filters['is_auto_filled'] ? 1 : 0;
+        }
+        $filter_has_correction = array_key_exists('has_correction', $filters) && $filters['has_correction'] !== null;
+        if ($filter_has_correction) {
+            $where[] = "{$has_correction_expr} = %d";
+            $params[] = $filters['has_correction'] ? 1 : 0;
+        }
+
+        $where_sql = implode(' AND ', $where);
+
+        $count_sql = "SELECT COUNT(*) FROM {$logs_table} l WHERE {$where_sql}";
+        $total = (int) $wpdb->get_var($params ? $wpdb->prepare($count_sql, $params) : $count_sql);
+
+        $limit = max(1, (int) ($filters['limit'] ?? self::SEARCH_DEFAULT_LIMIT));
+
+        $select_sql = "SELECT l.log_id, l.user_id, l.work_date, l.punch_type, l.punched_at,
+                              l.is_auto_filled, l.ip_address, l.gps_latitude, l.gps_longitude,
+                              {$has_correction_expr} AS has_correction
+                       FROM {$logs_table} l
+                       WHERE {$where_sql}
+                       ORDER BY l.work_date DESC, l.punched_at DESC, l.log_id DESC
+                       LIMIT %d";
+        $select_params = $params;
+        $select_params[] = $limit;
+
+        $rows = $wpdb->get_results($wpdb->prepare($select_sql, $select_params), ARRAY_A);
+
+        return [
+            'rows'  => is_array($rows) ? array_map([self::class, 'normalize_search_row'], $rows) : [],
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array{log_id:int, user_id:int, work_date:string, punch_type:string, punched_at:string, is_auto_filled:int, ip_address:?string, has_gps:bool, has_correction:bool}
+     */
+    private static function normalize_search_row(array $row): array
+    {
+        return [
+            'log_id'         => (int) $row['log_id'],
+            'user_id'        => (int) $row['user_id'],
+            'work_date'      => (string) $row['work_date'],
+            'punch_type'     => (string) $row['punch_type'],
+            'punched_at'     => (string) $row['punched_at'],
+            'is_auto_filled' => (int) $row['is_auto_filled'],
+            'ip_address'     => isset($row['ip_address']) ? (string) $row['ip_address'] : null,
+            'has_gps'        => $row['gps_latitude'] !== null && $row['gps_longitude'] !== null,
+            'has_correction' => (bool) $row['has_correction'],
         ];
     }
 

@@ -42,6 +42,16 @@ final class Roles
             self::ROLE_HR_ADMIN,
             'administrator',
         ],
+        // 打刻修正機能の利用可否（02_time_tracking.md §3.4）。
+        // approver だけは修正許可レベルの設定に関わらず常にボタン非表示という
+        // 表に合わせるため、general_staff と approver を区別する capability。
+        // hr_admin/administrator は ims_manage_users 側の「常に直接修正可」判定で
+        // 別途上書きされるため、ここでの有無は general_staff/approver の分岐にのみ効く。
+        'ims_correct_own_punch' => [
+            self::ROLE_GENERAL_STAFF,
+            self::ROLE_HR_ADMIN,
+            'administrator',
+        ],
         // 給与・手当情報の閲覧・編集（機微データ）
         'ims_view_salary' => [
             self::ROLE_HR_ADMIN,

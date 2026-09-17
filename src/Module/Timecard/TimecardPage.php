@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace IMS\Module\Timecard;
 
 use IMS\Core\Layout;
+use IMS\Support\Capabilities;
 use IMS\Support\UserRepository;
 
 if (!defined('ABSPATH')) {
@@ -21,8 +22,10 @@ if (!defined('ABSPATH')) {
  * 退職者（employment_status = 退職）にはボタンを出さない（§6.1）。
  * ただしこれは表示上の配慮であり、実際の拒否は必ずサーバー側（PunchService）が行う。
  *
- * 修正ボタンは 2e で機能追加するため、まだ列自体を出さない
- * （空の操作列を見せて誤解させないため）。
+ * 【2e】打刻履歴に「操作」列を追加し、修正許可レベル（Settings::staff_correction_level）
+ *       ×役割（ims_correct_own_punch・ims_manage_users）×対象日で表示可否を判定した上で
+ *       修正ボタンを出す。実際の許可判定はサーバー側（PunchService::can_correct_punch）が
+ *       必ず再検証するため、ここでの表示制御は利用者への案内に過ぎない。
  */
 final class TimecardPage
 {
@@ -64,6 +67,8 @@ final class TimecardPage
             'routes' => [
                 'completeBreak'     => 'timecard/punch/complete-break',
                 'clockOutWithBreak' => 'timecard/punch/clock-out-with-break',
+                // {log_id} はJS側でログIDに置換して使う（2e：打刻修正）
+                'correctPunch'      => 'timecard/logs/{log_id}/correct',
             ],
             'laborBreak' => [
                 'tier1Hours'   => PunchService::LABOR_BREAK_TIER1_HOURS,
@@ -113,6 +118,14 @@ final class TimecardPage
         [$year, $month] = self::resolve_month();
         $month_logs = Repository::logs_for_month($user_id, $year, $month);
 
+        // 2e：修正ボタンの表示可否（§3.4）。役割は固定なので月送りしても変わらない。
+        $correction_ctx = [
+            'is_always_allowed' => Capabilities::can_manage_users(),
+            'has_self_service'  => Capabilities::can_correct_own_punch(),
+            'level'             => Settings::staff_correction_level(),
+            'current_work_date' => $work_date,
+        ];
+
         Layout::render_header(__('打刻', 'ims-portal'));
         ?>
         <div class="tc-wrap"
@@ -127,7 +140,7 @@ final class TimecardPage
              data-has-break="<?php echo $has_break ? '1' : '0'; ?>">
 
             <?php self::render_console($status, $active, $worked_sec, $can_punch); ?>
-            <?php self::render_history($year, $month, $month_logs, $work_date); ?>
+            <?php self::render_history($year, $month, $month_logs, $work_date, $correction_ctx); ?>
         </div>
         <?php
         Layout::render_footer();
@@ -208,7 +221,10 @@ final class TimecardPage
 
     // ── 打刻履歴テーブル（下段） ────────────────────────────
 
-    private static function render_history(int $year, int $month, array $month_logs, string $work_date): void
+    /**
+     * @param array{is_always_allowed:bool, has_self_service:bool, level:string, current_work_date:string} $correction_ctx
+     */
+    private static function render_history(int $year, int $month, array $month_logs, string $work_date, array $correction_ctx): void
     {
         $days_in_mon = (int) date('t', strtotime(sprintf('%04d-%02d-01', $year, $month)));
         [$prev_ym, $next_ym] = self::adjacent_months($year, $month);
@@ -242,6 +258,7 @@ final class TimecardPage
                             <th><?php esc_html_e('休憩終了', 'ims-portal'); ?></th>
                             <th><?php esc_html_e('退勤', 'ims-portal'); ?></th>
                             <th><?php esc_html_e('実労働', 'ims-portal'); ?></th>
+                            <th><?php esc_html_e('操作', 'ims-portal'); ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -253,8 +270,15 @@ final class TimecardPage
                             if ($logs !== []) {
                                 $has_any = true;
                             }
+                            $can_correct_row = $logs !== [] && PunchService::can_correct_punch(
+                                $correction_ctx['is_always_allowed'],
+                                $correction_ctx['has_self_service'],
+                                $correction_ctx['level'],
+                                $date,
+                                $correction_ctx['current_work_date']
+                            );
                             // 「本日」の強調は暦日ではなく現在の勤務日に合わせる（深夜帯対応）
-                            self::render_history_row($date, $logs, $date === $work_date);
+                            self::render_history_row($date, $logs, $date === $work_date, $can_correct_row);
                         }
                         ?>
                     </tbody>
@@ -268,7 +292,7 @@ final class TimecardPage
         <?php
     }
 
-    private static function render_history_row(string $date, array $logs, bool $is_today): void
+    private static function render_history_row(string $date, array $logs, bool $is_today, bool $can_correct): void
     {
         $ts   = strtotime($date);
         $dow  = (int) date('w', $ts); // 0=日, 6=土
@@ -315,6 +339,15 @@ final class TimecardPage
             <td class="tc-col-worked">
                 <?php echo $logs === [] ? '—' : esc_html(StatusCalculator::format_duration($worked)); ?>
             </td>
+            <td class="tc-col-actions">
+                <?php if ($can_correct) : ?>
+                    <button type="button" class="tc-correct-btn" data-correct-date="<?php echo esc_attr($date); ?>">
+                        <?php esc_html_e('修正', 'ims-portal'); ?>
+                    </button>
+                <?php else : ?>
+                    —
+                <?php endif; ?>
+            </td>
         </tr>
         <?php
     }
@@ -332,7 +365,10 @@ final class TimecardPage
 
         foreach ($items as $item) {
             $time = date('H:i', strtotime($item['punched_at']));
-            echo '<span class="tc-time">' . esc_html($time);
+            // data-log-id / data-punched-at は 2e の修正ポップアップが対象打刻を
+            // 特定するための目印（該当セル内に複数件あり得るため log_id 単位で識別する）。
+            echo '<span class="tc-time" data-log-id="' . esc_attr((string) $item['log_id']) . '"'
+                . ' data-punched-at="' . esc_attr($item['punched_at']) . '">' . esc_html($time);
             if (!empty($item['is_auto_filled'])) {
                 echo ' <span class="tc-auto-tag">' . esc_html__('自動補完', 'ims-portal') . '</span>';
             }

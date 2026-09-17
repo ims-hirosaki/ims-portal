@@ -10,6 +10,9 @@
  *  ⑥ ケースA：休憩中に退勤ボタン → 休憩補完ポップアップ（分数選択）
  *  ⑦ ケースB：休憩未打刻・実勤務6時間超で退勤ボタン → 確認ポップアップ
  *     （休憩を登録＝開始・終了時刻を直接入力 ／ 休憩なしで退勤＝通常の退勤と同じ）
+ * 【2e】打刻修正（§3.4）：履歴テーブルの「修正」ボタン → 対象日の打刻一覧から1件選択
+ *     → 新しい日時・修正理由を入力して保存。権限・締めロック・整合性チェックは
+ *     すべてサーバー側（PunchService::correct_punch）が行う。
  *
  * 打刻時刻は必ずサーバーが決める。このJSは時刻を一切送らない（§3.1）。
  * ケースA/Bのポップアップが表示する時刻・経過時間も、サーバー時刻ベースの
@@ -54,6 +57,7 @@
         workedTimer.reset(status, workedSec, serverNow);
 
         setupPunchButtons(wrap, workedTimer, offset);
+        setupCorrectionButtons(wrap);
     });
 
     /** サーバー基準の現在エポック秒 */
@@ -723,6 +727,223 @@
                 restoreButtons(wrap, buttons);
             });
         });
+    }
+
+    // ── 2e：打刻修正（§3.4） ──────────────────────────────────
+
+    /**
+     * 履歴テーブルの「修正」ボタンに接続する。ボタンは1日1個（表の「操作」列）だが
+     * 修正対象は個々の打刻（log_id）単位のため、押下後まず対象日の打刻一覧から
+     * 1件を選ばせ、それから新日時・理由の入力へ進む2段階の導線にしてある。
+     */
+    function setupCorrectionButtons(wrap) {
+        var buttons = Array.prototype.slice.call(wrap.querySelectorAll('.tc-correct-btn[data-correct-date]'));
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openCorrectionPickerModal(wrap, btn.getAttribute('data-correct-date'));
+            });
+        });
+    }
+
+    /** 指定日の打刻を、履歴テーブルのDOM（data-log-id）から集める。 */
+    function collectDayPunches(wrap, date) {
+        var row = wrap.querySelector('tr[data-date="' + date + '"]');
+        if (!row) {
+            return [];
+        }
+        var result = [];
+        Array.prototype.slice.call(row.querySelectorAll('td[data-punch-cell]')).forEach(function (td) {
+            var type = td.getAttribute('data-punch-cell');
+            Array.prototype.slice.call(td.querySelectorAll('.tc-time[data-log-id]')).forEach(function (span) {
+                result.push({
+                    logId: span.getAttribute('data-log-id'),
+                    punchType: type,
+                    punchedAt: span.getAttribute('data-punched-at'),
+                    label: PUNCH_LABELS[type] || type
+                });
+            });
+        });
+        return result;
+    }
+
+    /** サーバー文字列 'Y-m-d H:i:s' から HH:MM だけを切り出す（再パースしない）。 */
+    function timeOnly(punchedAt) {
+        return punchedAt && punchedAt.length >= 16 ? punchedAt.substring(11, 16) : '--:--';
+    }
+
+    /** ステップ1：対象日の打刻一覧から、修正したい1件を選ばせる。 */
+    function openCorrectionPickerModal(wrap, date) {
+        var punches = collectDayPunches(wrap, date);
+        if (!punches.length) {
+            return;
+        }
+
+        var m = createModal('修正する打刻を選んでください（' + date + '）');
+
+        var list = document.createElement('div');
+        list.className = 'tc-break-options';
+
+        punches.forEach(function (p) {
+            var row = document.createElement('label');
+            row.className = 'tc-break-option';
+            var input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'tc-correct-pick';
+            row.appendChild(input);
+            var span = document.createElement('span');
+            span.textContent = p.label + '：' + timeOnly(p.punchedAt);
+            row.appendChild(span);
+            list.appendChild(row);
+
+            input.addEventListener('change', function () {
+                m.close();
+                openCorrectionFormModal(wrap, date, p);
+            });
+        });
+        m.body.appendChild(list);
+
+        var actions = document.createElement('div');
+        actions.className = 'tc-modal-actions';
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'tc-modal-btn is-ghost';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.addEventListener('click', m.close);
+        actions.appendChild(cancelBtn);
+        m.body.appendChild(actions);
+    }
+
+    /** ステップ2：新しい日時・修正理由を入力し、保存する。 */
+    function openCorrectionFormModal(wrap, date, punch) {
+        var m = createModal((PUNCH_LABELS[punch.punchType] || punch.punchType) + 'の修正');
+
+        var info = document.createElement('p');
+        info.className = 'tc-modal-info';
+        info.textContent = '対象日：' + date + '　／　現在の打刻時刻：' + timeOnly(punch.punchedAt);
+        m.body.appendChild(info);
+
+        var dtLabel = document.createElement('label');
+        dtLabel.className = 'tc-correct-field';
+        var dtSpan = document.createElement('span');
+        dtSpan.textContent = '修正後の日時';
+        dtLabel.appendChild(dtSpan);
+        var dtInput = document.createElement('input');
+        dtInput.type = 'datetime-local';
+        if (punch.punchedAt) {
+            dtInput.value = punch.punchedAt.replace(' ', 'T').substring(0, 16);
+        }
+        dtLabel.appendChild(dtInput);
+        m.body.appendChild(dtLabel);
+
+        var reasonLabel = document.createElement('label');
+        reasonLabel.className = 'tc-correct-field';
+        var reasonSpan = document.createElement('span');
+        reasonSpan.textContent = '修正理由';
+        reasonLabel.appendChild(reasonSpan);
+        var reasonInput = document.createElement('textarea');
+        reasonInput.rows = 3;
+        reasonLabel.appendChild(reasonInput);
+        m.body.appendChild(reasonLabel);
+
+        var errorEl = document.createElement('p');
+        errorEl.className = 'tc-modal-error';
+        errorEl.hidden = true;
+        m.body.appendChild(errorEl);
+
+        var steps = buildCorrectionSteps();
+        steps.el.hidden = true;
+        m.body.appendChild(steps.el);
+
+        var actions = document.createElement('div');
+        actions.className = 'tc-modal-actions';
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'tc-modal-btn is-ghost';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.addEventListener('click', m.close);
+        var submitBtn = document.createElement('button');
+        submitBtn.type = 'button';
+        submitBtn.className = 'tc-modal-btn is-primary';
+        submitBtn.textContent = '修正を登録する';
+        actions.appendChild(cancelBtn);
+        actions.appendChild(submitBtn);
+        m.body.appendChild(actions);
+
+        submitBtn.addEventListener('click', function () {
+            var reason = reasonInput.value.trim();
+            if (!dtInput.value || !reason) {
+                errorEl.textContent = '修正後の日時と修正理由は必須です。';
+                errorEl.hidden = false;
+                return;
+            }
+            errorEl.hidden = true;
+            submitBtn.disabled = true;
+            cancelBtn.disabled = true;
+            steps.el.hidden = false;
+            steps.setStep(1); // ①修正内容を記録
+
+            var correctedDatetime = dtInput.value.replace('T', ' ') + ':00';
+            var path = (routes().correctPunch || '').replace('{log_id}', punch.logId);
+
+            steps.setStep(2); // ②データベースを更新
+            restPost(path, { corrected_datetime: correctedDatetime, reason: reason }).then(function (res) {
+                var data = res.data || {};
+                if (res.status >= 200 && res.status < 300 && data.ok) {
+                    steps.setStep(3); // ③画面に反映
+                    setTimeout(function () {
+                        m.close();
+                        if (data.punch) {
+                            applyCorrectionToRow(wrap, data.punch);
+                        }
+                        showToast(data.message || '打刻を修正しました。');
+                    }, 400);
+                    return;
+                }
+                m.close();
+                showToast(data.message || '修正できませんでした。画面を再読み込みしてお試しください。');
+            }).catch(function () {
+                m.close();
+                showToast('通信に失敗しました。もう一度お試しください。');
+            });
+        });
+    }
+
+    /** §4.1「①記録→②更新→③反映」の3ステップ表示。 */
+    function buildCorrectionSteps() {
+        var el = document.createElement('ol');
+        el.className = 'tc-correct-steps';
+        var items = ['修正内容を記録', 'データベースを更新', '画面に反映'].map(function (text) {
+            var li = document.createElement('li');
+            li.textContent = text;
+            el.appendChild(li);
+            return li;
+        });
+        return {
+            el: el,
+            setStep: function (n) {
+                items.forEach(function (li, idx) {
+                    li.classList.toggle('is-done', idx < n);
+                    li.classList.toggle('is-active', idx === n - 1);
+                });
+            }
+        };
+    }
+
+    /** 修正成功後、該当する時刻表示だけをその場で差し替える（リロードなし）。 */
+    function applyCorrectionToRow(wrap, punch) {
+        var span = wrap.querySelector('.tc-time[data-log-id="' + punch.log_id + '"]');
+        if (!span) {
+            return;
+        }
+        span.setAttribute('data-punched-at', punch.punched_at);
+        var hasAutoTag = !!span.querySelector('.tc-auto-tag');
+        var newText = punch.time + (hasAutoTag ? ' ' : '');
+        var firstNode = span.firstChild;
+        if (firstNode && firstNode.nodeType === Node.TEXT_NODE) {
+            firstNode.textContent = newText;
+        } else {
+            span.insertBefore(document.createTextNode(newText), span.firstChild);
+        }
     }
 
     // ── 2d：モーダル共通部品 ────────────────────────────────
