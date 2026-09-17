@@ -256,3 +256,98 @@
 .ag-col-flagged {
   filter: saturate(.4) brightness(1.05);
 }
+
+/* ── 勤怠フラグ選択（3e-2） ───────────────────────────── */
+
+.ag-flag-select {
+  font-size: 10.5px;
+  max-width: 90px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface-raised);
+  color: var(--ink-soft);
+}
+
+/* ── 事業別時間割当てモーダル（3e-2） ─────────────────── */
+
+.ag-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ag-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(33, 29, 23, .45);
+}
+
+.ag-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border-radius: var(--r-lg, 18px);
+  box-shadow: var(--shadow-md);
+  padding: 22px 24px;
+}
+
+.ag-modal-title {
+  font-family: var(--f-display);
+  font-size: 16px;
+  color: var(--indigo);
+  margin: 0 0 4px;
+}
+
+.ag-modal-sub {
+  font-size: 12.5px;
+  color: var(--sub);
+  margin: 0 0 16px;
+}
+
+.ag-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+.ag-modal-table th {
+  text-align: left;
+  color: var(--sub);
+  font-weight: 400;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ag-modal-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ag-modal-table select,
+.ag-modal-table input[type="time"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+.ag-row-duration {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.ag-modal-error {
+  background: var(--vermillion-tint);
+  color: var(--vermillion);
+  border-radius: var(--r-sm, 6px);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  margin: 10px 0;
+}
+
+.ag-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}

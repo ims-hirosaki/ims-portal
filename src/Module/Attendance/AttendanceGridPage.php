@@ -13,11 +13,10 @@ if (!defined('ABSPATH')) {
 /**
  * スタッフ向け月次勤務表グリッド `/portal/attendance/`（03_attendance_management.md §4.1）。
  *
- * 3e時点のスコープ：**表示のみ**（引き継ぎ書_phase3a.md §8.1「3e：表示」）。
- * 事業別時間割当てモーダル・勤怠フラグの変更・「まとめて提出」は書き込みを伴うため、
- * CLAUDE.md の方針（書き込みを伴う処理は単独スライスにする）により次スライスで追加する。
- * このページは AttendanceGridService が集約したデータをそのまま描画するだけで、
- * 業務判定は一切行わない。
+ * 3eで表示専用として実装し、3e-2で書き込み系（事業別時間割当てモーダル・
+ * 勤怠フラグの変更）を追加した。AttendanceFlagService / ProjectHourService への
+ * 実際の保存は Module\Attendance\RestController（REST API）が担い、このクラスは
+ * 初期HTML描画とJSへ渡すデータの組み立てに徹する（業務判定は一切行わない）。
  *
  * 意図的に簡略化・見送った点（要件定義書との差分）：
  * ・タブ構成（勤怠／交通費／車両借り上げ／集計表）… 04（交通費・車両借上げ）・
@@ -35,6 +34,13 @@ if (!defined('ABSPATH')) {
  *   設定画面は未実装。8:00〜21:45（要件定義書の例と同じ）を定数として固定している。
  *   この範囲外の深夜勤務はグリッドには描画されないが、実労働時間・残業等の集計
  *   （日次サマリー行・月次総括）には正しく反映される。
+ * ・保存後の画面更新（3e-2） … 要件定義書は「Fetch APIによる非同期更新」で該当セルのみ
+ *   即時に描き替えるとしているが、グリッドの色分けロジック（PHP側）をJSで二重実装する
+ *   コストを避けるため、保存自体はFetch APIで行いつつ、成功後は
+ *   ページを再読み込みしてサーバー側の描画結果を反映する簡略実装とした。
+ * ・事業別時間割当てモーダルの時刻入力は HTML の `<input type="time">` を使うため、
+ *   日をまたぐ割当て（26:00 のような表記）は入力できない。バックエンド
+ *   （ProjectHourCalculator）は対応済みだが、UIからの日またぎ入力は今後の課題。
  */
 final class AttendanceGridPage
 {
@@ -75,6 +81,53 @@ final class AttendanceGridPage
             ['ims-portal-layout'],
             IMS_PORTAL_VERSION
         );
+        wp_enqueue_script(
+            'ims-attendance-grid',
+            IMS_PORTAL_URL . 'assets/js/attendance-grid.js',
+            ['ims-portal-js'],
+            IMS_PORTAL_VERSION,
+            true
+        );
+
+        // モーダル・フラグ変更（3e-2）がJS側で必要とするデータをまとめて渡す。
+        // imsPortal（restUrl・nonce）は core の Assets が既に localize 済み。
+        $user_id = get_current_user_id();
+        [$year, $month] = self::resolve_month();
+        $data = AttendanceGridService::month_data($user_id, $year, $month);
+
+        $days_for_js = [];
+        foreach ($data['days'] as $date => $day) {
+            $allocations = array_map(static function (array $a): array {
+                return [
+                    'businessId' => $a['business_id'],
+                    'start'      => self::minutes_to_input_value($a['start_minutes']),
+                    'end'        => self::minutes_to_input_value($a['end_minutes']),
+                ];
+            }, $day['allocations']);
+
+            $days_for_js[$date] = [
+                'flag'           => $day['attendance_flag'],
+                'clockIn'        => self::minutes_to_label($day['clock_in_minutes']),
+                'clockOut'       => self::minutes_to_label($day['clock_out_minutes']),
+                'rawActualLabel' => $day['raw_actual_minutes'] !== null ? self::format_hours((int) $day['raw_actual_minutes']) : null,
+                'allocations'    => $allocations,
+            ];
+        }
+
+        $flags = [];
+        foreach (AttendanceFlagCalculator::FLAGS as $flag) {
+            $flags[$flag] = AttendanceFlagCalculator::label($flag);
+        }
+
+        wp_localize_script('ims-attendance-grid', 'imsAttendanceGrid', [
+            'routes' => [
+                'flag'          => 'attendance/day/{date}/flag',
+                'projectHours'  => 'attendance/day/{date}/project-hours',
+            ],
+            'businesses' => $data['businesses'],
+            'flags'      => $flags,
+            'days'       => $days_for_js,
+        ]);
     }
 
     private static function is_current_page(): bool
@@ -95,6 +148,7 @@ final class AttendanceGridPage
             <?php self::render_head($year, $month); ?>
             <?php self::render_legend($data['businesses'], $data['business_totals']); ?>
             <?php self::render_grid($year, $month, $data); ?>
+            <?php self::render_modal(); ?>
         </div>
         <?php
         Layout::render_footer();
@@ -115,7 +169,7 @@ final class AttendanceGridPage
             </div>
         </div>
         <p class="ag-note">
-            <?php esc_html_e('この画面は現在「表示のみ」です。事業別時間の割当てや勤怠フラグの変更、月次提出は今後の更新で追加されます。', 'ims-portal'); ?>
+            <?php esc_html_e('セルをダブルクリックすると、その日の事業別時間を入力できます。勤怠フラグは下の「勤怠フラグ」行から変更できます。月次提出は今後の更新で追加されます。', 'ims-portal'); ?>
         </p>
         <?php
     }
@@ -175,9 +229,23 @@ final class AttendanceGridPage
                         <?php endforeach; ?>
                     </tr>
                     <tr class="ag-row-summary">
+                        <th class="ag-col-time"><?php esc_html_e('勤怠フラグ', 'ims-portal'); ?></th>
+                        <?php foreach ($days as $day) : ?>
+                            <td class="<?php echo esc_attr(self::day_cell_class($day)); ?>" data-date="<?php echo esc_attr($day['date']); ?>">
+                                <select class="ag-flag-select" data-date="<?php echo esc_attr($day['date']); ?>" data-current="<?php echo esc_attr($day['attendance_flag']); ?>">
+                                    <?php foreach (AttendanceFlagCalculator::FLAGS as $flag_value) : ?>
+                                        <option value="<?php echo esc_attr($flag_value); ?>" <?php selected($day['attendance_flag'], $flag_value); ?>>
+                                            <?php echo esc_html(AttendanceFlagCalculator::label($flag_value)); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="ag-row-summary">
                         <th class="ag-col-time"><?php esc_html_e('出勤', 'ims-portal'); ?></th>
                         <?php foreach ($days as $day) : ?>
-                            <td class="<?php echo esc_attr(self::day_cell_class($day)); ?>">
+                            <td class="<?php echo esc_attr(self::day_cell_class($day)); ?>" data-date="<?php echo esc_attr($day['date']); ?>">
                                 <?php echo esc_html(self::minutes_to_label($day['clock_in_minutes'])); ?>
                             </td>
                         <?php endforeach; ?>
@@ -185,7 +253,7 @@ final class AttendanceGridPage
                     <tr class="ag-row-summary">
                         <th class="ag-col-time"><?php esc_html_e('退勤', 'ims-portal'); ?></th>
                         <?php foreach ($days as $day) : ?>
-                            <td class="<?php echo esc_attr(self::day_cell_class($day)); ?>">
+                            <td class="<?php echo esc_attr(self::day_cell_class($day)); ?>" data-date="<?php echo esc_attr($day['date']); ?>">
                                 <?php echo esc_html(self::minutes_to_label($day['clock_out_minutes'])); ?>
                             </td>
                         <?php endforeach; ?>
@@ -193,7 +261,8 @@ final class AttendanceGridPage
                     <tr class="ag-row-summary">
                         <th class="ag-col-time"><?php esc_html_e('実労働', 'ims-portal'); ?></th>
                         <?php foreach ($days as $day) : ?>
-                            <td class="<?php echo esc_attr(self::day_cell_class($day)); ?><?php echo $day['needs_allocation'] ? ' ag-needs-allocation' : ''; ?>">
+                            <td class="<?php echo esc_attr(self::day_cell_class($day)); ?><?php echo $day['needs_allocation'] ? ' ag-needs-allocation' : ''; ?>"
+                                data-date="<?php echo esc_attr($day['date']); ?>">
                                 <?php echo $day['actual_minutes'] !== null ? esc_html(self::format_hours((int) $day['actual_minutes'])) : '—'; ?>
                                 <?php if ($day['needs_allocation']) : ?>
                                     <span class="ag-needs-badge">⚠️ <?php esc_html_e('要入力', 'ims-portal'); ?></span>
@@ -259,11 +328,55 @@ final class AttendanceGridPage
             }
         }
         ?>
-        <td class="<?php echo esc_attr(implode(' ', $classes)); ?>" <?php echo $style !== '' ? 'style="' . $style . '"' : ''; ?>>
+        <td class="<?php echo esc_attr(implode(' ', $classes)); ?>"
+            data-date="<?php echo esc_attr($day['date']); ?>"
+            <?php echo $style !== '' ? 'style="' . $style . '"' : ''; ?>>
             <?php if ($label !== '') : ?>
                 <span class="ag-cell-label"><?php echo esc_html($label); ?></span>
             <?php endif; ?>
         </td>
+        <?php
+    }
+
+    /**
+     * 事業別時間割当ての入力モーダル（§3.3）。非表示のまま描画し、JS（3e-2）が
+     * ダブルクリック時に対象日のデータ（imsAttendanceGrid.businesses 等）で
+     * 中身を組み立てて表示する。事業の選択肢もJS側で生成するため、ここでは骨格のみ。
+     */
+    private static function render_modal(): void
+    {
+        ?>
+        <div class="ag-modal" id="ag-modal" hidden>
+            <div class="ag-modal-backdrop" data-ag-close="1"></div>
+            <div class="ag-modal-panel" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e('事業別時間の入力', 'ims-portal'); ?>">
+                <h2 class="ag-modal-title">
+                    <?php esc_html_e('事業別時間の入力', 'ims-portal'); ?>
+                    <span id="ag-modal-date"></span>
+                </h2>
+                <p class="ag-modal-sub" id="ag-modal-target"></p>
+
+                <table class="ag-modal-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('事業', 'ims-portal'); ?></th>
+                            <th><?php esc_html_e('開始', 'ims-portal'); ?></th>
+                            <th><?php esc_html_e('終了', 'ims-portal'); ?></th>
+                            <th><?php esc_html_e('時間', 'ims-portal'); ?></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="ag-modal-rows"></tbody>
+                </table>
+                <button type="button" class="button" id="ag-modal-add-row">＋ <?php esc_html_e('行を追加', 'ims-portal'); ?></button>
+
+                <p class="ag-modal-error" id="ag-modal-error" hidden></p>
+
+                <div class="ag-modal-actions">
+                    <button type="button" class="button button-primary" id="ag-modal-save"><?php esc_html_e('保存する', 'ims-portal'); ?></button>
+                    <button type="button" class="button" id="ag-modal-cancel" data-ag-close="1"><?php esc_html_e('キャンセル', 'ims-portal'); ?></button>
+                </div>
+            </div>
+        </div>
         <?php
     }
 
@@ -344,6 +457,17 @@ final class AttendanceGridPage
         $h = intdiv($minutes, 60);
         $m = $minutes % 60;
         return sprintf('%d時間%02d分', $h, $m);
+    }
+
+    /**
+     * `<input type="time">` に渡せる 'HH:MM' 形式にする。
+     * HTML の time 入力は24時を超える値を扱えないため、1440分以上は 1440 で割った余りに
+     * 丸める（日をまたぐ割当ての表示上の簡略化。クラス冒頭コメント参照）。
+     */
+    private static function minutes_to_input_value(int $minutes): string
+    {
+        $minutes = $minutes % 1440;
+        return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
 
     /**
