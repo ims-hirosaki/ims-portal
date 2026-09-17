@@ -11,13 +11,15 @@ if (!defined('ABSPATH')) {
 /**
  * 03_attendance_management（勤怠管理）モジュールのエントリポイント。
  *
- * 3a時点のスコープ：給与計算サイクル設定・事業マスタのみ（引き継ぎ書_phase3a.md §8.1）。
+ * 3a時点のスコープ：給与計算サイクル設定・事業マスタ（引き継ぎ書_phase3a.md §8.1）。
  * 手当マスタは01_user_managementモジュールが先行実装済みのため、ここでは扱わない
  * （Schema.php 冒頭コメント参照）。
+ * 3bで日次勤怠集計（実労働時間・残業・深夜労働の算出）を追加した。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
- * ・ims_register_schema … wp_businesses のDDL寄与
+ * ・ims_register_schema … wp_businesses / wp_daily_attendance のDDL寄与
  * ・ims_seed_initial_data … 事業マスタの初期データ（本社業務）投入（べき等）
+ * ・ims_timecard_clocked_out … 02モジュールの退勤打刻完了時、日次勤怠集計を再計算する（3b）
  *
  * ims-portal.php の boot() から Bootstrap::init() を呼ぶ。
  */
@@ -30,6 +32,10 @@ final class Bootstrap
 
         // 初期データ投入（有効化時。既に存在すれば何もしない＝べき等）
         add_action('ims_seed_initial_data', [self::class, 'seed_default_business']);
+
+        // 02モジュールの退勤打刻完了時に日次勤怠集計を再計算する（3b・§6.2）。
+        // is_admin() の外で登録する（打刻はフロント・REST API文脈で発生するため）。
+        add_action('ims_timecard_clocked_out', [DailyAttendanceService::class, 'recalculate'], 10, 2);
 
         // 管理画面
         if (is_admin()) {
