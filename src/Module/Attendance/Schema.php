@@ -19,9 +19,8 @@ if (!defined('ABSPATH')) {
  * 「既存実装は依頼された箇所だけ変更する」方針に従い、ここでは重複定義しない
  * （引き継ぎ書_phase3a.md 確認時にユーザーに確認済み）。
  *
- * wp_daily_attendance / wp_project_hours / wp_monthly_summary のDDLは、
- * それぞれ書き込み処理を実装するスライス（3b / 3d / 3f）で追加する。
- * このスライス（3a）では追加しない。
+ * wp_project_hours / wp_monthly_summary のDDLは、それぞれ書き込み処理を実装する
+ * スライス（3d / 3f）で追加する。wp_daily_attendance は 3b で追加した（下記）。
  *
  * dbDelta 互換の作法（Module\Timecard\Schema 等と同一）：
  * ・PRIMARY KEY の後は半角スペース2つ
@@ -58,6 +57,26 @@ final class Schema
   UNIQUE KEY business_code (business_code)
 ) {$charset};";
 
+        // 日次勤怠集計（§3.1・§5.3）。3bでは attendance_flag='none'（既定値）固定で書き込む。
+        // hourly_leave_minutes・flagによる労働時間補正は 3c（勤怠フラグ管理）で接続する。
+        $ddls[] = "CREATE TABLE {$p}daily_attendance (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  user_id bigint(20) unsigned NOT NULL,
+  work_date date NOT NULL,
+  attendance_flag enum('none','paid_leave','hourly_leave','half_day_am','half_day_pm','holiday_work','legal_substitute','scheduled_substitute') NOT NULL DEFAULT 'none',
+  hourly_leave_minutes int(11) DEFAULT NULL,
+  scheduled_minutes int(11) NOT NULL,
+  actual_minutes int(11) DEFAULT NULL,
+  overtime_legal_min int(11) DEFAULT NULL,
+  overtime_illegal_min int(11) DEFAULT NULL,
+  late_night_minutes int(11) DEFAULT NULL,
+  note text DEFAULT NULL,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY  (id),
+  UNIQUE KEY unique_user_date (user_id,work_date)
+) {$charset};";
+
         return $ddls;
     }
 
@@ -66,5 +85,12 @@ final class Schema
     {
         global $wpdb;
         return $wpdb->prefix . 'businesses';
+    }
+
+    /** 日次勤怠集計テーブルの物理名。 */
+    public static function daily_attendance_table(): string
+    {
+        global $wpdb;
+        return $wpdb->prefix . 'daily_attendance';
     }
 }
