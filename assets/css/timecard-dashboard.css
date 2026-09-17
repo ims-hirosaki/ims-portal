@@ -1,0 +1,59 @@
+/**
+ * ダッシュボード（/portal/）の「本日の勤務状況」ステータスカード（2g）。
+ * 00_portal.md §3.2.2 準拠。ポータル共通の portal.css は変更しない。
+ */
+
+.tc-status-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.tc-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  padding: 16px 18px;
+  text-decoration: none;
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+
+.tc-status-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* 勤務中は左ボーダーを青系に（§3.2.2） */
+.tc-status-card--working {
+  border-left-color: var(--indigo);
+}
+
+.tc-status-card-label {
+  font-size: 11.5px;
+  color: var(--sub);
+}
+
+.tc-status-card-value {
+  font-family: var(--f-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.tc-status-card-times {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .tc-status-row {
+    grid-template-columns: 1fr;
+  }
+}
