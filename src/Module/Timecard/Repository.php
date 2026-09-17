@@ -278,8 +278,8 @@ final class Repository
         int $corrected_by
     ): bool {
         global $wpdb;
-        $logs_table = self::logs_table();
-        $corr_table = self::corrections_table();
+        $logs_table = Schema::logs_table();
+        $corr_table = Schema::corrections_table();
 
         $wpdb->query('START TRANSACTION');
 
@@ -323,7 +323,7 @@ final class Repository
     public static function corrections_for_log(int $log_id): array
     {
         global $wpdb;
-        $table = self::corrections_table();
+        $table = Schema::corrections_table();
 
         $rows = $wpdb->get_results(
             $wpdb->prepare(
@@ -371,8 +371,8 @@ final class Repository
     public static function search_logs(array $filters): array
     {
         global $wpdb;
-        $logs_table = self::logs_table();
-        $corr_table = self::corrections_table();
+        $logs_table = Schema::logs_table();
+        $corr_table = Schema::corrections_table();
         $has_correction_expr = "EXISTS (SELECT 1 FROM {$corr_table} c WHERE c.log_id = l.log_id)";
 
         $where  = ['1=1'];
