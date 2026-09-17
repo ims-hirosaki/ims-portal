@@ -40,13 +40,11 @@ final class Bootstrap
 
         // 管理画面
         if (is_admin()) {
-            AdminSettingsPage::init();  // ポータル設定 > 打刻システム設定 (2a)
+            AdminSettingsPage::init();   // ポータル設定 > 打刻システム設定 (2a)
+            AdminLogSearchPage::init();  // 社員管理 > 打刻ログ照会 (2f)
         }
 
         // 今後この module に追加していくもの（各スライスで有効化）：
-        // 2d: 退勤時の休憩補完（ケースA / ケースB）
-        // 2e: 打刻修正（corrections への記録）
-        // 2f: AdminLogPage（社員管理 > 打刻ログ照会）
         // 2g: タイル登録・summary 寄与・ダッシュボードのステータスカード
     }
 }
