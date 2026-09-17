@@ -15,11 +15,17 @@ if (!defined('ABSPATH')) {
  * 手当マスタは01_user_managementモジュールが先行実装済みのため、ここでは扱わない
  * （Schema.php 冒頭コメント参照）。
  * 3bで日次勤怠集計（実労働時間・残業・深夜労働の算出）を追加した。
+ * 3cで勤怠フラグ（有給・時間休等）が労働時間へ与える影響を組み込んだ
+ * （AttendanceFlagCalculator・AttendanceFlagService）。
+ * 3dで事業別時間割当て（wp_project_hours・4条件バリデーション）を追加した
+ * （ProjectHourCalculator・ProjectHourRepository・ProjectHourService）。
+ * 3c・3dのサービス群は画面・APIがまだ無く、3e（スタッフ向け月次勤務表画面）から
+ * 呼び出す想定。フックの登録は不要なため Bootstrap への追記はない。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
- * ・ims_register_schema … wp_businesses / wp_daily_attendance のDDL寄与
+ * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours のDDL寄与
  * ・ims_seed_initial_data … 事業マスタの初期データ（本社業務）投入（べき等）
- * ・ims_timecard_clocked_out … 02モジュールの退勤打刻完了時、日次勤怠集計を再計算する（3b）
+ * ・ims_timecard_clocked_out … 02モジュールの退勤打刻完了時、日次勤怠集計を再計算する（3b・3c）
  *
  * ims-portal.php の boot() から Bootstrap::init() を呼ぶ。
  */

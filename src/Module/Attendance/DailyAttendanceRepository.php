@@ -11,8 +11,9 @@ if (!defined('ABSPATH')) {
 /**
  * 日次勤怠集計（wp_daily_attendance）の読み書き（03_attendance_management.md §5.3）。
  *
- * 3b時点では WorkTimeCalculator の算出結果（打刻実績のみ由来）を保存するだけ。
- * attendance_flag による書き込みは3c（勤怠フラグ管理）で追加する。
+ * attendance_flag・hourly_leave_minutes を含めた最終値（AttendanceFlagCalculator が
+ * 算出したもの）を保存する（3c）。「排他制御」は attendance_flag が単一のENUM列である
+ * ことで自動的に満たされるため、ここでは単純に上書き保存するだけでよい。
  *
  * user_id + work_date の UNIQUE 制約があるため、既存行があれば UPDATE、なければ INSERT する
  * （$wpdb->replace は created_at が入れ直しになるため使わない）。
@@ -40,12 +41,18 @@ final class DailyAttendanceRepository
     }
 
     /**
-     * 打刻実績由来の算出結果を保存する（attendance_flag は 'none' のまま：3cで拡張）。
+     * 勤怠フラグ適用後の最終値を保存する（AttendanceFlagCalculator::apply() の結果をそのまま渡す）。
      *
      * @param array{actual_minutes:int, overtime_legal_min:int, overtime_illegal_min:int, late_night_minutes:int} $metrics
      */
-    public static function save(int $user_id, string $work_date, int $scheduled_minutes, array $metrics): bool
-    {
+    public static function save(
+        int $user_id,
+        string $work_date,
+        int $scheduled_minutes,
+        string $attendance_flag,
+        ?int $hourly_leave_minutes,
+        array $metrics
+    ): bool {
         global $wpdb;
         $table = self::table();
 
@@ -56,6 +63,8 @@ final class DailyAttendanceRepository
         ));
 
         $data = [
+            'attendance_flag'      => $attendance_flag,
+            'hourly_leave_minutes' => $hourly_leave_minutes,
             'scheduled_minutes'    => $scheduled_minutes,
             'actual_minutes'       => $metrics['actual_minutes'],
             'overtime_legal_min'   => $metrics['overtime_legal_min'],

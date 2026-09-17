@@ -19,8 +19,8 @@ if (!defined('ABSPATH')) {
  * 「既存実装は依頼された箇所だけ変更する」方針に従い、ここでは重複定義しない
  * （引き継ぎ書_phase3a.md 確認時にユーザーに確認済み）。
  *
- * wp_project_hours / wp_monthly_summary のDDLは、それぞれ書き込み処理を実装する
- * スライス（3d / 3f）で追加する。wp_daily_attendance は 3b で追加した（下記）。
+ * wp_monthly_summary のDDLは、書き込み処理を実装するスライス（3f）で追加する。
+ * wp_daily_attendance は 3b、wp_project_hours は 3d で追加した（下記）。
  *
  * dbDelta 互換の作法（Module\Timecard\Schema 等と同一）：
  * ・PRIMARY KEY の後は半角スペース2つ
@@ -77,6 +77,26 @@ final class Schema
   UNIQUE KEY unique_user_date (user_id,work_date)
 ) {$charset};";
 
+        // 事業別時間実績（§3.3・§5.4）。「時間帯（開始〜終了）」単位で記録する。
+        // start_time/end_time は MySQL の time型（最大838:59:59）をそのまま利用し、
+        // 日をまたぐ勤務（例：22:00出勤〜翌2:00退勤）は '26:00:00' のように24時を超えた
+        // 表記で保存する（ProjectHourCalculator が変換を担う）。
+        $ddls[] = "CREATE TABLE {$p}project_hours (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  user_id bigint(20) unsigned NOT NULL,
+  work_date date NOT NULL,
+  business_id int(11) NOT NULL,
+  start_time time NOT NULL,
+  end_time time NOT NULL,
+  minutes int(11) NOT NULL,
+  is_auto_assigned tinyint(1) NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY  (id),
+  KEY idx_user_date (user_id,work_date),
+  KEY idx_business_date (business_id,work_date)
+) {$charset};";
+
         return $ddls;
     }
 
@@ -92,5 +112,12 @@ final class Schema
     {
         global $wpdb;
         return $wpdb->prefix . 'daily_attendance';
+    }
+
+    /** 事業別時間実績テーブルの物理名。 */
+    public static function project_hours_table(): string
+    {
+        global $wpdb;
+        return $wpdb->prefix . 'project_hours';
     }
 }
