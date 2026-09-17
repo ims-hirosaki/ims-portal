@@ -22,12 +22,15 @@ if (!defined('ABSPATH')) {
  * 3c・3dのサービス群は書き込みAPIがまだ無く、次スライスで
  * スタッフ向け月次勤務表画面（3e）から呼び出す想定。
  * 3eでスタッフ向け月次勤務表グリッド `/portal/attendance/` を追加した（表示のみ）。
+ * 3e-2で書き込み系（勤怠フラグの変更・事業別時間割当ての保存）を、
+ * Module\Attendance\RestController（REST API）経由で追加した。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
  * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours のDDL寄与
  * ・ims_seed_initial_data … 事業マスタの初期データ（本社業務）投入（べき等）
  * ・ims_timecard_clocked_out … 02モジュールの退勤打刻完了時、日次勤怠集計を再計算する（3b・3c）
  * ・ims_portal_register_page … /portal/attendance/ の登録（3e）
+ * ・rest_api_init … 勤怠フラグ・事業別時間割当ての書き込みAPI登録（3e-2）
  *
  * ims-portal.php の boot() から Bootstrap::init() を呼ぶ。
  */
@@ -47,6 +50,9 @@ final class Bootstrap
 
         // フロント：月次勤務表グリッド（3e）。is_admin() の外で登録する（ポータル画面のため）。
         AttendanceGridPage::init();
+
+        // 書き込みAPI（3e-2）。rest_api_init は管理画面文脈でも走るため is_admin() の外で登録する。
+        RestController::init();
 
         // 管理画面
         if (is_admin()) {
