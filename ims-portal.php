@@ -3,7 +3,7 @@
  * Plugin Name:       IMS Hirosaki Portal
  * Plugin URI:        https://portal-site.labs-ims.com/
  * Description:       IMS Hirosaki 社内業務システム（グループウェア）。ユーザー管理・打刻・勤怠・交通費・稟議・Google Workspace 連携を統合するポータル基盤プラグイン。
- * Version:           0.6.1-phase3b
+ * Version:           0.6.2-phase3c
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            IMS Hirosaki
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.1-phase3b'); // 3b：日次勤怠集計（実労働時間・残業・深夜労働の算出）を追加
+define('IMS_PORTAL_VERSION', '0.6.2-phase3c'); // 3c：勤怠フラグ（有給・時間休等）の労働時間への影響を追加。DDL変更なし
 define('IMS_PORTAL_DB_VERSION', 5); // スキーマ変更時にインクリメントする（08 §5.2）。v4→v5: 03モジュールの日次勤怠集計（wp_daily_attendance）追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
