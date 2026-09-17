@@ -177,6 +177,71 @@ final class WorkTimeCalculator
         return max(0, min($e1, $e2) - max($s1, $s2));
     }
 
+    /**
+     * 打刻ログから、出退勤時刻・休憩区間を「work_date 0時からの経過分」で取り出す（3e：グリッド表示用）。
+     * ProjectHourCalculator と同じ表現（日をまたぐ場合は1440分を超える値）を使うため、
+     * 事業別時間割当てのブロックと同じ座標系でグリッド描画できる。
+     *
+     * calculate_day() と異なり、未完了の1日（退勤前・休憩中）でも取れる範囲の値を返す
+     * （グリッドは「打刻の進行状況」もそのまま表示したいため）。
+     *
+     * @param array<int, array{punch_type:string, punched_at:string}> $logs
+     * @return array{clock_in_minutes:?int, clock_out_minutes:?int, breaks: array<int, array{0:int, 1:int}>}
+     */
+    public static function punch_times(array $logs, string $work_date): array
+    {
+        $midnight = self::ts($work_date . ' 00:00:00');
+
+        $clock_in_ts  = null;
+        $clock_out_ts = null;
+        $break_start  = null;
+        $breaks       = [];
+
+        foreach ($logs as $log) {
+            $type = (string) ($log['punch_type'] ?? '');
+            $ts   = self::ts((string) ($log['punched_at'] ?? ''));
+            if ($ts === null) {
+                continue;
+            }
+
+            switch ($type) {
+                case 'clock_in':
+                    if ($clock_in_ts === null) {
+                        $clock_in_ts = $ts;
+                    }
+                    break;
+                case 'break_in':
+                    $break_start = $ts;
+                    break;
+                case 'break_out':
+                    if ($break_start !== null) {
+                        $breaks[] = [$break_start, $ts];
+                        $break_start = null;
+                    }
+                    break;
+                case 'clock_out':
+                    $clock_out_ts = $ts;
+                    break;
+            }
+        }
+
+        $to_minutes = static function (?int $ts) use ($midnight): ?int {
+            if ($ts === null || $midnight === null) {
+                return null;
+            }
+            return (int) round(($ts - $midnight) / 60);
+        };
+
+        return [
+            'clock_in_minutes'  => $to_minutes($clock_in_ts),
+            'clock_out_minutes' => $to_minutes($clock_out_ts),
+            'breaks'            => array_map(
+                static fn(array $b): array => [$to_minutes($b[0]), $to_minutes($b[1])],
+                $breaks
+            ),
+        ];
+    }
+
     private static function ts(string $datetime): ?int
     {
         if ($datetime === '') {

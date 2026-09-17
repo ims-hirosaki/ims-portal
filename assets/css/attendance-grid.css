@@ -1,0 +1,258 @@
+/**
+ * 月次勤務表グリッド（/portal/attendance/）専用スタイル（3e）。
+ *
+ * ・すべて `.ag-wrap` 配下にスコープする。共有の portal.css は変更しない。
+ * ・色・角丸・影・フォントは 07_design_system.md のトークン経由。
+ *   ims-tokens.css / portal.css が先に読み込まれる前提。
+ */
+
+.ag-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ag-card-title {
+  font-family: var(--f-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── ヘッダー・月送り ──────────────────────────────── */
+
+.ag-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ag-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ag-month-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--indigo);
+  text-decoration: none;
+  font-size: 16px;
+}
+.ag-month-btn:hover {
+  background: var(--indigo-tint);
+}
+
+.ag-month-label {
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 7em;
+  text-align: center;
+}
+
+.ag-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-sm, 6px);
+  background: var(--gold-tint);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+
+/* ── 事業別集計（凡例） ────────────────────────────── */
+
+.ag-legend {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md, 14px);
+  padding: 14px 18px;
+}
+
+.ag-legend-title {
+  display: block;
+  font-family: var(--f-display);
+  font-size: 13px;
+  color: var(--indigo);
+  margin-bottom: 8px;
+}
+
+.ag-legend-empty {
+  font-size: 12.5px;
+  color: var(--sub);
+}
+
+.ag-legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+
+.ag-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.ag-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, .15);
+}
+
+.ag-legend-hours {
+  color: var(--sub);
+}
+
+/* ── グリッド本体 ─────────────────────────────────── */
+
+.ag-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md, 14px);
+  background: var(--surface-raised);
+}
+
+.ag-table {
+  border-collapse: collapse;
+  font-size: 11.5px;
+  min-width: 100%;
+}
+
+.ag-table th,
+.ag-table td {
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  padding: 2px 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ag-col-time {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface-raised);
+  min-width: 52px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+  border-right: 1px solid var(--line);
+}
+
+/* 日番号ヘッダー */
+.ag-row-daynum th {
+  background: var(--indigo-tint);
+  color: var(--indigo);
+  font-weight: 700;
+  padding: 6px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.ag-row-daynum .ag-col-time {
+  z-index: 3;
+}
+.ag-daynum.is-sat { color: var(--indigo-soft); }
+.ag-daynum.is-sun { color: var(--vermillion); }
+
+.ag-flag-badge {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 400;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+/* 日次サマリー行（出勤・退勤・実労働） */
+.ag-row-summary th {
+  background: var(--surface);
+  color: var(--sub);
+  font-weight: 400;
+  text-align: left;
+  padding-left: 8px;
+}
+.ag-summary-cell {
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.ag-summary-cell.is-sat { background: var(--indigo-tint); }
+.ag-summary-cell.is-sun { background: var(--vermillion-tint); }
+
+.ag-needs-allocation {
+  background: var(--gold-tint) !important;
+}
+.ag-needs-badge {
+  display: block;
+  font-size: 9px;
+  color: var(--vermillion);
+  white-space: nowrap;
+}
+
+/* 時刻軸の罫線階層（§4.1） */
+.ag-row-hour th,
+.ag-row-hour td {
+  border-top: 2px solid var(--line);
+}
+.ag-row-half th,
+.ag-row-half td {
+  border-top: 1px solid var(--line-soft);
+}
+.ag-row-quarter th,
+.ag-row-quarter td {
+  border-top: 1px dotted var(--line-soft);
+}
+
+/* グリッドセル */
+.ag-cell {
+  height: 14px;
+  min-width: 34px;
+}
+.ag-cell-outside {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--line-soft) 0,
+    var(--line-soft) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  opacity: .5;
+}
+.ag-cell-break {
+  background: var(--surface);
+}
+.ag-cell-worked {
+  background: var(--moss-tint);
+}
+.ag-cell-needs {
+  background: var(--gold-tint);
+}
+.ag-cell-business {
+  color: #fff;
+}
+.ag-cell-label {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: inherit;
+  text-shadow: 0 0 2px rgba(0, 0, 0, .35);
+}
+
+.ag-col-flagged {
+  filter: saturate(.4) brightness(1.05);
+}
