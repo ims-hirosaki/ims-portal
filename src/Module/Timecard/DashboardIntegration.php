@@ -123,7 +123,7 @@ final class DashboardIntegration
     /** ダッシュボード（`/portal/` トップ）でだけ専用CSSを読み込む。 */
     public static function enqueue(): void
     {
-        if (!Router::is_portal_request() || get_query_var('ims_portal_page') !== '') {
+        if (!Router::is_dashboard_request()) {
             return;
         }
         wp_enqueue_style(

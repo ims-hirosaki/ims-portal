@@ -3,7 +3,7 @@
  * Plugin Name:       IMS Hirosaki Portal
  * Plugin URI:        https://portal-site.labs-ims.com/
  * Description:       IMS Hirosaki 社内業務システム（グループウェア）。ユーザー管理・打刻・勤怠・交通費・稟議・Google Workspace 連携を統合するポータル基盤プラグイン。
- * Version:           0.5.6-phase2g
+ * Version:           0.5.6.1-phase2g
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            IMS Hirosaki
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.5.6-phase2g'); // 2g：タイル登録・summary寄与・ダッシュボードのステータスカード
+define('IMS_PORTAL_VERSION', '0.5.6.1-phase2g'); // 2g修正：ダッシュボード判定の誤りでステータスカード用CSSが読み込まれない不具合を修正
 define('IMS_PORTAL_DB_VERSION', 3); // スキーマ変更時にインクリメントする（08 §5.2）。v2: 01モジュールのテーブル追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
