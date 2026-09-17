@@ -126,4 +126,18 @@ final class Router
         $slug = get_query_var(self::QUERY_VAR);
         return $slug !== '' && $slug !== false;
     }
+
+    /**
+     * 現在のリクエストがダッシュボード（`/portal/` トップ）かどうか。
+     * ダッシュボード限定のCSS/JSをenqueueしたいモジュール向けの判定用
+     * （サブページ /portal/{slug}/ とは区別する）。
+     *
+     * ダッシュボードのクエリ変数値（'__dashboard__'）は register_rewrite_rules() /
+     * dispatch() 内でのみ扱う実装詳細のため、モジュール側にこの文字列を
+     * 直接参照させないよう、判定はここに閉じ込める。
+     */
+    public static function is_dashboard_request(): bool
+    {
+        return get_query_var(self::QUERY_VAR) === '__dashboard__';
+    }
 }
