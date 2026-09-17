@@ -483,8 +483,13 @@ final class PunchService
     }
 
     /**
-     * 打刻修正（§3.4）。対象ログは必ずログイン中の本人のものに限る
-     * （他人のログの修正は 2f の管理者向け打刻ログ照会画面が別途提供する）。
+     * 打刻修正（§3.4／§4.2）。
+     *
+     * 対象ログは原則ログイン中の本人のものに限るが、`ims_manage_users`
+     * （hr_admin/administrator）は 2f の管理者向け打刻ログ照会画面から
+     * 他人のログも修正できる（§4.2「スタッフ側の修正許可設定に関わらず直接修正可能」）。
+     * 権限を持たないユーザーが他人の log_id を指定した場合は、存在を教えず
+     * 一律 not_found として扱う（IDOR対策）。
      *
      * @return array{ok:bool, code:string, message:string, work_date?:string}
      */
@@ -496,7 +501,10 @@ final class PunchService
         }
 
         $log = Repository::find_log($log_id);
-        if ($log === null || $log['user_id'] !== $user_id) {
+        if ($log === null) {
+            return self::fail('not_found', '対象の打刻が見つかりません。');
+        }
+        if ($log['user_id'] !== $user_id && !Capabilities::can_manage_users()) {
             return self::fail('not_found', '対象の打刻が見つかりません。');
         }
 
@@ -524,7 +532,9 @@ final class PunchService
         $corrected_mysql = gmdate('Y-m-d H:i:s', $corrected_ts);
 
         // 保存前に、置き換え後の並びで矛盾チェック（§3.4 手順5）。
-        $logs = Repository::logs_for_date($user_id, $log['work_date']);
+        // 対象ログの所有者（$log['user_id']）の当日ログを見る。管理者が他人のログを
+        // 修正する場合、操作者（$user_id）と所有者が異なるため取り違えないこと。
+        $logs = Repository::logs_for_date($log['user_id'], $log['work_date']);
         $simulated = array_map(static function (array $l) use ($log_id, $corrected_mysql): array {
             if ($l['log_id'] === $log_id) {
                 $l['punched_at'] = $corrected_mysql;
