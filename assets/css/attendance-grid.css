@@ -278,6 +278,16 @@
   align-items: center;
   justify-content: center;
 }
+/*
+ * [hidden] 属性は本来ブラウザ標準スタイルで display:none になるが、
+ * 同じ詳細度（0,1,0）の場合は作成者CSSが標準スタイルより優先されてしまうため、
+ * 上の `.ag-modal { display: flex }` が [hidden] を無効化してしまっていた。
+ * JS（attendance-grid.js）が modal.hidden の真偽で開閉を制御しているため、
+ * ここで明示的に上書きして本来の非表示挙動に戻す。
+ */
+.ag-modal[hidden] {
+  display: none;
+}
 
 .ag-modal-backdrop {
   position: absolute;
