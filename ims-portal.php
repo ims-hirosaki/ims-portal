@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.8-phase3f1'); // 3f-1：月次締め・提出フロー（wp_monthly_summary・提出処理）を追加
+define('IMS_PORTAL_VERSION', '0.6.9-phase3f2'); // 3f-2：チェック者承認・差し戻しを追加
 define('IMS_PORTAL_DB_VERSION', 8); // スキーマ変更時にインクリメントする（08 §5.2）。v7→v8: 03モジュールの月次締め（wp_monthly_summary）追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
