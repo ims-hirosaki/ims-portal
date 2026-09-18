@@ -3,14 +3,19 @@
  *
  * ・勤怠フラグの変更（.ag-flag-select の change）
  * ・事業別時間割当てモーダル（グリッドセルの dblclick）
+ * ・月次提出ボタン（3f-4b。#ag-submit-btn）
  *
  * 保存はいずれも Fetch API で REST（Module\Attendance\RestController）へ送るが、
  * 成功後はページを再読み込みしてサーバー側の描画結果（グリッドの色分け等）を
  * そのまま反映する。グリッドの色分けロジックをJS側で二重実装するコストを避けるための
  * 簡略実装（AttendanceGridPage 冒頭コメント参照）。
  *
+ * imsAttendanceGrid.isEditable が false（提出済み以降）のときは、勤怠フラグの
+ * プルダウンはサーバー側で disabled 済みだが、念のためJS側でもフラグ変更・
+ * モーダルを開く操作をブロックする（サーバー側の month_locked チェックが最終防衛）。
+ *
  * imsPortal（restUrl・nonce）は core の Assets が、imsAttendanceGrid
- * （事業一覧・フラグ一覧・日別データ）は AttendanceGridPage::enqueue() が localize する。
+ * （事業一覧・フラグ一覧・日別データ・編集可否）は AttendanceGridPage::enqueue() が localize する。
  */
 (function () {
   'use strict';
@@ -23,6 +28,7 @@
 
     initFlagSelects(table);
     initModal(table);
+    initSubmit();
   });
 
   // ── 勤怠フラグの変更 ────────────────────────────────────
@@ -38,6 +44,9 @@
   }
 
   function onFlagChange(select) {
+    if (!imsAttendanceGrid.isEditable) {
+      return;
+    }
     var date = select.dataset.date;
     var newFlag = select.value;
     var oldFlag = select.dataset.current;
@@ -96,6 +105,9 @@
     var saveBtn = document.getElementById('ag-modal-save');
 
     table.addEventListener('dblclick', function (e) {
+      if (!imsAttendanceGrid.isEditable) {
+        return;
+      }
       var cell = e.target.closest('td[data-date]');
       if (!cell) {
         return;
@@ -284,10 +296,35 @@
     }
   }
 
+  // ── 月次提出 ───────────────────────────────────────────
+
+  function initSubmit() {
+    var btn = document.getElementById('ag-submit-btn');
+    if (!btn) {
+      return;
+    }
+    btn.addEventListener('click', function () {
+      if (!window.confirm('この月の勤怠を提出します。提出後は内容を編集できなくなります。よろしいですか？')) {
+        return;
+      }
+      postJson(routeFor('submit', btn.dataset.yearMonth), {})
+        .then(function (res) {
+          if (res.ok) {
+            window.location.reload();
+          } else {
+            window.alert(res.data.message || '提出に失敗しました。');
+          }
+        })
+        .catch(function () {
+          window.alert('通信に失敗しました。時間をおいて再度お試しください。');
+        });
+    });
+  }
+
   // ── 共通ヘルパー ────────────────────────────────────────
 
-  function routeFor(key, date) {
-    return imsAttendanceGrid.routes[key].replace('{date}', date);
+  function routeFor(key, param) {
+    return imsAttendanceGrid.routes[key].replace(/\{[^}]+\}/, param);
   }
 
   function postJson(route, body) {

@@ -101,4 +101,18 @@ final class MonthlySummaryCalculator
     {
         return (bool) preg_match('/^\d{4}-\d{2}$/', $year_month);
     }
+
+    /** 画面表示用のステータス名（非技術者向けの平易な日本語。3f-4）。 */
+    public static function label(string $status): string
+    {
+        return match ($status) {
+            self::DRAFT               => '未提出',
+            self::SUBMITTED           => '提出済み（確認待ち）',
+            self::CHECKED             => 'チェック済み（最終承認待ち）',
+            self::REJECTED_BY_CHECKER => '差し戻されました（チェック担当者より）',
+            self::REJECTED_BY_ADMIN   => '差し戻されました（最終承認者より）',
+            self::CONFIRMED           => '確定済み',
+            default                   => $status,
+        };
+    }
 }

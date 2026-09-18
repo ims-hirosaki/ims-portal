@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.11-phase3f4a'); // 3f-4a：月次提出後のグリッド編集ロックを追加
+define('IMS_PORTAL_VERSION', '0.6.12-phase3f4b'); // 3f-4b：月次勤務表グリッドに提出ボタン・ステータス表示を追加
 define('IMS_PORTAL_DB_VERSION', 8); // スキーマ変更時にインクリメントする（08 §5.2）。v7→v8: 03モジュールの月次締め（wp_monthly_summary）追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));

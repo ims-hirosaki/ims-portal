@@ -16,9 +16,11 @@ if (!defined('ABSPATH')) {
  * ルート：
  *   POST /wp-json/ims/v1/attendance/day/{date}/flag           … 勤怠フラグの設定
  *   POST /wp-json/ims/v1/attendance/day/{date}/project-hours  … 事業別時間割当ての保存
+ *   POST /wp-json/ims/v1/attendance/month/{year_month}/submit … 月次勤務表の提出（3f-4b）
  *
  * このクラスの責務は HTTP の入出力だけに限る。業務判断は AttendanceFlagService /
- * ProjectHourService に置き、ここでは混ぜない（Module\Timecard\RestController と同方針）。
+ * ProjectHourService / MonthlySummaryService に置き、ここでは混ぜない
+ * （Module\Timecard\RestController と同方針）。
  *
  * 認証：permission_callback で `ims_use_portal` を要求する。対象ユーザーは
  * リクエストからではなく必ずログインセッションから取る（なりすまし防止）。
@@ -32,14 +34,19 @@ final class RestController
     private const NAMESPACE = 'ims/v1';
     private const ROUTE_FLAG          = '/attendance/day/(?P<date>\d{4}-\d{2}-\d{2})/flag';
     private const ROUTE_PROJECT_HOURS = '/attendance/day/(?P<date>\d{4}-\d{2}-\d{2})/project-hours';
+    private const ROUTE_SUBMIT        = '/attendance/month/(?P<year_month>\d{4}-\d{2})/submit';
 
     /** WP_Error のコード → HTTPステータス。 */
     private const STATUS_MAP = [
-        'validation'    => 400,
-        'not_required'  => 400,
-        'incomplete'    => 409,
-        'month_locked'  => 403,
-        'db_error'      => 500,
+        'validation'      => 400,
+        'not_required'    => 400,
+        'incomplete'      => 409,
+        'month_locked'    => 403,
+        'forbidden'       => 403,
+        'forbidden_self'  => 403,
+        'invalid_status'  => 409,
+        'unallocated_days' => 409,
+        'db_error'        => 500,
     ];
 
     public static function init(): void
@@ -82,6 +89,18 @@ final class RestController
                 'rows' => [
                     'required' => true,
                     'type'     => 'array',
+                ],
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, self::ROUTE_SUBMIT, [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'handle_submit'],
+            'permission_callback' => [self::class, 'can_use'],
+            'args'                => [
+                'year_month' => [
+                    'required' => true,
+                    'type'     => 'string',
                 ],
             ],
         ]);
@@ -133,6 +152,36 @@ final class RestController
         $result = ProjectHourService::save_day($user_id, $date, $rows);
 
         return self::respond($result, $user_id, $date);
+    }
+
+    /**
+     * 月次勤務表の提出（本人分のみ。§3.4）。
+     */
+    public static function handle_submit(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $user_id    = get_current_user_id();
+        $year_month = (string) $request->get_param('year_month');
+
+        $result = MonthlySummaryService::submit($user_id, $user_id, $year_month);
+
+        if (is_wp_error($result)) {
+            $code   = (string) $result->get_error_code();
+            $status = self::STATUS_MAP[$code] ?? 400;
+
+            return new \WP_REST_Response([
+                'ok'      => false,
+                'code'    => $code,
+                'message' => $result->get_error_message(),
+            ], $status);
+        }
+
+        $status = MonthlySummaryService::current_status($user_id, $year_month);
+
+        return new \WP_REST_Response([
+            'ok'          => true,
+            'status'      => $status,
+            'statusLabel' => MonthlySummaryCalculator::label($status),
+        ], 200);
     }
 
     /**

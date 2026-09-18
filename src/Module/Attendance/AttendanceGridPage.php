@@ -22,7 +22,8 @@ if (!defined('ABSPATH')) {
  * ・タブ構成（勤怠／交通費／車両借り上げ／集計表）… 04（交通費・車両借上げ）・
  *   3g（月次スナップショット）が未実装のため、勤怠タブの中身のみを単独ページとして
  *   実装した。他タブは該当モジュール実装時に統合する。
- * ・「まとめて提出」ボタン … 3f（3段階締め・提出・承認フロー）で追加する。
+ * ・「まとめて提出」ボタン … 3f-4bで勤怠分のみの提出ボタンを追加した。交通費・車両借上げ
+ *   モジュール（04）が未実装のため、3点まとめての提出は該当モジュール実装時に対応する。
  * ・右パネルの sticky 事業別集計 … 本実装ではページ上部の集計ブロックとして表示する
  *   （情報は同一だが、スクロール追従はしない簡略版）。
  * ・交通費アイコン行（🚗） … 04モジュール未実装のため省略した。
@@ -94,6 +95,7 @@ final class AttendanceGridPage
         $user_id    = get_current_user_id();
         $year_month = self::resolve_month();
         $data       = AttendanceGridService::month_data($user_id, $year_month);
+        $status     = MonthlySummaryService::status_summary($user_id, $year_month);
 
         $days_for_js = [];
         foreach ($data['days'] as $date => $day) {
@@ -123,10 +125,13 @@ final class AttendanceGridPage
             'routes' => [
                 'flag'          => 'attendance/day/{date}/flag',
                 'projectHours'  => 'attendance/day/{date}/project-hours',
+                'submit'        => 'attendance/month/{year_month}/submit',
             ],
             'businesses' => $data['businesses'],
             'flags'      => $flags,
             'days'       => $days_for_js,
+            'yearMonth'  => $year_month,
+            'isEditable' => $status['is_editable'],
         ]);
     }
 
@@ -140,18 +145,48 @@ final class AttendanceGridPage
         $user_id    = get_current_user_id();
         $year_month = self::resolve_month();
 
-        $data = AttendanceGridService::month_data($user_id, $year_month);
+        $data   = AttendanceGridService::month_data($user_id, $year_month);
+        $status = MonthlySummaryService::status_summary($user_id, $year_month);
 
         Layout::render_header(__('勤怠', 'ims-portal'));
         ?>
         <div class="ag-wrap">
             <?php self::render_head($year_month, $data['period']); ?>
+            <?php self::render_status_banner($year_month, $status); ?>
             <?php self::render_legend($data['businesses'], $data['business_totals']); ?>
-            <?php self::render_grid($data); ?>
+            <?php self::render_grid($data, $status['is_editable']); ?>
             <?php self::render_modal(); ?>
         </div>
         <?php
         Layout::render_footer();
+    }
+
+    /**
+     * 月次提出のステータスバナー（3f-4b。§4.1「共通ヘッダー（提出ステータス・
+     * まとめて提出ボタン）」の簡略版。交通費・車両借り上げモジュール未実装のため
+     * 勤怠分のみの「提出」とする）。
+     *
+     * @param array{status:string, label:string, is_editable:bool, rejection_comment:?string} $status
+     */
+    private static function render_status_banner(string $year_month, array $status): void
+    {
+        ?>
+        <div class="ag-status-banner ag-status-<?php echo esc_attr($status['status']); ?>">
+            <span class="ag-status-label"><?php echo esc_html($status['label']); ?></span>
+            <?php if ($status['rejection_comment']) : ?>
+                <p class="ag-status-comment">
+                    <?php esc_html_e('差し戻し理由：', 'ims-portal'); ?><?php echo esc_html($status['rejection_comment']); ?>
+                </p>
+            <?php endif; ?>
+            <?php if ($status['is_editable']) : ?>
+                <button type="button" class="button button-primary" id="ag-submit-btn" data-year-month="<?php echo esc_attr($year_month); ?>">
+                    <?php esc_html_e('この月の勤怠を提出する', 'ims-portal'); ?>
+                </button>
+            <?php else : ?>
+                <span class="ag-status-note"><?php esc_html_e('提出済みのため、この月の内容は編集できません。', 'ims-portal'); ?></span>
+            <?php endif; ?>
+        </div>
+        <?php
     }
 
     // ── ヘッダー・月送り ───────────────────────────────────
@@ -178,7 +213,7 @@ final class AttendanceGridPage
             <?php endif; ?>
         </p>
         <p class="ag-note">
-            <?php esc_html_e('セルをダブルクリックすると、その日の事業別時間を入力できます。勤怠フラグは下の「勤怠フラグ」行から変更できます。月次提出は今後の更新で追加されます。', 'ims-portal'); ?>
+            <?php esc_html_e('セルをダブルクリックすると、その日の事業別時間を入力できます。勤怠フラグは下の「勤怠フラグ」行から変更できます。入力が終わったら、下の「提出する」ボタンから提出してください。', 'ims-portal'); ?>
         </p>
         <?php
     }
@@ -225,7 +260,7 @@ final class AttendanceGridPage
     /**
      * @param array{businesses: array<int, array{id:int, name:string, color:string}>, days: array<string, array<string, mixed>>, business_totals: array<int,int>} $data
      */
-    private static function render_grid(array $data): void
+    private static function render_grid(array $data, bool $is_editable): void
     {
         $days = $data['days'];
         $business_by_id = [];
@@ -234,7 +269,7 @@ final class AttendanceGridPage
         }
         $slots = range(self::GRID_START_MINUTES, self::GRID_END_MINUTES, self::SLOT_MINUTES);
         ?>
-        <div class="ag-table-scroll">
+        <div class="ag-table-scroll<?php echo $is_editable ? '' : ' ag-table-readonly'; ?>">
             <table class="ag-table">
                 <thead>
                     <tr class="ag-row-daynum">
@@ -252,7 +287,7 @@ final class AttendanceGridPage
                         <th class="ag-col-time"><?php esc_html_e('勤怠フラグ', 'ims-portal'); ?></th>
                         <?php foreach ($days as $day) : ?>
                             <td class="<?php echo esc_attr(self::day_cell_class($day)); ?>" data-date="<?php echo esc_attr($day['date']); ?>">
-                                <select class="ag-flag-select" data-date="<?php echo esc_attr($day['date']); ?>" data-current="<?php echo esc_attr($day['attendance_flag']); ?>">
+                                <select class="ag-flag-select" data-date="<?php echo esc_attr($day['date']); ?>" data-current="<?php echo esc_attr($day['attendance_flag']); ?>" <?php disabled(!$is_editable); ?>>
                                     <?php foreach (AttendanceFlagCalculator::FLAGS as $flag_value) : ?>
                                         <option value="<?php echo esc_attr($flag_value); ?>" <?php selected($day['attendance_flag'], $flag_value); ?>>
                                             <?php echo esc_html(AttendanceFlagCalculator::label($flag_value)); ?>

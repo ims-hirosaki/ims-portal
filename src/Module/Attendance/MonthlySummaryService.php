@@ -104,6 +104,24 @@ final class MonthlySummaryService
     }
 
     /**
+     * 画面表示用の状態まとめ（グリッド画面のステータスバナー用。3f-4b）。
+     *
+     * @return array{status:string, label:string, is_editable:bool, rejection_comment:?string}
+     */
+    public static function status_summary(int $user_id, string $year_month): array
+    {
+        $existing = MonthlySummaryRepository::find($user_id, $year_month);
+        $status   = $existing !== null ? (string) $existing['status'] : MonthlySummaryCalculator::DRAFT;
+
+        return [
+            'status'            => $status,
+            'label'             => MonthlySummaryCalculator::label($status),
+            'is_editable'       => in_array($status, MonthlySummaryCalculator::SUBMITTABLE_FROM, true),
+            'rejection_comment' => $existing['rejection_comment'] ?? null,
+        ];
+    }
+
+    /**
      * チェック者承認（submitted → checked）。
      *
      * @return true|\WP_Error

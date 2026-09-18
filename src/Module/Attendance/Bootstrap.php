@@ -35,7 +35,9 @@ if (!defined('ABSPATH')) {
  * Module\Timecard\MonthlyClosing::is_locked() を実データ（confirmed ステータス）に
  * 接続した。3f-4aで、月次提出後（submitted以降）はグリッドの勤怠フラグ・事業別時間割当ての
  * 書き込みAPIを拒否するロック（MonthlySummaryService::is_editable()）を追加した。
- * 提出ボタン・ステータス表示・承認画面（3f-4b以降）は別スライスで追加する。
+ * 3f-4bで、月次勤務表グリッド画面に提出ボタン・ステータスバナー・差し戻し理由の表示を追加した
+ * （RestController::handle_submit()。交通費・車両借上げモジュール未実装のため勤怠分のみの提出）。
+ * 管理者向け承認画面（チェック承認・最終承認）は3f-4c以降で追加する想定。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
  * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours /
