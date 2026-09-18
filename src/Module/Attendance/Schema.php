@@ -59,6 +59,9 @@ final class Schema
 
         // 日次勤怠集計（§3.1・§5.3）。3bでは attendance_flag='none'（既定値）固定で書き込む。
         // hourly_leave_minutes・flagによる労働時間補正は 3c（勤怠フラグ管理）で接続する。
+        // rounded_clock_in_minutes/rounded_clock_out_minutes は要件定義書に無い追加仕様
+        // （ユーザー確認済み）。打刻ログの生の実時刻とは別に、勤怠管理上の丸め後時刻
+        // （work_date 0時からの経過分）を保持する。WorkTimeCalculator 冒頭コメント参照。
         $ddls[] = "CREATE TABLE {$p}daily_attendance (
   id int(11) NOT NULL AUTO_INCREMENT,
   user_id bigint(20) unsigned NOT NULL,
@@ -66,6 +69,8 @@ final class Schema
   attendance_flag enum('none','paid_leave','hourly_leave','half_day_am','half_day_pm','holiday_work','legal_substitute','scheduled_substitute') NOT NULL DEFAULT 'none',
   hourly_leave_minutes int(11) DEFAULT NULL,
   scheduled_minutes int(11) NOT NULL,
+  rounded_clock_in_minutes int(11) DEFAULT NULL,
+  rounded_clock_out_minutes int(11) DEFAULT NULL,
   actual_minutes int(11) DEFAULT NULL,
   overtime_legal_min int(11) DEFAULT NULL,
   overtime_illegal_min int(11) DEFAULT NULL,

@@ -19,9 +19,11 @@ if (!defined('ABSPATH')) {
  * という一連の流れをまとめる。3d時点ではこのサービス自体に画面・APIは無く、
  * 3e（スタッフ向け月次勤務表画面の入力モーダル）から呼び出す想定。
  *
- * 判定に使う「実労働時間」は常に打刻由来の値（WorkTimeCalculator）であり、
- * wp_daily_attendance.actual_minutes（勤怠フラグ適用後、時間休等の加算を含み得る値）
- * ではない。事業に割り当てるのは「実際に働いた時間帯」のみのため（§3.3）。
+ * 判定に使う「実労働時間」・出退勤の範囲は常に打刻由来の値（WorkTimeCalculator。
+ * 丸め設定 TimeRoundingSettings 適用後）であり、wp_daily_attendance.actual_minutes
+ * （勤怠フラグ適用後、時間休等の加算を含み得る値）ではない。事業に割り当てるのは
+ * 「実際に働いた時間帯」のみのため（§3.3）。範囲・合計とも丸め後の時刻を基準にする
+ * （要件定義書に無い追加仕様。ユーザー確認済み。WorkTimeCalculator 冒頭コメント参照）。
  *
  * 既知のスコープ外（次スライス以降で対応）：
  * ・有給日の自動割当て（§3.3「有給日の自動割当て」） … 所定の始業・終業"時刻"
@@ -47,24 +49,14 @@ final class ProjectHourService
         }
 
         $logs = TimecardRepository::logs_for_date($user_id, $work_date);
-        $clock_in_at  = self::find_punch_time($logs, 'clock_in');
-        $clock_out_at = self::find_punch_time($logs, 'clock_out');
-        if ($clock_in_at === null || $clock_out_at === null) {
+        $scheduled_minutes = (int) round(UserRepository::get_scheduled_work_hours($user_id) * 60);
+        $raw = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes, TimeRoundingSettings::minutes());
+        if ($raw === null) {
             return new \WP_Error('incomplete', 'この日はまだ出勤・退勤の打刻が完了していないため、事業別時間の割当てはできません。');
         }
 
-        $scheduled_minutes = (int) round(UserRepository::get_scheduled_work_hours($user_id) * 60);
-        $raw = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes);
-        if ($raw === null) {
-            return new \WP_Error('incomplete', 'この日の実労働時間がまだ算出できません。休憩の打刻がすべて完了しているかご確認ください。');
-        }
-
-        $midnight = strtotime($work_date . ' 00:00:00');
-        $clock_in_minutes  = self::minutes_since_midnight($clock_in_at, $midnight);
-        $clock_out_minutes = self::minutes_since_midnight($clock_out_at, $midnight);
-        if ($clock_in_minutes === null || $clock_out_minutes === null) {
-            return new \WP_Error('incomplete', '出勤・退勤の打刻時刻を取得できませんでした。');
-        }
+        $clock_in_minutes  = $raw['rounded_clock_in_minutes'];
+        $clock_out_minutes = $raw['rounded_clock_out_minutes'];
 
         $parsed_rows = array_map(static fn(array $row): array => [
             'business_id' => (int) ($row['business_id'] ?? 0),
@@ -95,29 +87,6 @@ final class ProjectHourService
         }
 
         return true;
-    }
-
-    /** @param array<int, array{punch_type:string, punched_at:string}> $logs */
-    private static function find_punch_time(array $logs, string $type): ?string
-    {
-        foreach ($logs as $log) {
-            if (($log['punch_type'] ?? '') === $type) {
-                return (string) $log['punched_at'];
-            }
-        }
-        return null;
-    }
-
-    private static function minutes_since_midnight(string $datetime, int|false $midnight): ?int
-    {
-        if ($midnight === false) {
-            return null;
-        }
-        $ts = strtotime($datetime);
-        if ($ts === false) {
-            return null;
-        }
-        return (int) round(($ts - $midnight) / 60);
     }
 
     /** @param array<int, array{code:string}> $errors */

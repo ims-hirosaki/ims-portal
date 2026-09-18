@@ -46,13 +46,22 @@ final class DailyAttendanceService
 
         $scheduled_minutes = (int) round(UserRepository::get_scheduled_work_hours($user_id) * 60);
         $logs = TimecardRepository::logs_for_date($user_id, $work_date);
-        $raw  = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes);
+        $raw  = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes, TimeRoundingSettings::minutes());
 
         $metrics = AttendanceFlagCalculator::apply($flag, $scheduled_minutes, $raw, $hourly_leave_minutes);
         if ($metrics === null) {
             return;
         }
 
-        DailyAttendanceRepository::save($user_id, $work_date, $scheduled_minutes, $flag, $hourly_leave_minutes, $metrics);
+        DailyAttendanceRepository::save(
+            $user_id,
+            $work_date,
+            $scheduled_minutes,
+            $flag,
+            $hourly_leave_minutes,
+            $metrics,
+            $raw['rounded_clock_in_minutes'] ?? null,
+            $raw['rounded_clock_out_minutes'] ?? null
+        );
     }
 }

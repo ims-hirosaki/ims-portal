@@ -109,7 +109,7 @@ final class AttendanceGridPage
                 'flag'           => $day['attendance_flag'],
                 'clockIn'        => self::minutes_to_label($day['clock_in_minutes']),
                 'clockOut'       => self::minutes_to_label($day['clock_out_minutes']),
-                'rawActualLabel' => $day['raw_actual_minutes'] !== null ? self::format_hours((int) $day['raw_actual_minutes']) : null,
+                'roundedActualLabel' => $day['rounded_actual_minutes'] !== null ? self::format_hours((int) $day['rounded_actual_minutes']) : null,
                 'allocations'    => $allocations,
             ];
         }

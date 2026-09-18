@@ -25,8 +25,8 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.5.1-phase3e2'); // 3e-2修正：モーダルの[hidden]がCSSのdisplay:flexで無効化され、常に表示されていた不具合を修正
-define('IMS_PORTAL_DB_VERSION', 6); // スキーマ変更時にインクリメントする（08 §5.2）。v5→v6: 03モジュールの事業別時間実績（wp_project_hours）追加
+define('IMS_PORTAL_VERSION', '0.6.6-phase3e2'); // 打刻の丸め設定（出退勤・休憩を丸めて勤怠管理する）を追加。要件定義書に無い追加仕様
+define('IMS_PORTAL_DB_VERSION', 7); // スキーマ変更時にインクリメントする（08 §5.2）。v6→v7: wp_daily_attendanceに丸め後時刻の列を追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
 define('IMS_PORTAL_URL', plugin_dir_url(__FILE__));
