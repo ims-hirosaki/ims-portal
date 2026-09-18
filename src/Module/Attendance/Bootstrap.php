@@ -33,7 +33,13 @@ if (!defined('ABSPATH')) {
  * 追加した。3f-2でチェック者承認・差し戻し（check_approve/check_reject）、
  * 3f-3で最終承認・差し戻し（final_approve/final_reject）を追加し、
  * Module\Timecard\MonthlyClosing::is_locked() を実データ（confirmed ステータス）に
- * 接続した。3f-1〜3f-3時点では画面・APIはまだ無く、3f-4（画面）でまとめて接続する想定。
+ * 接続した。3f-4aで、月次提出後（submitted以降）はグリッドの勤怠フラグ・事業別時間割当ての
+ * 書き込みAPIを拒否するロック（MonthlySummaryService::is_editable()）を追加した。
+ * 3f-4bで、月次勤務表グリッド画面に提出ボタン・ステータスバナー・差し戻し理由の表示を追加した
+ * （RestController::handle_submit()。交通費・車両借上げモジュール未実装のため勤怠分のみの提出）。
+ * 3f-4cで、管理者向け「社員管理 > 月次提出状況」画面（AdminMonthlySubmissionsPage）を追加し、
+ * チェック承認・最終承認・差し戻しをその場で行えるようにした（§4.3の簡略版。事業別色分け
+ * グリッド・PDF/CSV出力は§4.2としてスコープ外のまま）。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
  * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours /
@@ -74,6 +80,7 @@ final class Bootstrap
             AdminBusinessesPage::init();           // 社員管理 > 事業マスタ
             AdminSalaryCycleSettingsPage::init();  // ポータル設定 > 給与計算サイクル設定
             AdminTimeRoundingSettingsPage::init(); // ポータル設定 > 打刻丸め設定
+            AdminMonthlySubmissionsPage::init();   // 社員管理 > 月次提出状況（3f-4c）
         }
     }
 

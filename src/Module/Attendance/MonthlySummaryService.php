@@ -85,6 +85,43 @@ final class MonthlySummaryService
     }
 
     /**
+     * 指定ユーザー・年月の勤怠グリッド（勤怠フラグ・事業別時間割当て）を
+     * 編集できる状態か（§4.1「ステータスが submitted 以降はグリッド全セルを
+     * 読み取り専用にする」）。未提出（該当データなし）・差し戻し中は編集可。
+     */
+    public static function is_editable(int $user_id, string $year_month): bool
+    {
+        $existing = MonthlySummaryRepository::find($user_id, $year_month);
+        $status   = $existing !== null ? (string) $existing['status'] : MonthlySummaryCalculator::DRAFT;
+        return in_array($status, MonthlySummaryCalculator::SUBMITTABLE_FROM, true);
+    }
+
+    /** 指定ユーザー・年月の現在のステータス（未提出はdraft扱い）。 */
+    public static function current_status(int $user_id, string $year_month): string
+    {
+        $existing = MonthlySummaryRepository::find($user_id, $year_month);
+        return $existing !== null ? (string) $existing['status'] : MonthlySummaryCalculator::DRAFT;
+    }
+
+    /**
+     * 画面表示用の状態まとめ（グリッド画面のステータスバナー用。3f-4b）。
+     *
+     * @return array{status:string, label:string, is_editable:bool, rejection_comment:?string}
+     */
+    public static function status_summary(int $user_id, string $year_month): array
+    {
+        $existing = MonthlySummaryRepository::find($user_id, $year_month);
+        $status   = $existing !== null ? (string) $existing['status'] : MonthlySummaryCalculator::DRAFT;
+
+        return [
+            'status'            => $status,
+            'label'             => MonthlySummaryCalculator::label($status),
+            'is_editable'       => in_array($status, MonthlySummaryCalculator::SUBMITTABLE_FROM, true),
+            'rejection_comment' => $existing['rejection_comment'] ?? null,
+        ];
+    }
+
+    /**
      * チェック者承認（submitted → checked）。
      *
      * @return true|\WP_Error

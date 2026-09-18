@@ -30,6 +30,9 @@ if (!defined('ABSPATH')) {
  *   （time-of-day）を01モジュールがまだ保持しておらず（scheduled_work_hoursは
  *   時間数のみ）、自動割当てに必要な start_time/end_time を算出できないため見送った。
  *   01モジュールに所定始業・終業時刻を追加するタイミングで実装する。
+ *
+ * 3f-4で月次提出後の編集ロック（§4.1「ステータスがsubmitted以降は読み取り専用」）を追加した。
+ * MonthlySummaryService::is_editable() で判定する。
  */
 final class ProjectHourService
 {
@@ -41,6 +44,11 @@ final class ProjectHourService
      */
     public static function save_day(int $user_id, string $work_date, array $rows)
     {
+        $year_month = SalaryCycleSettings::year_month_for_date($work_date);
+        if (!MonthlySummaryService::is_editable($user_id, $year_month)) {
+            return new \WP_Error('month_locked', 'この月度はすでに提出されているため、編集できません。');
+        }
+
         $daily = DailyAttendanceRepository::find($user_id, $work_date);
         $flag  = $daily !== null ? (string) $daily['attendance_flag'] : AttendanceFlagCalculator::NONE;
 

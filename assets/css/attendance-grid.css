@@ -370,3 +370,59 @@
   gap: 10px;
   margin-top: 16px;
 }
+
+/* ── 月次提出ステータスバナー（3f-4b） ─────────────────── */
+
+.ag-status-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--r-md, 14px);
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.ag-status-label {
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+}
+
+.ag-status-submitted .ag-status-label,
+.ag-status-checked .ag-status-label {
+  background: var(--gold-tint);
+  color: var(--gold);
+}
+
+.ag-status-confirmed .ag-status-label {
+  background: var(--moss-tint);
+  color: var(--moss);
+}
+
+.ag-status-rejected_by_checker .ag-status-label,
+.ag-status-rejected_by_admin .ag-status-label {
+  background: var(--vermillion-tint);
+  color: var(--vermillion);
+}
+
+.ag-status-comment {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--vermillion);
+  font-size: 13px;
+}
+
+.ag-status-note {
+  color: var(--sub);
+  font-size: 12.5px;
+}
+
+.ag-table-readonly .ag-cell,
+.ag-table-readonly td[data-date] {
+  cursor: default;
+}
