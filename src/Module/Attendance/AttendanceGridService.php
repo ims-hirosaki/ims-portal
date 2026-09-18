@@ -21,6 +21,11 @@ if (!defined('ABSPATH')) {
  * 3e-2で書き込み系（事業別時間割当てモーダル・勤怠フラグ変更）を追加した際、
  * 保存直後にその日1日分だけを再集計してグリッドへ反映できるよう、1日分の集計を
  * day_data() として公開している（RestController が保存後のレスポンスに使う）。
+ *
+ * 打刻の丸め（要件定義書に無い追加仕様。ユーザー確認済み）：出退勤が揃っている日は
+ * WorkTimeCalculator::calculate_day() が返す丸め後の時刻・休憩区間を表示に使う。
+ * まだ退勤していない進行中の日は丸め後の値が算出できないため、
+ * WorkTimeCalculator::punch_times() の生の値にフォールバックする（詳細は build_day() 参照）。
  */
 final class AttendanceGridService
 {
@@ -33,7 +38,7 @@ final class AttendanceGridService
      *     breaks: array<int, array{0:int, 1:int}>,
      *     attendance_flag:string, flag_label:string, hourly_leave_minutes:?int,
      *     actual_minutes:?int, overtime_legal_min:?int, overtime_illegal_min:?int, late_night_minutes:?int,
-     *     raw_actual_minutes:?int,
+     *     rounded_actual_minutes:?int,
      *     allocations: array<int, array{business_id:int, start_minutes:int, end_minutes:int}>,
      *     needs_allocation: bool
      *   }>,
@@ -100,7 +105,14 @@ final class AttendanceGridService
     private static function build_day(int $user_id, string $date, array $logs, int $scheduled_minutes, int $day): array
     {
         $punch = WorkTimeCalculator::punch_times($logs, $date);
-        $raw   = WorkTimeCalculator::calculate_day($logs, $date, $scheduled_minutes);
+        $raw   = WorkTimeCalculator::calculate_day($logs, $date, $scheduled_minutes, TimeRoundingSettings::minutes());
+
+        // 出退勤が揃っている日は丸め後の時刻・休憩区間を表示に使う（要件定義書に無い追加仕様）。
+        // 進行中の日（まだ退勤していない等）は丸め後の値が算出できないため、
+        // WorkTimeCalculator::punch_times() の生の値にフォールバックする。
+        $clock_in_minutes  = $raw['rounded_clock_in_minutes']  ?? $punch['clock_in_minutes'];
+        $clock_out_minutes = $raw['rounded_clock_out_minutes'] ?? $punch['clock_out_minutes'];
+        $breaks            = $raw['rounded_breaks'] ?? $punch['breaks'];
 
         $daily = DailyAttendanceRepository::find($user_id, $date);
         $flag  = $daily !== null ? (string) $daily['attendance_flag'] : AttendanceFlagCalculator::NONE;
@@ -122,9 +134,9 @@ final class AttendanceGridService
             'day'  => $day,
             'dow'  => (int) date('w', strtotime($date)),
 
-            'clock_in_minutes'  => $punch['clock_in_minutes'],
-            'clock_out_minutes' => $punch['clock_out_minutes'],
-            'breaks'            => $punch['breaks'],
+            'clock_in_minutes'  => $clock_in_minutes,
+            'clock_out_minutes' => $clock_out_minutes,
+            'breaks'            => $breaks,
 
             'attendance_flag'     => $flag,
             'flag_label'          => AttendanceFlagCalculator::label($flag),
@@ -135,16 +147,16 @@ final class AttendanceGridService
             'overtime_illegal_min' => $daily['overtime_illegal_min'] ?? null,
             'late_night_minutes'   => $daily['late_night_minutes'] ?? null,
 
-            'raw_actual_minutes' => $raw['actual_minutes'] ?? null,
-            'allocations'        => $allocations,
-            'needs_allocation'   => self::needs_allocation($flag, $raw, $allocations, $scheduled_minutes),
+            'rounded_actual_minutes' => $raw['actual_minutes'] ?? null,
+            'allocations'            => $allocations,
+            'needs_allocation'       => self::needs_allocation($flag, $raw, $allocations, $scheduled_minutes),
         ];
     }
 
     /**
      * この日が「事業別時間の未割当て」としてハイライト（§3.3「⚠️要入力」）すべきかどうか。
      *
-     * 比較対象は常に打刻由来の実労働時間（$raw。休憩を除いた実際に働いた時間）とする。
+     * 比較対象は常に打刻由来・丸め後の実労働時間（$raw。休憩を除いた実際に働いた時間）とする。
      * 有給は所定労働時間が割当ての目標になる（自動割当ては未実装。§3.3の有給日自動割当て参照）。
      *
      * @param array{actual_minutes:int, ...}|null $raw

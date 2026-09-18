@@ -138,8 +138,8 @@
 
       modal.dataset.date = date;
       dateEl.textContent = date;
-      targetEl.textContent = day.rawActualLabel
-        ? '実労働時間の目標：' + day.rawActualLabel + '（出勤 ' + (day.clockIn || '—') + ' ／ 退勤 ' + (day.clockOut || '—') + '）'
+      targetEl.textContent = day.roundedActualLabel
+        ? '実労働時間の目標：' + day.roundedActualLabel + '（出勤 ' + (day.clockIn || '—') + ' ／ 退勤 ' + (day.clockOut || '—') + '）'
         : 'この日はまだ出退勤の打刻が完了していないため、割当てを保存できません。';
 
       rowsBody.innerHTML = '';

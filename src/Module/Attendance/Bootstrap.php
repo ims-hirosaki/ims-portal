@@ -24,6 +24,9 @@ if (!defined('ABSPATH')) {
  * 3eでスタッフ向け月次勤務表グリッド `/portal/attendance/` を追加した（表示のみ）。
  * 3e-2で書き込み系（勤怠フラグの変更・事業別時間割当ての保存）を、
  * Module\Attendance\RestController（REST API）経由で追加した。
+ * 3e-2以降の修正で打刻の丸め設定（TimeRoundingSettings）を追加した。要件定義書には無い
+ * 追加仕様（ユーザー確認済み）で、出退勤・休憩を丸めた時刻を勤怠管理の基準にする
+ * （詳細は WorkTimeCalculator 冒頭コメント参照）。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
  * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours のDDL寄与
@@ -56,8 +59,9 @@ final class Bootstrap
 
         // 管理画面
         if (is_admin()) {
-            AdminBusinessesPage::init();          // 社員管理 > 事業マスタ
-            AdminSalaryCycleSettingsPage::init(); // ポータル設定 > 給与計算サイクル設定
+            AdminBusinessesPage::init();           // 社員管理 > 事業マスタ
+            AdminSalaryCycleSettingsPage::init();  // ポータル設定 > 給与計算サイクル設定
+            AdminTimeRoundingSettingsPage::init(); // ポータル設定 > 打刻丸め設定
         }
     }
 

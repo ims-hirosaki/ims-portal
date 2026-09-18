@@ -43,6 +43,10 @@ final class DailyAttendanceRepository
     /**
      * 勤怠フラグ適用後の最終値を保存する（AttendanceFlagCalculator::apply() の結果をそのまま渡す）。
      *
+     * $rounded_clock_in_minutes / $rounded_clock_out_minutes は打刻ログの生の実時刻とは別に
+     * 保存する丸め後の出退勤時刻（WorkTimeCalculator::calculate_day() 由来）。打刻が
+     * 未完了・存在しない日（有給等）は null になる（要件定義書に無い追加仕様。ユーザー確認済み）。
+     *
      * @param array{actual_minutes:int, overtime_legal_min:int, overtime_illegal_min:int, late_night_minutes:int} $metrics
      */
     public static function save(
@@ -51,7 +55,9 @@ final class DailyAttendanceRepository
         int $scheduled_minutes,
         string $attendance_flag,
         ?int $hourly_leave_minutes,
-        array $metrics
+        array $metrics,
+        ?int $rounded_clock_in_minutes = null,
+        ?int $rounded_clock_out_minutes = null
     ): bool {
         global $wpdb;
         $table = self::table();
@@ -63,13 +69,15 @@ final class DailyAttendanceRepository
         ));
 
         $data = [
-            'attendance_flag'      => $attendance_flag,
-            'hourly_leave_minutes' => $hourly_leave_minutes,
-            'scheduled_minutes'    => $scheduled_minutes,
-            'actual_minutes'       => $metrics['actual_minutes'],
-            'overtime_legal_min'   => $metrics['overtime_legal_min'],
-            'overtime_illegal_min' => $metrics['overtime_illegal_min'],
-            'late_night_minutes'   => $metrics['late_night_minutes'],
+            'attendance_flag'           => $attendance_flag,
+            'hourly_leave_minutes'      => $hourly_leave_minutes,
+            'scheduled_minutes'         => $scheduled_minutes,
+            'rounded_clock_in_minutes'  => $rounded_clock_in_minutes,
+            'rounded_clock_out_minutes' => $rounded_clock_out_minutes,
+            'actual_minutes'            => $metrics['actual_minutes'],
+            'overtime_legal_min'        => $metrics['overtime_legal_min'],
+            'overtime_illegal_min'      => $metrics['overtime_illegal_min'],
+            'late_night_minutes'        => $metrics['late_night_minutes'],
         ];
 
         if ($existing_id) {

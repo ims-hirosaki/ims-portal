@@ -44,14 +44,23 @@ final class AttendanceFlagService
 
         $scheduled_minutes = (int) round(UserRepository::get_scheduled_work_hours($user_id) * 60);
         $logs = TimecardRepository::logs_for_date($user_id, $work_date);
-        $raw  = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes);
+        $raw  = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes, TimeRoundingSettings::minutes());
 
         $metrics = AttendanceFlagCalculator::apply($flag, $scheduled_minutes, $raw, $stored_hourly_minutes);
         if ($metrics === null) {
             return new \WP_Error('incomplete', 'この日はまだ退勤打刻が完了していないため、フラグを反映できません。');
         }
 
-        $saved = DailyAttendanceRepository::save($user_id, $work_date, $scheduled_minutes, $flag, $stored_hourly_minutes, $metrics);
+        $saved = DailyAttendanceRepository::save(
+            $user_id,
+            $work_date,
+            $scheduled_minutes,
+            $flag,
+            $stored_hourly_minutes,
+            $metrics,
+            $raw['rounded_clock_in_minutes'] ?? null,
+            $raw['rounded_clock_out_minutes'] ?? null
+        );
         if (!$saved) {
             return new \WP_Error('db_error', '勤怠フラグの保存に失敗しました。');
         }
