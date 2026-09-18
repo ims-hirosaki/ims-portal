@@ -179,7 +179,7 @@ final class AttendanceGridPage
                 </p>
             <?php endif; ?>
             <?php if ($status['is_editable']) : ?>
-                <button type="button" class="button button-primary" id="ag-submit-btn" data-year-month="<?php echo esc_attr($year_month); ?>">
+                <button type="button" class="btn btn-primary" id="ag-submit-btn" data-year-month="<?php echo esc_attr($year_month); ?>">
                     <?php esc_html_e('この月の勤怠を提出する', 'ims-portal'); ?>
                 </button>
             <?php else : ?>
@@ -422,13 +422,13 @@ final class AttendanceGridPage
                     </thead>
                     <tbody id="ag-modal-rows"></tbody>
                 </table>
-                <button type="button" class="button" id="ag-modal-add-row">＋ <?php esc_html_e('行を追加', 'ims-portal'); ?></button>
+                <button type="button" class="btn btn-secondary" id="ag-modal-add-row">＋ <?php esc_html_e('行を追加', 'ims-portal'); ?></button>
 
                 <p class="ag-modal-error" id="ag-modal-error" hidden></p>
 
                 <div class="ag-modal-actions">
-                    <button type="button" class="button button-primary" id="ag-modal-save"><?php esc_html_e('保存する', 'ims-portal'); ?></button>
-                    <button type="button" class="button" id="ag-modal-cancel" data-ag-close="1"><?php esc_html_e('キャンセル', 'ims-portal'); ?></button>
+                    <button type="button" class="btn btn-primary" id="ag-modal-save"><?php esc_html_e('保存する', 'ims-portal'); ?></button>
+                    <button type="button" class="btn btn-secondary" id="ag-modal-cancel" data-ag-close="1"><?php esc_html_e('キャンセル', 'ims-portal'); ?></button>
                 </div>
             </div>
         </div>
