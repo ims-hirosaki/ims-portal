@@ -25,8 +25,8 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.7-phase3f-pre'); // 3f準備：月次勤務表グリッドを給与計算サイクル（締め日）連動の対象期間に対応
-define('IMS_PORTAL_DB_VERSION', 7); // スキーマ変更時にインクリメントする（08 §5.2）。v6→v7: wp_daily_attendanceに丸め後時刻の列を追加
+define('IMS_PORTAL_VERSION', '0.6.8-phase3f1'); // 3f-1：月次締め・提出フロー（wp_monthly_summary・提出処理）を追加
+define('IMS_PORTAL_DB_VERSION', 8); // スキーマ変更時にインクリメントする（08 §5.2）。v7→v8: 03モジュールの月次締め（wp_monthly_summary）追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
 define('IMS_PORTAL_URL', plugin_dir_url(__FILE__));

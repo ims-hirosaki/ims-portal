@@ -19,8 +19,8 @@ if (!defined('ABSPATH')) {
  * 「既存実装は依頼された箇所だけ変更する」方針に従い、ここでは重複定義しない
  * （引き継ぎ書_phase3a.md 確認時にユーザーに確認済み）。
  *
- * wp_monthly_summary のDDLは、書き込み処理を実装するスライス（3f）で追加する。
- * wp_daily_attendance は 3b、wp_project_hours は 3d で追加した（下記）。
+ * wp_daily_attendance は 3b、wp_project_hours は 3d、wp_monthly_summary は 3f で追加した
+ * （下記）。
  *
  * dbDelta 互換の作法（Module\Timecard\Schema 等と同一）：
  * ・PRIMARY KEY の後は半角スペース2つ
@@ -102,6 +102,36 @@ final class Schema
   KEY idx_business_date (business_id,work_date)
 ) {$charset};";
 
+        // 月次締め・提出・承認（§3.4・§3.5・§5.5）。
+        // total_* は提出時（3f）に確定する集計値。snapshot_* は最終承認（confirmed）確定時
+        // にのみ書き込む（3g）。3f時点ではNULLのまま。
+        $ddls[] = "CREATE TABLE {$p}monthly_summary (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  user_id bigint(20) unsigned NOT NULL,
+  year_month char(7) NOT NULL,
+  status enum('draft','submitted','checked','rejected_by_checker','rejected_by_admin','confirmed') NOT NULL DEFAULT 'draft',
+  total_work_days int(11) DEFAULT NULL,
+  total_actual_minutes int(11) DEFAULT NULL,
+  total_overtime_legal int(11) DEFAULT NULL,
+  total_overtime_illegal int(11) DEFAULT NULL,
+  total_late_night_min int(11) DEFAULT NULL,
+  total_paid_leave_days decimal(4,1) DEFAULT NULL,
+  snapshot_base_salary int(11) DEFAULT NULL,
+  snapshot_allowances json DEFAULT NULL,
+  submitted_at datetime DEFAULT NULL,
+  first_approved_by bigint(20) unsigned DEFAULT NULL,
+  first_approved_at datetime DEFAULT NULL,
+  final_approved_by bigint(20) unsigned DEFAULT NULL,
+  final_approved_at datetime DEFAULT NULL,
+  last_rejected_by bigint(20) unsigned DEFAULT NULL,
+  last_rejected_at datetime DEFAULT NULL,
+  rejection_comment text DEFAULT NULL,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY  (id),
+  UNIQUE KEY unique_user_month (user_id,year_month)
+) {$charset};";
+
         return $ddls;
     }
 
@@ -124,5 +154,12 @@ final class Schema
     {
         global $wpdb;
         return $wpdb->prefix . 'project_hours';
+    }
+
+    /** 月次締め・提出・承認テーブルの物理名。 */
+    public static function monthly_summary_table(): string
+    {
+        global $wpdb;
+        return $wpdb->prefix . 'monthly_summary';
     }
 }

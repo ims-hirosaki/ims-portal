@@ -27,9 +27,15 @@ if (!defined('ABSPATH')) {
  * 3e-2以降の修正で打刻の丸め設定（TimeRoundingSettings）を追加した。要件定義書には無い
  * 追加仕様（ユーザー確認済み）で、出退勤・休憩を丸めた時刻を勤怠管理の基準にする
  * （詳細は WorkTimeCalculator 冒頭コメント参照）。
+ * 続けて、月次勤務表グリッドを給与計算サイクル設定（締め日）連動の対象期間に対応させた
+ * （PayPeriodCalculator。要件定義書には無い追加仕様。ユーザー確認済み）。
+ * 3f-1で月次締め・提出フロー（wp_monthly_summary・MonthlySummaryService::submit()）を
+ * 追加した。3f-1時点では画面・APIは無く、チェック者承認（3f-2）・最終承認（3f-3）と
+ * まとめて3f-4（画面）で接続する想定。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
- * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours のDDL寄与
+ * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours /
+ *   wp_monthly_summary のDDL寄与
  * ・ims_seed_initial_data … 事業マスタの初期データ（本社業務）投入（べき等）
  * ・ims_timecard_clocked_out … 02モジュールの退勤打刻完了時、日次勤怠集計を再計算する（3b・3c）
  * ・ims_timecard_punch_corrected … 02モジュールの打刻修正完了時、日次勤怠集計を再計算する
