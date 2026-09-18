@@ -217,7 +217,7 @@
       var tdRemove = document.createElement('td');
       var removeBtn = document.createElement('button');
       removeBtn.type = 'button';
-      removeBtn.className = 'button-link ag-row-remove';
+      removeBtn.className = 'ag-row-remove';
       removeBtn.textContent = '削除';
       tdRemove.appendChild(removeBtn);
 

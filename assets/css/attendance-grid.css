@@ -356,6 +356,16 @@
   white-space: nowrap;
 }
 
+.ag-row-remove {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--vermillion);
+  text-decoration: underline;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
 .ag-modal-error {
   background: var(--vermillion-tint);
   color: var(--vermillion);
