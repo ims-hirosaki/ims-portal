@@ -33,7 +33,9 @@ if (!defined('ABSPATH')) {
  * 追加した。3f-2でチェック者承認・差し戻し（check_approve/check_reject）、
  * 3f-3で最終承認・差し戻し（final_approve/final_reject）を追加し、
  * Module\Timecard\MonthlyClosing::is_locked() を実データ（confirmed ステータス）に
- * 接続した。3f-1〜3f-3時点では画面・APIはまだ無く、3f-4（画面）でまとめて接続する想定。
+ * 接続した。3f-4aで、月次提出後（submitted以降）はグリッドの勤怠フラグ・事業別時間割当ての
+ * 書き込みAPIを拒否するロック（MonthlySummaryService::is_editable()）を追加した。
+ * 提出ボタン・ステータス表示・承認画面（3f-4b以降）は別スライスで追加する。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
  * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours /

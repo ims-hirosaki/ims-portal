@@ -38,6 +38,7 @@ final class RestController
         'validation'    => 400,
         'not_required'  => 400,
         'incomplete'    => 409,
+        'month_locked'  => 403,
         'db_error'      => 500,
     ];
 

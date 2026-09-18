@@ -20,6 +20,9 @@ if (!defined('ABSPATH')) {
  *
  * 3c時点ではこのサービス自体に画面・APIは無い（未接続）。3e（スタッフ向け月次勤務表画面）の
  * 勤怠フラグ・プルダウンから、このメソッドをそのまま呼び出す想定。
+ *
+ * 3f-4で月次提出後の編集ロック（§4.1「ステータスがsubmitted以降は読み取り専用」）を追加した。
+ * MonthlySummaryService::is_editable() で判定する。
  */
 final class AttendanceFlagService
 {
@@ -32,6 +35,11 @@ final class AttendanceFlagService
     {
         if (!in_array($flag, AttendanceFlagCalculator::FLAGS, true)) {
             return new \WP_Error('validation', '不正な勤怠フラグです。');
+        }
+
+        $year_month = SalaryCycleSettings::year_month_for_date($work_date);
+        if (!MonthlySummaryService::is_editable($user_id, $year_month)) {
+            return new \WP_Error('month_locked', 'この月度はすでに提出されているため、編集できません。');
         }
 
         $stored_hourly_minutes = null;
