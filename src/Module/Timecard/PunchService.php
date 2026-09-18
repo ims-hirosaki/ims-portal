@@ -558,7 +558,7 @@ final class PunchService
         }
 
         // 締め後ロックはすべての操作者に優先して効く（§3.4）。
-        if (MonthlyClosing::is_locked($log['work_date'])) {
+        if (MonthlyClosing::is_locked($log['user_id'], $log['work_date'])) {
             return self::fail('month_closed', 'この月度は締め処理が完了しているため修正できません。', $log['work_date']);
         }
 

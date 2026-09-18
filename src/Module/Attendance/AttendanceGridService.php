@@ -26,11 +26,17 @@ if (!defined('ABSPATH')) {
  * WorkTimeCalculator::calculate_day() が返す丸め後の時刻・休憩区間を表示に使う。
  * まだ退勤していない進行中の日は丸め後の値が算出できないため、
  * WorkTimeCalculator::punch_times() の生の値にフォールバックする（詳細は build_day() 参照）。
+ *
+ * 給与計算サイクル連動（要件定義書に無い追加仕様。ユーザー確認済み）：対象期間は
+ * カレンダー月固定ではなく、SalaryCycleSettings::period_for_year_month() が返す
+ * 締め日設定に基づく実際の対象期間（当月20日／25日締めは前月にずれる）を使う。
  */
 final class AttendanceGridService
 {
     /**
      * @return array{
+     *   year_month: string,
+     *   period: array{start:string, end:string, deadline:string},
      *   businesses: array<int, array{id:int, name:string, color:string}>,
      *   days: array<string, array{
      *     date:string, day:int, dow:int,
@@ -45,10 +51,9 @@ final class AttendanceGridService
      *   business_totals: array<int, int>
      * }
      */
-    public static function month_data(int $user_id, int $year, int $month): array
+    public static function month_data(int $user_id, string $year_month): array
     {
-        $first         = sprintf('%04d-%02d-01', $year, $month);
-        $days_in_month = (int) date('t', strtotime($first));
+        $period = SalaryCycleSettings::period_for_year_month($year_month);
 
         $businesses = [];
         foreach (BusinessRepository::all(false) as $row) {
@@ -59,29 +64,62 @@ final class AttendanceGridService
             ];
         }
 
-        $month_logs        = TimecardRepository::logs_for_month($user_id, $year, $month);
+        $period_logs       = self::fetch_logs_for_range($user_id, $period['start'], $period['end']);
         $scheduled_minutes = (int) round(UserRepository::get_scheduled_work_hours($user_id) * 60);
 
         $days            = [];
         $business_totals = [];
 
-        for ($d = 1; $d <= $days_in_month; $d++) {
-            $date = sprintf('%04d-%02d-%02d', $year, $month, $d);
-            $logs = $month_logs[$date] ?? [];
+        $cursor_ts = strtotime($period['start']);
+        $end_ts    = strtotime($period['end']);
+        while ($cursor_ts !== false && $cursor_ts <= $end_ts) {
+            $date = date('Y-m-d', $cursor_ts);
+            $logs = $period_logs[$date] ?? [];
+            $day_number = (int) date('j', $cursor_ts);
 
-            $days[$date] = self::build_day($user_id, $date, $logs, $scheduled_minutes, $d);
+            $days[$date] = self::build_day($user_id, $date, $logs, $scheduled_minutes, $day_number);
 
             foreach ($days[$date]['allocations'] as $a) {
                 $business_totals[$a['business_id']] = ($business_totals[$a['business_id']] ?? 0)
                     + max(0, $a['end_minutes'] - $a['start_minutes']);
             }
+
+            $cursor_ts = strtotime('+1 day', $cursor_ts);
         }
 
         return [
+            'year_month'      => $year_month,
+            'period'          => $period,
             'businesses'      => array_values($businesses),
             'days'            => $days,
             'business_totals' => $business_totals,
         ];
+    }
+
+    /**
+     * 対象期間が月をまたぐ場合（当月20日／25日締め）に備え、範囲内の各カレンダー月を
+     * Module\Timecard\Repository::logs_for_month() で取得して1つに結合する
+     * （Timecard側には日付範囲指定のメソッドが無いため、月単位のメソッドを複数回呼ぶ）。
+     *
+     * @return array<string, array<int, array{punch_type:string, punched_at:string}>>
+     */
+    private static function fetch_logs_for_range(int $user_id, string $start, string $end): array
+    {
+        $logs = [];
+        $cursor_ym = substr($start, 0, 7);
+        $end_ym    = substr($end, 0, 7);
+
+        while (true) {
+            [$year, $month] = array_map('intval', explode('-', $cursor_ym));
+            $logs += TimecardRepository::logs_for_month($user_id, $year, $month);
+
+            if ($cursor_ym === $end_ym) {
+                break;
+            }
+            $cursor_ym = date('Y-m', mktime(0, 0, 0, $month + 1, 1, $year));
+        }
+
+        return $logs;
     }
 
     /**

@@ -91,9 +91,9 @@ final class AttendanceGridPage
 
         // モーダル・フラグ変更（3e-2）がJS側で必要とするデータをまとめて渡す。
         // imsPortal（restUrl・nonce）は core の Assets が既に localize 済み。
-        $user_id = get_current_user_id();
-        [$year, $month] = self::resolve_month();
-        $data = AttendanceGridService::month_data($user_id, $year, $month);
+        $user_id    = get_current_user_id();
+        $year_month = self::resolve_month();
+        $data       = AttendanceGridService::month_data($user_id, $year_month);
 
         $days_for_js = [];
         foreach ($data['days'] as $date => $day) {
@@ -137,17 +137,17 @@ final class AttendanceGridPage
 
     public static function render(): void
     {
-        $user_id = get_current_user_id();
-        [$year, $month] = self::resolve_month();
+        $user_id    = get_current_user_id();
+        $year_month = self::resolve_month();
 
-        $data = AttendanceGridService::month_data($user_id, $year, $month);
+        $data = AttendanceGridService::month_data($user_id, $year_month);
 
         Layout::render_header(__('勤怠', 'ims-portal'));
         ?>
         <div class="ag-wrap">
-            <?php self::render_head($year, $month); ?>
+            <?php self::render_head($year_month, $data['period']); ?>
             <?php self::render_legend($data['businesses'], $data['business_totals']); ?>
-            <?php self::render_grid($year, $month, $data); ?>
+            <?php self::render_grid($data); ?>
             <?php self::render_modal(); ?>
         </div>
         <?php
@@ -156,22 +156,42 @@ final class AttendanceGridPage
 
     // ── ヘッダー・月送り ───────────────────────────────────
 
-    private static function render_head(int $year, int $month): void
+    /** @param array{start:string, end:string, deadline:string} $period */
+    private static function render_head(string $year_month, array $period): void
     {
-        [$prev_ym, $next_ym] = self::adjacent_months($year, $month);
+        [$year, $month] = array_map('intval', explode('-', $year_month));
+        [$prev_ym, $next_ym] = self::adjacent_months($year_month);
+        $is_shifted = $period['start'] !== sprintf('%04d-%02d-01', $year, $month);
         ?>
         <div class="ag-head">
             <span class="ag-card-title"><?php esc_html_e('月次勤務表', 'ims-portal'); ?></span>
             <div class="ag-month-nav">
                 <a class="ag-month-btn" href="<?php echo esc_url(self::month_url($prev_ym)); ?>" aria-label="<?php esc_attr_e('前の月', 'ims-portal'); ?>">‹</a>
-                <span class="ag-month-label"><?php echo esc_html(sprintf('%d年%d月', $year, $month)); ?></span>
+                <span class="ag-month-label"><?php echo esc_html(sprintf('%d年%d月分', $year, $month)); ?></span>
                 <a class="ag-month-btn" href="<?php echo esc_url(self::month_url($next_ym)); ?>" aria-label="<?php esc_attr_e('次の月', 'ims-portal'); ?>">›</a>
             </div>
         </div>
+        <p class="ag-period">
+            <?php echo esc_html(self::format_period_range($period['start'], $period['end'])); ?>
+            <?php if ($is_shifted) : ?>
+                <span class="ag-period-note"><?php esc_html_e('（給与計算サイクル設定の締め日に基づく対象期間）', 'ims-portal'); ?></span>
+            <?php endif; ?>
+        </p>
         <p class="ag-note">
             <?php esc_html_e('セルをダブルクリックすると、その日の事業別時間を入力できます。勤怠フラグは下の「勤怠フラグ」行から変更できます。月次提出は今後の更新で追加されます。', 'ims-portal'); ?>
         </p>
         <?php
+    }
+
+    private static function format_period_range(string $start, string $end): string
+    {
+        $start_ts = strtotime($start);
+        $end_ts   = strtotime($end);
+        return sprintf(
+            '対象期間：%s 〜 %s',
+            date('n月j日', $start_ts),
+            date('n月j日', $end_ts)
+        );
     }
 
     /**
@@ -205,7 +225,7 @@ final class AttendanceGridPage
     /**
      * @param array{businesses: array<int, array{id:int, name:string, color:string}>, days: array<string, array<string, mixed>>, business_totals: array<int,int>} $data
      */
-    private static function render_grid(int $year, int $month, array $data): void
+    private static function render_grid(array $data): void
     {
         $days = $data['days'];
         $business_by_id = [];
@@ -471,28 +491,30 @@ final class AttendanceGridPage
     }
 
     /**
-     * 表示対象の年月を決める。?ym=YYYY-MM を受け、不正なら当月。
-     * @return array{0:int, 1:int}
+     * 表示対象の年月（'Y-m'）を決める。?ym=YYYY-MM を受け、不正なら当月。
+     * この年月は「対象期間の終了日が属する月」のラベル（PayPeriodCalculator参照）。
      */
-    private static function resolve_month(): array
+    private static function resolve_month(): string
     {
         $now_year  = (int) current_time('Y');
         $now_month = (int) current_time('n');
+        $default   = sprintf('%04d-%02d', $now_year, $now_month);
 
         $ym = isset($_GET['ym']) ? sanitize_text_field(wp_unslash((string) $_GET['ym'])) : '';
         if (preg_match('/^(\d{4})-(\d{2})$/', $ym, $m)) {
             $y  = (int) $m[1];
             $mo = (int) $m[2];
             if ($mo >= 1 && $mo <= 12 && $y >= 2020 && $y <= $now_year + 1) {
-                return [$y, $mo];
+                return sprintf('%04d-%02d', $y, $mo);
             }
         }
-        return [$now_year, $now_month];
+        return $default;
     }
 
     /** @return array{0:string, 1:string} */
-    private static function adjacent_months(int $year, int $month): array
+    private static function adjacent_months(string $year_month): array
     {
+        [$year, $month] = array_map('intval', explode('-', $year_month));
         $prev = mktime(0, 0, 0, $month - 1, 1, $year);
         $next = mktime(0, 0, 0, $month + 1, 1, $year);
         return [date('Y-m', $prev), date('Y-m', $next)];
