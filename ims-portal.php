@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.6-phase3e2'); // 打刻の丸め設定（出退勤・休憩を丸めて勤怠管理する）を追加。要件定義書に無い追加仕様
+define('IMS_PORTAL_VERSION', '0.6.6.1-phase3e2'); // 修正：打刻修正時にwp_daily_attendanceが再計算されず古い実労働時間が残る不具合を修正
 define('IMS_PORTAL_DB_VERSION', 7); // スキーマ変更時にインクリメントする（08 §5.2）。v6→v7: wp_daily_attendanceに丸め後時刻の列を追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));

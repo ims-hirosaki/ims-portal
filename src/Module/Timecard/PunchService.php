@@ -600,6 +600,11 @@ final class PunchService
             return self::fail('db_error', '修正の保存に失敗しました。時間をおいて再度お試しください。', $log['work_date']);
         }
 
+        // 03_勤怠管理モジュールが日次集計（wp_daily_attendance）を再計算するための受け口。
+        // 対象は修正された打刻の「所有者」（$log['user_id']）であり、管理者が他人のログを
+        // 修正した場合は操作者（$user_id）と異なるため取り違えないこと。
+        do_action('ims_timecard_punch_corrected', $log['user_id'], $log['work_date'], $corrected_mysql, $log_id);
+
         return [
             'ok'         => true,
             'code'       => 'ok',
@@ -612,9 +617,18 @@ final class PunchService
     }
 
     // ── フック ──────────────────────────────────────────────
+    //
+    // 他モジュールの受け口一覧（本モジュール無改修で処理を挿せる）：
+    // ・ims_timecard_punched        … 打刻1件ごと（新規打刻のみ。修正は含まない）
+    // ・ims_timecard_clocked_out    … 退勤打刻時。05（残業乖離アラート）・
+    //                                  03（日次勤怠集計の再計算）が拾う
+    // ・ims_timecard_punch_corrected … 打刻修正（§3.4）完了時。03の日次勤怠集計は、
+    //                                  修正後の打刻を反映するためこれも拾って再計算する
+    //                                  （correct_punch() 参照。新規打刻とは別イベントのため
+    //                                  ims_timecard_clocked_out とは分けている）
 
     /**
-     * 他モジュールの受け口。ここを撃っておけば 05（残業乖離アラート）や
+     * 他モジュールの受け口（新規打刻）。ここを撃っておけば 05（残業乖離アラート）や
      * 04（通勤交通費の発生日判定）が本モジュール無改修で処理を挿せる。
      */
     private static function fire_hooks(int $user_id, string $punch_type, string $work_date, string $punched_at, int $log_id): void
