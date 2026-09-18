@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.6.1-phase3e2'); // 修正：打刻修正時にwp_daily_attendanceが再計算されず古い実労働時間が残る不具合を修正
+define('IMS_PORTAL_VERSION', '0.6.7-phase3f-pre'); // 3f準備：月次勤務表グリッドを給与計算サイクル（締め日）連動の対象期間に対応
 define('IMS_PORTAL_DB_VERSION', 7); // スキーマ変更時にインクリメントする（08 §5.2）。v6→v7: wp_daily_attendanceに丸め後時刻の列を追加
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));

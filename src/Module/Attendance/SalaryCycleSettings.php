@@ -80,6 +80,23 @@ final class SalaryCycleSettings
     }
 
     /**
+     * 指定した年月（'Y-m'。対象期間の終了日が属する月）の対象期間・提出期限を返す。
+     * 締め日の種類による対象期間のずれは PayPeriodCalculator 参照。
+     *
+     * @return array{start:string, end:string, deadline:string} 'Y-m-d'
+     */
+    public static function period_for_year_month(string $year_month): array
+    {
+        return PayPeriodCalculator::period_for(self::closing_day(), $year_month);
+    }
+
+    /** 指定した勤務日が属する年月（'Y-m'）を、現在の締め日設定に基づいて判定する。 */
+    public static function year_month_for_date(string $work_date): string
+    {
+        return PayPeriodCalculator::year_month_for_date(self::closing_day(), $work_date);
+    }
+
+    /**
      * 設定を保存する。渡されたキーのみ更新し、他は既存値を維持する。
      *
      * @param array{closing_day?:string, payment_day?:string} $input
