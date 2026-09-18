@@ -32,6 +32,8 @@ if (!defined('ABSPATH')) {
  * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours のDDL寄与
  * ・ims_seed_initial_data … 事業マスタの初期データ（本社業務）投入（べき等）
  * ・ims_timecard_clocked_out … 02モジュールの退勤打刻完了時、日次勤怠集計を再計算する（3b・3c）
+ * ・ims_timecard_punch_corrected … 02モジュールの打刻修正完了時、日次勤怠集計を再計算する
+ *   （実機確認で発見：修正しても再計算されず古い値が残るバグの修正）
  * ・ims_portal_register_page … /portal/attendance/ の登録（3e）
  * ・rest_api_init … 勤怠フラグ・事業別時間割当ての書き込みAPI登録（3e-2）
  *
@@ -47,9 +49,11 @@ final class Bootstrap
         // 初期データ投入（有効化時。既に存在すれば何もしない＝べき等）
         add_action('ims_seed_initial_data', [self::class, 'seed_default_business']);
 
-        // 02モジュールの退勤打刻完了時に日次勤怠集計を再計算する（3b・§6.2）。
-        // is_admin() の外で登録する（打刻はフロント・REST API文脈で発生するため）。
+        // 02モジュールの退勤打刻完了時・打刻修正完了時に日次勤怠集計を再計算する（3b・3c・§6.2）。
+        // is_admin() の外で登録する（打刻・修正はフロント・REST API文脈で発生するため）。
+        // どちらのフックも (user_id, work_date, ...) の順で渡るため同じコールバックでよい。
         add_action('ims_timecard_clocked_out', [DailyAttendanceService::class, 'recalculate'], 10, 2);
+        add_action('ims_timecard_punch_corrected', [DailyAttendanceService::class, 'recalculate'], 10, 2);
 
         // フロント：月次勤務表グリッド（3e）。is_admin() の外で登録する（ポータル画面のため）。
         AttendanceGridPage::init();
