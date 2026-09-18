@@ -30,8 +30,10 @@ if (!defined('ABSPATH')) {
  * 続けて、月次勤務表グリッドを給与計算サイクル設定（締め日）連動の対象期間に対応させた
  * （PayPeriodCalculator。要件定義書には無い追加仕様。ユーザー確認済み）。
  * 3f-1で月次締め・提出フロー（wp_monthly_summary・MonthlySummaryService::submit()）を
- * 追加した。3f-1時点では画面・APIは無く、チェック者承認（3f-2）・最終承認（3f-3）と
- * まとめて3f-4（画面）で接続する想定。
+ * 追加した。3f-2でチェック者承認・差し戻し（check_approve/check_reject）、
+ * 3f-3で最終承認・差し戻し（final_approve/final_reject）を追加し、
+ * Module\Timecard\MonthlyClosing::is_locked() を実データ（confirmed ステータス）に
+ * 接続した。3f-1〜3f-3時点では画面・APIはまだ無く、3f-4（画面）でまとめて接続する想定。
  *
  * core を改修せず、フックで自己登録する（08 §6 準拠）：
  * ・ims_register_schema … wp_businesses / wp_daily_attendance / wp_project_hours /

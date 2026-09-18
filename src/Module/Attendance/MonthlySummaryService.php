@@ -25,7 +25,8 @@ if (!defined('ABSPATH')) {
  * 自己承認の禁止：チェック者・最終管理者は自身が提出者である月度を承認できない
  *   （01モジュールの first_approver_id 自己設定禁止制約と連動。§3.4）。
  *
- * 3f-2時点のスコープ：提出・チェック者承認・差し戻しまで。最終承認・差し戻しは3f-3で追加する。
+ * 3f-3で最終承認・差し戻しを追加した。これにより Module\Timecard\MonthlyClosing が
+ * 締め後ロックの判定に使う confirmed ステータスが実際に立つようになる。
  */
 final class MonthlySummaryService
 {
@@ -157,5 +158,76 @@ final class MonthlySummaryService
             return UserRepository::get_first_approver_id($target_user_id) === $actor_id;
         }
         return false;
+    }
+
+    /**
+     * 最終承認（checked → confirmed）。給与条件のスナップショット（snapshot_base_salary等）
+     * は3g（月次データスナップショット）で、この遷移に合わせて書き込む想定
+     * （3f-3時点ではNULLのまま確定する）。
+     *
+     * @return true|\WP_Error
+     */
+    public static function final_approve(int $actor_id, int $target_user_id, string $year_month)
+    {
+        return self::run_final_transition($actor_id, $target_user_id, $year_month, static function (int $id) use ($actor_id): bool {
+            return MonthlySummaryRepository::final_approve($id, $actor_id);
+        });
+    }
+
+    /**
+     * 最終差し戻し（checked → rejected_by_admin）。差し戻し理由は必須（§3.4）。
+     * confirmed からの差し戻しはUI上提供しない（§3.5）ため、対象は checked のみ。
+     *
+     * @return true|\WP_Error
+     */
+    public static function final_reject(int $actor_id, int $target_user_id, string $year_month, string $comment)
+    {
+        $comment = trim($comment);
+        if ($comment === '') {
+            return new \WP_Error('validation', '差し戻し理由を入力してください。');
+        }
+
+        return self::run_final_transition($actor_id, $target_user_id, $year_month, static function (int $id) use ($actor_id, $comment): bool {
+            return MonthlySummaryRepository::final_reject($id, $actor_id, $comment);
+        });
+    }
+
+    /**
+     * 最終承認・差し戻し共通の前処理（権限・自己承認禁止・ステータス検証）。
+     *
+     * @param callable(int): bool $save
+     * @return true|\WP_Error
+     */
+    private static function run_final_transition(int $actor_id, int $target_user_id, string $year_month, callable $save)
+    {
+        if (!MonthlySummaryCalculator::is_valid_year_month($year_month)) {
+            return new \WP_Error('validation', '対象年月の形式が正しくありません。');
+        }
+        if ($actor_id === $target_user_id) {
+            return new \WP_Error('forbidden_self', '自身が提出者である月次データを承認・差し戻しすることはできません。');
+        }
+        if (!self::can_final_approve()) {
+            return new \WP_Error('forbidden', 'この月度を最終承認する権限がありません。');
+        }
+
+        $existing = MonthlySummaryRepository::find($target_user_id, $year_month);
+        if ($existing === null || (string) $existing['status'] !== MonthlySummaryCalculator::CHECKED) {
+            return new \WP_Error('invalid_status', 'この月度は現在最終承認できる状態ではありません。');
+        }
+
+        if (!$save((int) $existing['id'])) {
+            return new \WP_Error('db_error', '保存に失敗しました。');
+        }
+
+        return true;
+    }
+
+    /**
+     * 最終承認・差し戻しの役割上の権限があるか（自己承認禁止は別途チェックする）。
+     * hr_admin・administratorのみ可（§3.4。締め処理の実行権限 ims_run_closing を流用する）。
+     */
+    public static function can_final_approve(): bool
+    {
+        return Capabilities::can_run_closing();
     }
 }
