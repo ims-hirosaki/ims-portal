@@ -14,6 +14,10 @@ if (!defined('ABSPATH')) {
  * ステータス遷移の妥当性チェック（権限・自己承認禁止・元ステータスの検証）は行わない。
  * ここは「渡された値をそのまま保存する」ことに徹し、業務判断は
  * MonthlySummaryService（呼び出し側）に置く（Module\Timecard\Repository と同方針）。
+ *
+ * DBの列名は target_year_month（Schema::contribute() 冒頭コメント参照。year_month は
+ * MySQL/MariaDBの予約語のため実装側で変更した）。このクラスの外へは影響しないよう、
+ * メソッドの引数名・PHP側のキー名は年月を表す変数として素直に $year_month のままにしている。
  */
 final class MonthlySummaryRepository
 {
@@ -27,7 +31,7 @@ final class MonthlySummaryRepository
         global $wpdb;
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                'SELECT * FROM ' . self::table() . ' WHERE user_id = %d AND year_month = %s',
+                'SELECT * FROM ' . self::table() . ' WHERE user_id = %d AND target_year_month = %s',
                 $user_id,
                 $year_month
             ),
@@ -47,7 +51,7 @@ final class MonthlySummaryRepository
         $table = self::table();
 
         $existing_id = $wpdb->get_var($wpdb->prepare(
-            'SELECT id FROM ' . $table . ' WHERE user_id = %d AND year_month = %s',
+            'SELECT id FROM ' . $table . ' WHERE user_id = %d AND target_year_month = %s',
             $user_id,
             $year_month
         ));
@@ -61,8 +65,8 @@ final class MonthlySummaryRepository
             return $wpdb->update($table, $data, ['id' => (int) $existing_id]) !== false;
         }
 
-        $data['user_id']    = $user_id;
-        $data['year_month'] = $year_month;
+        $data['user_id']           = $user_id;
+        $data['target_year_month'] = $year_month;
         return $wpdb->insert($table, $data) !== false;
     }
 
