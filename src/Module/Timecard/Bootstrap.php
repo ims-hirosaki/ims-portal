@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
  *
  * core を改修せず、フックで自己登録する（08 §6・§10.3 準拠）：
  * ・ims_register_schema … 独自テーブルDDLの寄与（attendance_logs / attendance_corrections）
+ * ・ims_register_raw_migrations … dbDeltaでは反映されない既存カラムの属性変更（2h修正）
  * ・ims_portal_register_page … /portal/timecard/ の登録（2b）
  * ・ims_portal_register_tile … ダッシュボードタイル（2g）
  * ・ims_portal_summary_contribute … サマリー/バッジへの寄与（2g）
@@ -28,6 +29,11 @@ final class Bootstrap
     {
         // DBスキーマの寄与（Installer が収集して dbDelta する）
         add_filter('ims_register_schema', [Schema::class, 'contribute']);
+
+        // dbDelta では確実に反映されない既存カラムの属性変更（2h修正：実機で発見）。
+        // attendance_corrections.original_datetime を NOT NULL → NULL許容にする変更が
+        // dbDeltaのカラム差分検知に乗らず、INSERTが失敗し続けていたため直接ALTERする。
+        add_filter('ims_register_raw_migrations', [Schema::class, 'contribute_raw_migrations']);
 
         // フロント：打刻コンソール（2b）
         TimecardPage::init();

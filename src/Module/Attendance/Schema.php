@@ -105,10 +105,14 @@ final class Schema
         // 月次締め・提出・承認（§3.4・§3.5・§5.5）。
         // total_* は提出時（3f）に確定する集計値。snapshot_* は最終承認（confirmed）確定時
         // にのみ書き込む（3g）。3f時点ではNULLのまま。
+        // 列名は要件定義書のDDL（§5.5）では year_month だが、YEAR_MONTH は
+        // MySQL/MariaDBの予約語（INTERVAL指定子）で、無予約語のまま使うとCREATE TABLE自体が
+        // 構文エラーになる（実機で確認）。同じ意味の target_year_month に変更した
+        // （実装側の都合による差分。要件定義書の意図＝「対象年月」は変えていない）。
         $ddls[] = "CREATE TABLE {$p}monthly_summary (
   id int(11) NOT NULL AUTO_INCREMENT,
   user_id bigint(20) unsigned NOT NULL,
-  year_month char(7) NOT NULL,
+  target_year_month char(7) NOT NULL,
   status enum('draft','submitted','checked','rejected_by_checker','rejected_by_admin','confirmed') NOT NULL DEFAULT 'draft',
   total_work_days int(11) DEFAULT NULL,
   total_actual_minutes int(11) DEFAULT NULL,
@@ -129,7 +133,7 @@ final class Schema
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY  (id),
-  UNIQUE KEY unique_user_month (user_id,year_month)
+  UNIQUE KEY unique_user_month (user_id,target_year_month)
 ) {$charset};";
 
         return $ddls;

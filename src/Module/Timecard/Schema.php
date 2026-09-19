@@ -75,6 +75,21 @@ final class Schema
         return $ddls;
     }
 
+    /**
+     * dbDelta では反映されない既存カラムの属性変更（Core\Installer::run_migrations()
+     * 冒頭コメント参照）。2h修正：original_datetime を NOT NULL → NULL許容にする変更が
+     * dbDeltaに乗らず、打刻の追加（INSERT）が失敗し続けていたため直接ALTERする。
+     * 既にNULL許容になっていても何度実行してもエラーにならない内容にする。
+     *
+     * @param string[] $sqls
+     * @return string[]
+     */
+    public static function contribute_raw_migrations(array $sqls): array
+    {
+        $sqls[] = 'ALTER TABLE ' . self::corrections_table() . ' MODIFY original_datetime datetime DEFAULT NULL';
+        return $sqls;
+    }
+
     /** 打刻ログテーブルの物理名。 */
     public static function logs_table(): string
     {

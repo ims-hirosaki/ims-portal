@@ -74,6 +74,13 @@ final class Installer
      *       $ddls[]  = "CREATE TABLE {$table} ( ... ) {$charset};";
      *       return $ddls;
      *   });
+     *
+     * dbDelta は新規テーブル・新規カラムの追加には確実だが、既存カラムの属性変更
+     * （NULL許容化等、型そのものは変わらない変更）を確実に反映しない既知の制限がある
+     * （実機で確認：original_datetime を NOT NULL → DEFAULT NULL に変更したが反映されず、
+     * INSERT が失敗し続けた）。dbDeltaで対応できない変更は `ims_register_raw_migrations`
+     * フィルタで生の ALTER 文を寄与させ、ここで直接実行する。ALTER は必ず何度実行しても
+     * 安全な内容にすること（毎回のバージョンアップ時に再実行され得るため）。
      */
     private static function run_migrations(): void
     {
@@ -86,6 +93,15 @@ final class Installer
 
         foreach ($ddls as $ddl) {
             dbDelta($ddl);
+        }
+
+        global $wpdb;
+        /**
+         * @var string[] $raw_migrations dbDeltaでは対応できない変更の生ALTER文の配列
+         */
+        $raw_migrations = apply_filters('ims_register_raw_migrations', []);
+        foreach ($raw_migrations as $sql) {
+            $wpdb->query($sql);
         }
 
         update_option(self::DB_VERSION_OPTION, IMS_PORTAL_DB_VERSION);
