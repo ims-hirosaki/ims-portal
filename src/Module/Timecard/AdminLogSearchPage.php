@@ -341,7 +341,7 @@ final class AdminLogSearchPage
                     ?>
                     <tr>
                         <td><?php echo esc_html($c['corrected_at']); ?></td>
-                        <td><?php echo esc_html($c['original_datetime']); ?></td>
+                        <td><?php echo $c['original_datetime'] !== null ? esc_html($c['original_datetime']) : '（新規追加）'; ?></td>
                         <td><?php echo esc_html($c['corrected_datetime']); ?></td>
                         <td><?php echo esc_html($corrector ? $corrector->display_name : '（不明）'); ?></td>
                         <td><?php echo esc_html($c['reason']); ?></td>

@@ -25,8 +25,8 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.6.13.1-phase3f4c'); // 3f-4c修正：月次勤務表グリッドのボタンがwp-admin専用クラスで無地表示になる不具合を修正
-define('IMS_PORTAL_DB_VERSION', 8); // スキーマ変更時にインクリメントする（08 §5.2）。v7→v8: 03モジュールの月次締め（wp_monthly_summary）追加
+define('IMS_PORTAL_VERSION', '0.7.0-phase2h1'); // 2h-1：打刻の追加機能（バックエンド）を追加
+define('IMS_PORTAL_DB_VERSION', 9); // スキーマ変更時にインクリメントする（08 §5.2）。v8→v9: 02モジュールのwp_attendance_corrections.original_datetimeをNULL許容に変更（打刻追加の監査証跡用）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
 define('IMS_PORTAL_URL', plugin_dir_url(__FILE__));

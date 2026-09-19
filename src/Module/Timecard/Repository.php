@@ -316,9 +316,68 @@ final class Repository
     }
 
     /**
-     * 指定ログの修正履歴を古い順で取得する（§3.4「修正履歴の記録」・§4.2 証跡確認用）。
+     * 打刻の追加を1トランザクションで保存する（2h：存在しない打刻の新規作成。
+     * 要件定義書には無い追加仕様。correct_punch() と同じ「先に監査証跡→本体」の順序）。
      *
-     * @return array<int, array{id:int, original_datetime:string, corrected_datetime:string, reason:string, corrected_by:int, corrected_at:string}>
+     * 新規ログを先に挿入し、その log_id で追加履歴（attendance_corrections。
+     * original_datetime は NULL＝追加を意味する）を記録する。どちらかが失敗すれば
+     * ロールバックする。
+     *
+     * @return int 成功時は新規ログの log_id。失敗時は 0。
+     */
+    public static function add_punch(int $user_id, string $work_date, string $punch_type, string $punched_at, string $reason, int $added_by): int
+    {
+        global $wpdb;
+        $logs_table = Schema::logs_table();
+        $corr_table = Schema::corrections_table();
+
+        $wpdb->query('START TRANSACTION');
+
+        $inserted_log = $wpdb->insert(
+            $logs_table,
+            [
+                'user_id'        => $user_id,
+                'work_date'      => $work_date,
+                'punch_type'     => $punch_type,
+                'punched_at'     => $punched_at,
+                'is_auto_filled' => 0,
+            ],
+            ['%d', '%s', '%s', '%s', '%d']
+        );
+        if (!$inserted_log) {
+            $wpdb->query('ROLLBACK');
+            return 0;
+        }
+        $log_id = (int) $wpdb->insert_id;
+
+        // NULL を渡す列もフォーマット指定から外せないため、型に合わせた %s を置く
+        // （$wpdb->insert() は値が null なら実際のフォーマットに関わらず SQL の NULL を発行する。
+        // insert_punch() の ip_address 等と同じ作法）。
+        $inserted_corr = $wpdb->insert(
+            $corr_table,
+            [
+                'log_id'             => $log_id,
+                'original_datetime'  => null,
+                'corrected_datetime' => $punched_at,
+                'reason'             => $reason,
+                'corrected_by'       => $added_by,
+            ],
+            ['%d', '%s', '%s', '%s', '%d']
+        );
+        if (!$inserted_corr) {
+            $wpdb->query('ROLLBACK');
+            return 0;
+        }
+
+        $wpdb->query('COMMIT');
+        return $log_id;
+    }
+
+    /**
+     * 指定ログの修正・追加履歴を古い順で取得する（§3.4「修正履歴の記録」・§4.2 証跡確認用）。
+     * original_datetime が null の行は「打刻の追加」（2h）を表す。
+     *
+     * @return array<int, array{id:int, original_datetime:?string, corrected_datetime:string, reason:string, corrected_by:int, corrected_at:string}>
      */
     public static function corrections_for_log(int $log_id): array
     {
@@ -340,7 +399,7 @@ final class Repository
         return array_map(static function (array $row): array {
             return [
                 'id'                 => (int) $row['id'],
-                'original_datetime'  => (string) $row['original_datetime'],
+                'original_datetime'  => $row['original_datetime'] !== null ? (string) $row['original_datetime'] : null,
                 'corrected_datetime' => (string) $row['corrected_datetime'],
                 'reason'             => (string) $row['reason'],
                 'corrected_by'       => (int) $row['corrected_by'],

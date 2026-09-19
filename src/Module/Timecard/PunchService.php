@@ -616,16 +616,112 @@ final class PunchService
         ];
     }
 
+    /**
+     * 打刻の追加（2h：存在しない打刻を新規作成する。要件定義書には無い追加仕様で、
+     * ユーザー確認済み）。
+     *
+     * 権限・締めロックは correct_punch() と全く同じ規則を適用する（修正許可レベルが
+     * そのまま「追加」にも及ぶ）。存在しない打刻を対象にするため log_id は取らず、
+     * user_id・work_date・punch_type・追加する日時を直接受け取る。
+     *
+     * clock_in・clock_out はその日1件のみ（§5.1）のため、既に存在する場合は
+     * 追加ではなく修正を案内する。break_in・break_out は複数件を許容する。
+     *
+     * @return array{ok:bool, code:string, message:string, log_id?:int, punched_at?:string, work_date?:string, punch_type?:string}
+     */
+    public static function add_missing_punch(int $user_id, string $work_date, string $punch_type, string $punched_at, string $reason): array
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            return self::fail('reason_required', '追加理由を入力してください。');
+        }
+
+        if (!in_array($punch_type, [StatusCalculator::CLOCK_IN, StatusCalculator::BREAK_IN, StatusCalculator::BREAK_OUT, StatusCalculator::CLOCK_OUT], true)) {
+            return self::fail('unknown_punch_type', '打刻の種別が不正です。');
+        }
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $work_date)) {
+            return self::fail('invalid_datetime', '対象日が不正です。');
+        }
+
+        $new_ts = strtotime($punched_at);
+        if ($new_ts === false) {
+            return self::fail('invalid_datetime', '追加する打刻の日時が不正です。', $work_date);
+        }
+
+        // 締め後ロックはすべての操作者に優先して効く（§3.4。correct_punch() と同方針）。
+        if (MonthlyClosing::is_locked($user_id, $work_date)) {
+            return self::fail('month_closed', 'この月度は締め処理が完了しているため追加できません。', $work_date);
+        }
+
+        $allowed = self::can_correct_punch(
+            Capabilities::can_manage_users(),
+            Capabilities::can_correct_own_punch(),
+            Settings::staff_correction_level(),
+            $work_date,
+            self::console_work_date($user_id)
+        );
+        if (!$allowed) {
+            return self::fail('correction_not_allowed', 'この日の打刻を追加する権限がありません。', $work_date);
+        }
+
+        $new_mysql = gmdate('Y-m-d H:i:s', $new_ts);
+        $logs = Repository::logs_for_date($user_id, $work_date);
+
+        // 出勤・退勤はその日1件のみ（§5.1）。既にあるなら「追加」ではなく「修正」を使う。
+        if (in_array($punch_type, [StatusCalculator::CLOCK_IN, StatusCalculator::CLOCK_OUT], true)) {
+            foreach ($logs as $l) {
+                if ($l['punch_type'] === $punch_type) {
+                    return self::fail('duplicate', 'この種別の打刻は既に記録されています。追加ではなく修正をご利用ください。', $work_date);
+                }
+            }
+        }
+
+        // 追加後の並びで矛盾チェック（correct_punch() 手順5と同方針）。
+        $simulated = $logs;
+        $simulated[] = ['punch_type' => $punch_type, 'punched_at' => $new_mysql];
+        usort($simulated, static fn(array $a, array $b): int => strtotime($a['punched_at']) <=> strtotime($b['punched_at']));
+
+        if (!StatusCalculator::is_chronologically_consistent($simulated)) {
+            return self::fail(
+                'inconsistent',
+                '追加後の打刻順序に矛盾があります（出勤より前の退勤等）。内容をご確認ください。',
+                $work_date
+            );
+        }
+
+        $log_id = Repository::add_punch($user_id, $work_date, $punch_type, $new_mysql, $reason, $user_id);
+        if ($log_id === 0) {
+            return self::fail('db_error', '打刻の追加に失敗しました。時間をおいて再度お試しください。', $work_date);
+        }
+
+        // 03_勤怠管理モジュールが日次集計（wp_daily_attendance）を再計算するための受け口。
+        do_action('ims_timecard_punch_added', $user_id, $work_date, $new_mysql, $log_id);
+
+        return [
+            'ok'         => true,
+            'code'       => 'ok',
+            'message'    => '打刻を追加しました。',
+            'work_date'  => $work_date,
+            'log_id'     => $log_id,
+            'punch_type' => $punch_type,
+            'punched_at' => $new_mysql,
+        ];
+    }
+
     // ── フック ──────────────────────────────────────────────
     //
     // 他モジュールの受け口一覧（本モジュール無改修で処理を挿せる）：
-    // ・ims_timecard_punched        … 打刻1件ごと（新規打刻のみ。修正は含まない）
+    // ・ims_timecard_punched        … 打刻1件ごと（新規打刻のみ。修正・追加は含まない）
     // ・ims_timecard_clocked_out    … 退勤打刻時。05（残業乖離アラート）・
     //                                  03（日次勤怠集計の再計算）が拾う
     // ・ims_timecard_punch_corrected … 打刻修正（§3.4）完了時。03の日次勤怠集計は、
     //                                  修正後の打刻を反映するためこれも拾って再計算する
     //                                  （correct_punch() 参照。新規打刻とは別イベントのため
     //                                  ims_timecard_clocked_out とは分けている）
+    // ・ims_timecard_punch_added    … 打刻の追加（2h）完了時。存在しなかった打刻が
+    //                                  新規作成されるため、03の日次勤怠集計はこれも拾って
+    //                                  再計算する（add_missing_punch() 参照）
 
     /**
      * 他モジュールの受け口（新規打刻）。ここを撃っておけば 05（残業乖離アラート）や
