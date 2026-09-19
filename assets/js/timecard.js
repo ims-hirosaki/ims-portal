@@ -903,12 +903,12 @@
                 var data = res.data || {};
                 if (res.status >= 200 && res.status < 300 && data.ok) {
                     steps.setStep(3); // ③画面に反映
+                    // 「実労働」列は打刻セルの書き替えだけでは再計算されない（サーバー側の
+                    // worked_seconds() を二重実装しないため）。ページを再読み込みして
+                    // サーバー側の再計算結果をそのまま反映する（実機で発見：修正後も
+                    // 実労働列が古い値のまま残る不具合の修正）。
                     setTimeout(function () {
-                        m.close();
-                        if (data.punch) {
-                            applyCorrectionToRow(wrap, data.punch);
-                        }
-                        showToast(data.message || '打刻を修正しました。');
+                        window.location.reload();
                     }, 400);
                     return;
                 }
@@ -940,23 +940,6 @@
                 });
             }
         };
-    }
-
-    /** 修正成功後、該当する時刻表示だけをその場で差し替える（リロードなし）。 */
-    function applyCorrectionToRow(wrap, punch) {
-        var span = wrap.querySelector('.tc-time[data-log-id="' + punch.log_id + '"]');
-        if (!span) {
-            return;
-        }
-        span.setAttribute('data-punched-at', punch.punched_at);
-        var hasAutoTag = !!span.querySelector('.tc-auto-tag');
-        var newText = punch.time + (hasAutoTag ? ' ' : '');
-        var firstNode = span.firstChild;
-        if (firstNode && firstNode.nodeType === Node.TEXT_NODE) {
-            firstNode.textContent = newText;
-        } else {
-            span.insertBefore(document.createTextNode(newText), span.firstChild);
-        }
     }
 
     // ── 2h：打刻の追加 ──────────────────────────────────────
@@ -1060,10 +1043,10 @@
                 var data = res.data || {};
                 if (res.status >= 200 && res.status < 300 && data.ok) {
                     m.close();
-                    if (data.punch) {
-                        appendPunchToRow(wrap, data.punch);
-                    }
-                    showToast(data.message || '打刻を追加しました。');
+                    // 「実労働」列は打刻セルの書き替えだけでは再計算されない（サーバー側の
+                    // worked_seconds() を二重実装しないため）。ページを再読み込みして
+                    // サーバー側の再計算結果をそのまま反映する。
+                    window.location.reload();
                     return;
                 }
                 m.close();

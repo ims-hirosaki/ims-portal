@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.7.2-phase2h2fix'); // 2h-2修正・3f緊急修正：実機で見つかったDBマイグレーション不具合2件を修正
+define('IMS_PORTAL_VERSION', '0.7.3-phase2efix'); // 2e/2h修正：修正・追加後に「実労働」列が古い値のまま残る不具合を修正
 define('IMS_PORTAL_DB_VERSION', 10); // スキーマ変更時にインクリメントする（08 §5.2）。v9→v10: (1) wp_monthly_summaryのyear_month列がMySQL予約語でCREATE TABLE自体が失敗していたのをtarget_year_monthに変更、(2) v8→v9のoriginal_datetimeのNULL許容化がdbDeltaで反映されない不具合をALTER直接実行で修正
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
