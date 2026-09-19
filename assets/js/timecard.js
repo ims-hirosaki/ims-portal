@@ -13,6 +13,10 @@
  * 【2e】打刻修正（§3.4）：履歴テーブルの「修正」ボタン → 対象日の打刻一覧から1件選択
  *     → 新しい日時・修正理由を入力して保存。権限・締めロック・整合性チェックは
  *     すべてサーバー側（PunchService::correct_punch）が行う。
+ * 【2h】打刻の追加：履歴テーブルの「追加」ボタン → 打刻種別・日時・理由を入力して保存。
+ *     「修正」と違い対象を選ぶ手順が無い（存在しない打刻を新規作成するため）。
+ *     権限・締めロック・整合性チェックはすべてサーバー側（PunchService::add_missing_punch）
+ *     が行う。
  *
  * 打刻時刻は必ずサーバーが決める。このJSは時刻を一切送らない（§3.1）。
  * ケースA/Bのポップアップが表示する時刻・経過時間も、サーバー時刻ベースの
@@ -58,6 +62,7 @@
 
         setupPunchButtons(wrap, workedTimer, offset);
         setupCorrectionButtons(wrap);
+        setupAddButtons(wrap);
     });
 
     /** サーバー基準の現在エポック秒 */
@@ -386,6 +391,14 @@
         }
         var span = document.createElement('span');
         span.className = 'tc-time';
+        // 2h：log_id・punched_at を持たせておくと、リロードなしで直後に「修正」の
+        // 対象としても選べる（render_times() のサーバー描画と同じ属性）。
+        if (punch.log_id) {
+            span.setAttribute('data-log-id', String(punch.log_id));
+        }
+        if (punch.punched_at) {
+            span.setAttribute('data-punched-at', punch.punched_at);
+        }
         span.textContent = punch.time;
         // 2d：休憩補完・登録で保存したログは自動補完タグを添える（サーバー描画と同じ見た目）
         if (punch.is_auto_filled) {
@@ -944,6 +957,122 @@
         } else {
             span.insertBefore(document.createTextNode(newText), span.firstChild);
         }
+    }
+
+    // ── 2h：打刻の追加 ──────────────────────────────────────
+
+    /** 履歴テーブルの「追加」ボタンに接続する。 */
+    function setupAddButtons(wrap) {
+        var buttons = Array.prototype.slice.call(wrap.querySelectorAll('.tc-add-btn[data-add-date]'));
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                openAddFormModal(wrap, btn.getAttribute('data-add-date'));
+            });
+        });
+    }
+
+    /** 打刻種別・日時・追加理由を入力して保存する。「修正」と違い対象を選ぶ手順が無い。 */
+    function openAddFormModal(wrap, date) {
+        var existing = collectDayPunches(wrap, date);
+        var existingTypes = existing.map(function (p) { return p.punchType; });
+
+        var m = createModal('打刻を追加（' + date + '）');
+
+        var typeLabel = document.createElement('label');
+        typeLabel.className = 'tc-correct-field';
+        var typeSpan = document.createElement('span');
+        typeSpan.textContent = '打刻の種別';
+        typeLabel.appendChild(typeSpan);
+        var typeSelect = document.createElement('select');
+        ['clock_in', 'break_in', 'break_out', 'clock_out'].forEach(function (type) {
+            // 出勤・退勤はその日1件のみのため、既にある場合は選択肢から外す（サーバー側でも重複は弾く）。
+            if ((type === 'clock_in' || type === 'clock_out') && existingTypes.indexOf(type) !== -1) {
+                return;
+            }
+            var opt = document.createElement('option');
+            opt.value = type;
+            opt.textContent = PUNCH_LABELS[type] || type;
+            typeSelect.appendChild(opt);
+        });
+        typeLabel.appendChild(typeSelect);
+        m.body.appendChild(typeLabel);
+
+        var dtLabel = document.createElement('label');
+        dtLabel.className = 'tc-correct-field';
+        var dtSpan = document.createElement('span');
+        dtSpan.textContent = '打刻の日時';
+        dtLabel.appendChild(dtSpan);
+        var dtInput = document.createElement('input');
+        dtInput.type = 'datetime-local';
+        dtInput.value = date + 'T00:00';
+        dtLabel.appendChild(dtInput);
+        m.body.appendChild(dtLabel);
+
+        var reasonLabel = document.createElement('label');
+        reasonLabel.className = 'tc-correct-field';
+        var reasonSpan = document.createElement('span');
+        reasonSpan.textContent = '追加理由';
+        reasonLabel.appendChild(reasonSpan);
+        var reasonInput = document.createElement('textarea');
+        reasonInput.rows = 3;
+        reasonLabel.appendChild(reasonInput);
+        m.body.appendChild(reasonLabel);
+
+        var errorEl = document.createElement('p');
+        errorEl.className = 'tc-modal-error';
+        errorEl.hidden = true;
+        m.body.appendChild(errorEl);
+
+        var actions = document.createElement('div');
+        actions.className = 'tc-modal-actions';
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'tc-modal-btn is-ghost';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.addEventListener('click', m.close);
+        var submitBtn = document.createElement('button');
+        submitBtn.type = 'button';
+        submitBtn.className = 'tc-modal-btn is-primary';
+        submitBtn.textContent = '追加を登録する';
+        actions.appendChild(cancelBtn);
+        actions.appendChild(submitBtn);
+        m.body.appendChild(actions);
+
+        submitBtn.addEventListener('click', function () {
+            var reason = reasonInput.value.trim();
+            if (!dtInput.value || !reason) {
+                errorEl.textContent = '打刻の日時と追加理由は必須です。';
+                errorEl.hidden = false;
+                return;
+            }
+            errorEl.hidden = true;
+            submitBtn.disabled = true;
+            cancelBtn.disabled = true;
+
+            var punchedAt = dtInput.value.replace('T', ' ') + ':00';
+
+            restPost(routes().addPunch, {
+                work_date: date,
+                punch_type: typeSelect.value,
+                punched_at: punchedAt,
+                reason: reason
+            }).then(function (res) {
+                var data = res.data || {};
+                if (res.status >= 200 && res.status < 300 && data.ok) {
+                    m.close();
+                    if (data.punch) {
+                        appendPunchToRow(wrap, data.punch);
+                    }
+                    showToast(data.message || '打刻を追加しました。');
+                    return;
+                }
+                m.close();
+                showToast(data.message || '追加できませんでした。画面を再読み込みしてお試しください。');
+            }).catch(function () {
+                m.close();
+                showToast('通信に失敗しました。もう一度お試しください。');
+            });
+        });
     }
 
     // ── 2d：モーダル共通部品 ────────────────────────────────

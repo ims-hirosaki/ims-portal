@@ -364,6 +364,38 @@
   background: var(--indigo-tint);
 }
 
+/* 2h：打刻の追加（操作列。存在しない打刻を新規作成する） */
+
+.tc-add-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--moss);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.tc-add-btn:hover {
+  border-color: var(--moss);
+  background: var(--moss-tint);
+}
+
+.tc-correct-btn + .tc-add-btn,
+.tc-add-btn + .tc-correct-btn {
+  margin-left: 6px;
+}
+
+.tc-correct-field select {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-family: inherit;
+}
+
 .tc-correct-field {
   display: flex;
   flex-direction: column;

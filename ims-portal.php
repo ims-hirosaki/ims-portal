@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.7.0-phase2h1'); // 2h-1：打刻の追加機能（バックエンド）を追加
+define('IMS_PORTAL_VERSION', '0.7.1-phase2h2'); // 2h-2：打刻の追加機能のUIを接続
 define('IMS_PORTAL_DB_VERSION', 9); // スキーマ変更時にインクリメントする（08 §5.2）。v8→v9: 02モジュールのwp_attendance_corrections.original_datetimeをNULL許容に変更（打刻追加の監査証跡用）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
