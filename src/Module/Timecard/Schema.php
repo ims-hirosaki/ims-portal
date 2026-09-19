@@ -56,12 +56,14 @@ final class Schema
   KEY idx_punched_at (punched_at)
 ) {$charset};";
 
-        // ② 打刻修正履歴（§5.2）
-        //    監査証跡。削除不可・修正のたびに1行追記する。
+        // ② 打刻修正・追加履歴（§5.2）
+        //    監査証跡。削除不可・修正／追加のたびに1行追記する。
+        //    original_datetime が NULL の行は「打刻の追加」（存在しなかった打刻を新規作成した）
+        //    ことを表す（2h：打刻の追加機能。要件定義書には無い追加仕様）。
         $ddls[] = "CREATE TABLE {$p}attendance_corrections (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   log_id bigint(20) unsigned NOT NULL,
-  original_datetime datetime NOT NULL,
+  original_datetime datetime DEFAULT NULL,
   corrected_datetime datetime NOT NULL,
   reason text NOT NULL,
   corrected_by bigint(20) unsigned NOT NULL,

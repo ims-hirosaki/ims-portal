@@ -26,6 +26,10 @@ if (!defined('ABSPATH')) {
  *       ×役割（ims_correct_own_punch・ims_manage_users）×対象日で表示可否を判定した上で
  *       修正ボタンを出す。実際の許可判定はサーバー側（PunchService::can_correct_punch）が
  *       必ず再検証するため、ここでの表示制御は利用者への案内に過ぎない。
+ * 【2h】「追加」ボタンを追加した。存在しない打刻（例：退勤打刻を1回も押さなかった日）を
+ *       本人が新規作成できる機能。権限判定は「修正」と全く同じ can_correct_punch() を
+ *       流用するが、対象日に打刻が1件も無くても表示する点だけが「修正」と異なる
+ *       （要件定義書には無い追加仕様。ユーザー確認済み）。
  */
 final class TimecardPage
 {
@@ -69,6 +73,8 @@ final class TimecardPage
                 'clockOutWithBreak' => 'timecard/punch/clock-out-with-break',
                 // {log_id} はJS側でログIDに置換して使う（2e：打刻修正）
                 'correctPunch'      => 'timecard/logs/{log_id}/correct',
+                // 2h：打刻の追加（存在しない打刻の新規作成）
+                'addPunch'          => 'timecard/logs/add',
             ],
             'laborBreak' => [
                 'tier1Hours'   => PunchService::LABOR_BREAK_TIER1_HOURS,
@@ -270,15 +276,20 @@ final class TimecardPage
                             if ($logs !== []) {
                                 $has_any = true;
                             }
-                            $can_correct_row = $logs !== [] && PunchService::can_correct_punch(
+                            $can_act = PunchService::can_correct_punch(
                                 $correction_ctx['is_always_allowed'],
                                 $correction_ctx['has_self_service'],
                                 $correction_ctx['level'],
                                 $date,
                                 $correction_ctx['current_work_date']
                             );
+                            $can_correct_row = $logs !== [] && $can_act;
+                            // 2h：打刻の追加は、その日の打刻が1件もない（$logs === []）場合にこそ必要なため、
+                            // $can_correct_row と違い $logs の有無を問わない。権限・締めロックの規則は
+                            // 「修正」と全く同じ（can_correct_punch() を流用。ユーザー確認済み）。
+                            $can_add_row = $can_act;
                             // 「本日」の強調は暦日ではなく現在の勤務日に合わせる（深夜帯対応）
-                            self::render_history_row($date, $logs, $date === $work_date, $can_correct_row);
+                            self::render_history_row($date, $logs, $date === $work_date, $can_correct_row, $can_add_row);
                         }
                         ?>
                     </tbody>
@@ -292,7 +303,7 @@ final class TimecardPage
         <?php
     }
 
-    private static function render_history_row(string $date, array $logs, bool $is_today, bool $can_correct): void
+    private static function render_history_row(string $date, array $logs, bool $is_today, bool $can_correct, bool $can_add): void
     {
         $ts   = strtotime($date);
         $dow  = (int) date('w', $ts); // 0=日, 6=土
@@ -344,7 +355,13 @@ final class TimecardPage
                     <button type="button" class="tc-correct-btn" data-correct-date="<?php echo esc_attr($date); ?>">
                         <?php esc_html_e('修正', 'ims-portal'); ?>
                     </button>
-                <?php else : ?>
+                <?php endif; ?>
+                <?php if ($can_add) : ?>
+                    <button type="button" class="tc-add-btn" data-add-date="<?php echo esc_attr($date); ?>">
+                        <?php esc_html_e('追加', 'ims-portal'); ?>
+                    </button>
+                <?php endif; ?>
+                <?php if (!$can_correct && !$can_add) : ?>
                     —
                 <?php endif; ?>
             </td>
