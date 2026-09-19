@@ -113,11 +113,17 @@ final class TimecardPage
         // clock_in 時刻（JS で経過を進めるための基準）
         $clock_in_at = self::first_punch_time($today_logs, StatusCalculator::CLOCK_IN);
 
-        // 2d：ケースA/Bの補完UIが必要とする材料。
-        // タイムゾーンのずれを避けるため H:i ではなく UNIX 秒（サーバー時刻基準）で渡す
-        // （data-server-now と同じ流儀。JS 側の offset 計算とそのまま整合する）。
-        $clock_in_epoch = self::last_punch_epoch($today_logs, StatusCalculator::CLOCK_IN);
-        $break_in_epoch = self::last_punch_epoch($today_logs, StatusCalculator::BREAK_IN);
+        // JSへ渡すエポック値は必ず「真のUTCエポック」にする（実機で発見：時刻表示が9時間
+        // ずれる不具合の修正）。current_time('timestamp') はサイトのタイムゾーン設定
+        // （gmt_offset）を加算済みの値で、これをそのままJSのDateに渡すと、ブラウザ側の
+        // new Date().getHours() 等がさらにローカルタイムゾーン変換を行うため二重にずれる。
+        // PHP側の内部計算（$now_ts を使う worked_seconds() 等）は上の $now_ts のまま
+        // （current_time()同士・strtotime()同士で一貫しているため）触らない。
+        $now_true_epoch = (int) current_time('timestamp', true);
+
+        // 2d：ケースA/Bの補完UIが必要とする材料。真のUTCエポックで渡す（上記と同じ理由）。
+        $clock_in_epoch = self::true_epoch_of($today_logs, StatusCalculator::CLOCK_IN);
+        $break_in_epoch = self::true_epoch_of($today_logs, StatusCalculator::BREAK_IN);
         $has_break      = StatusCalculator::has_break_in($today_logs);
 
         // ── 表示する月（?ym=YYYY-MM、なければ当月） ──
@@ -138,7 +144,7 @@ final class TimecardPage
              data-status="<?php echo esc_attr($status); ?>"
              data-worked-sec="<?php echo esc_attr((string) $worked_sec); ?>"
              data-clock-in="<?php echo esc_attr($clock_in_at); ?>"
-             data-server-now="<?php echo esc_attr((string) $now_ts); ?>"
+             data-server-now="<?php echo esc_attr((string) $now_true_epoch); ?>"
              data-work-date="<?php echo esc_attr($work_date); ?>"
              data-can-punch="<?php echo $can_punch ? '1' : '0'; ?>"
              data-clock-in-epoch="<?php echo esc_attr((string) $clock_in_epoch); ?>"
@@ -457,15 +463,21 @@ final class TimecardPage
     }
 
     /**
-     * 指定した種別の最後の打刻時刻を UNIX 秒で返す（2d のケースA/B補完UI用）。
+     * 指定した種別の最後の打刻時刻を「真のUTCエポック」で返す（2d のケースA/B補完UI用）。
      * なければ 0（JS 側は 0 を「該当なし」として扱う）。
+     *
+     * punched_at はサイトのローカル時刻（現地の壁時計時刻）の文字列で保存されているため、
+     * そのまま strtotime() すると（PHPのデフォルトタイムゾーンがUTCの場合）
+     * current_time('timestamp') と同じ「サイトのタイムゾーン分だけ加算済みの値」になる。
+     * JSのDateにそのまま渡すとブラウザ側でも再度ローカル変換され二重にずれるため、
+     * get_gmt_from_date() でUTC時刻の文字列に変換してから strtotime() する。
      */
-    private static function last_punch_epoch(array $logs, string $type): int
+    private static function true_epoch_of(array $logs, string $type): int
     {
         $last = 0;
         foreach ($logs as $log) {
             if (($log['punch_type'] ?? '') === $type) {
-                $ts = strtotime((string) $log['punched_at']);
+                $ts = strtotime(get_gmt_from_date((string) $log['punched_at']));
                 if ($ts !== false) {
                     $last = $ts;
                 }
