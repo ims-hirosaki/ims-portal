@@ -11,11 +11,15 @@ if (!defined('ABSPATH')) {
 /**
  * 打刻ログの読み書き（02 §5.1）。2b で参照系、2c で挿入（punch）を実装した。
  * 修正（UPDATE + corrections への追記）は 2e で追加する。
+ * 2iで誤打刻の取り消し（void_punch()）を追加した。
  *
  * すべてのクエリは $wpdb->prepare を通す。読み取り系は基本的に user_id で絞り、
  * 他人のログを読ませない（例外：2f の管理者向け照会 search_logs() は
  * 監査目的で全社員を横断検索する。呼び出し側で ims_manage_users を必ず要求する）。
- * 物理削除するメソッドは意図的に置かない（§3.5・§7.5 の保持要件）。
+ * 物理削除するメソッドは意図的に置かない（§3.5・§7.5 の保持要件）。取り消し済みの
+ * 打刻も voided_* 列を立てるだけで行は残す。logs_for_date()/logs_for_month()
+ * （本人の打刻コンソール用）は取り消し済みを除外するが、search_logs()
+ * （管理者向け監査画面）は除外しない。
  */
 final class Repository
 {
@@ -34,7 +38,7 @@ final class Repository
             $wpdb->prepare(
                 "SELECT log_id, punch_type, punched_at, is_auto_filled, note
                  FROM {$table}
-                 WHERE user_id = %d AND work_date = %s
+                 WHERE user_id = %d AND work_date = %s AND voided_at IS NULL
                  ORDER BY punched_at ASC, log_id ASC",
                 $user_id,
                 $work_date
@@ -65,7 +69,7 @@ final class Repository
             $wpdb->prepare(
                 "SELECT log_id, work_date, punch_type, punched_at, is_auto_filled, note
                  FROM {$table}
-                 WHERE user_id = %d AND work_date BETWEEN %s AND %s
+                 WHERE user_id = %d AND work_date BETWEEN %s AND %s AND voided_at IS NULL
                  ORDER BY work_date ASC, punched_at ASC, log_id ASC",
                 $user_id,
                 $first,
@@ -244,7 +248,7 @@ final class Repository
 
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT log_id, user_id, work_date, punch_type, punched_at, is_auto_filled
+                "SELECT log_id, user_id, work_date, punch_type, punched_at, is_auto_filled, voided_at
                  FROM {$table} WHERE log_id = %d",
                 $log_id
             ),
@@ -262,7 +266,33 @@ final class Repository
             'punch_type'     => (string) $row['punch_type'],
             'punched_at'     => (string) $row['punched_at'],
             'is_auto_filled' => (int) $row['is_auto_filled'],
+            'is_voided'      => $row['voided_at'] !== null,
         ];
+    }
+
+    /**
+     * 打刻の取り消し（2i：誤打刻の取り消し。要件定義書には無い追加仕様）。
+     *
+     * §3.5・§7.5の保持要件のため物理削除はせず、voided_* 列を立てるだけにする
+     * （物理削除するメソッドを意図的に置かないクラス全体の方針はそのまま維持する）。
+     * 取り消し済みの打刻は logs_for_date()/logs_for_month() から除外され、
+     * 本人の打刻履歴画面では最初から無かったかのように表示される
+     * （ユーザー確認済み。監査目的の search_logs() では除外しない）。
+     */
+    public static function void_punch(int $log_id, int $voided_by, string $reason): bool
+    {
+        global $wpdb;
+        return $wpdb->update(
+            Schema::logs_table(),
+            [
+                'voided_at'   => current_time('mysql'),
+                'voided_by'   => $voided_by,
+                'void_reason' => $reason,
+            ],
+            ['log_id' => $log_id],
+            ['%s', '%d', '%s'],
+            ['%d']
+        ) !== false;
     }
 
     /**
@@ -474,6 +504,7 @@ final class Repository
 
         $select_sql = "SELECT l.log_id, l.user_id, l.work_date, l.punch_type, l.punched_at,
                               l.is_auto_filled, l.ip_address, l.gps_latitude, l.gps_longitude,
+                              l.voided_at, l.voided_by, l.void_reason,
                               {$has_correction_expr} AS has_correction
                        FROM {$logs_table} l
                        WHERE {$where_sql}
@@ -492,7 +523,7 @@ final class Repository
 
     /**
      * @param array<string, mixed> $row
-     * @return array{log_id:int, user_id:int, work_date:string, punch_type:string, punched_at:string, is_auto_filled:int, ip_address:?string, has_gps:bool, has_correction:bool}
+     * @return array{log_id:int, user_id:int, work_date:string, punch_type:string, punched_at:string, is_auto_filled:int, ip_address:?string, has_gps:bool, has_correction:bool, is_voided:bool, voided_by:?int, voided_at:?string, void_reason:?string}
      */
     private static function normalize_search_row(array $row): array
     {
@@ -506,6 +537,10 @@ final class Repository
             'ip_address'     => isset($row['ip_address']) ? (string) $row['ip_address'] : null,
             'has_gps'        => $row['gps_latitude'] !== null && $row['gps_longitude'] !== null,
             'has_correction' => (bool) $row['has_correction'],
+            'is_voided'      => $row['voided_at'] !== null,
+            'voided_by'      => $row['voided_by'] !== null ? (int) $row['voided_by'] : null,
+            'voided_at'      => $row['voided_at'] !== null ? (string) $row['voided_at'] : null,
+            'void_reason'    => $row['void_reason'] !== null ? (string) $row['void_reason'] : null,
         ];
     }
 

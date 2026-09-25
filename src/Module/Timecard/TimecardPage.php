@@ -30,6 +30,11 @@ if (!defined('ABSPATH')) {
  *       本人が新規作成できる機能。権限判定は「修正」と全く同じ can_correct_punch() を
  *       流用するが、対象日に打刻が1件も無くても表示する点だけが「修正」と異なる
  *       （要件定義書には無い追加仕様。ユーザー確認済み）。
+ * 【2i】押し間違えた打刻の「取り消し」を追加した。「修正」の対象選択ピッカーに
+ *       「取り消す」ボタンを併設する形で提供する。物理削除はせず、取り消し済みの
+ *       打刻は logs_for_date()/logs_for_month() から除外されるため、本人の画面では
+ *       最初から無かったかのように「―」表示になる（要件定義書には無い追加仕様。
+ *       ユーザー確認済み）。
  */
 final class TimecardPage
 {
@@ -75,6 +80,8 @@ final class TimecardPage
                 'correctPunch'      => 'timecard/logs/{log_id}/correct',
                 // 2h：打刻の追加（存在しない打刻の新規作成）
                 'addPunch'          => 'timecard/logs/add',
+                // {log_id} はJS側でログIDに置換して使う（2i：打刻の取り消し）
+                'voidPunch'         => 'timecard/logs/{log_id}/void',
             ],
             'laborBreak' => [
                 'tier1Hours'   => PunchService::LABOR_BREAK_TIER1_HOURS,

@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
  *
  * ルート：POST /wp-json/ims/v1/timecard/punch
  *        POST /wp-json/ims/v1/timecard/logs/add（2h：打刻の追加）
+ *        POST /wp-json/ims/v1/timecard/logs/{log_id}/void（2i：打刻の取り消し）
  *
  * このクラスの責務は HTTP の入出力だけに限る。
  * 権限判定は permission_callback、業務判断は PunchService に置き、ここでは混ぜない。
@@ -38,6 +39,8 @@ final class RestController
     private const ROUTE_CORRECT = '/timecard/logs/(?P<log_id>\d+)/correct';
     /** 打刻の追加（2h。存在しない打刻の新規作成。要件定義書には無い追加仕様）。 */
     private const ROUTE_ADD = '/timecard/logs/add';
+    /** 打刻の取り消し（2i。log_id はルート内の数値パラメータ。要件定義書には無い追加仕様）。 */
+    private const ROUTE_VOID = '/timecard/logs/(?P<log_id>\d+)/void';
 
     /**
      * エラーコード → HTTPステータス。§7.1 は重複を 409 Conflict と定めている。
@@ -45,7 +48,8 @@ final class RestController
      * `invalid_break_range` は 2d（休憩補完付き退勤）、
      * `reason_required`・`not_found`・`invalid_datetime`・`month_closed`・
      * `correction_not_allowed`・`inconsistent` は 2e（打刻修正）、`unknown_punch_type`・
-     * `duplicate`（打刻追加時の重複）も含めて 2h（打刻の追加）で再利用するエラーコード。
+     * `duplicate`（打刻追加時の重複）も含めて 2h（打刻の追加）、
+     * `already_voided` は 2i（打刻の取り消し）で再利用するエラーコード。
      */
     private const STATUS_MAP = [
         'retired'                   => 403,
@@ -67,6 +71,7 @@ final class RestController
         'month_closed'              => 403,
         'correction_not_allowed'    => 403,
         'inconsistent'              => 400,
+        'already_voided'            => 409,
         'db_error'                  => 500,
     ];
 
@@ -179,6 +184,23 @@ final class RestController
                 'punched_at' => [
                     'required' => true,
                     'type'     => 'string',
+                ],
+                'reason' => [
+                    'required' => true,
+                    'type'     => 'string',
+                ],
+            ],
+        ]);
+
+        // 打刻の取り消し（2i）。権限・締めロック・矛盾チェックは PunchService が行う。
+        register_rest_route(self::NAMESPACE, self::ROUTE_VOID, [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'handle_void_punch'],
+            'permission_callback' => [self::class, 'can_punch'],
+            'args'                => [
+                'log_id' => [
+                    'required' => true,
+                    'type'     => 'integer',
                 ],
                 'reason' => [
                     'required' => true,
@@ -353,6 +375,41 @@ final class RestController
             ],
             'state'   => PunchService::current_state($user_id, (string) $result['work_date']),
         ], 201);
+    }
+
+    /**
+     * 打刻の取り消し（2i）。対象ログは必ずログイン中の本人のものに限るが、
+     * ims_manage_users は他人のログも取り消せる（correct_punch() と同方針）。
+     */
+    public static function handle_void_punch(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $user_id = get_current_user_id();
+        $log_id  = (int) $request->get_param('log_id');
+        $reason  = (string) $request->get_param('reason');
+
+        $result = PunchService::void_punch($user_id, $log_id, $reason);
+
+        if (!$result['ok']) {
+            $code   = (string) $result['code'];
+            $status = self::STATUS_MAP[$code] ?? 400;
+
+            $body = [
+                'ok'      => false,
+                'code'    => $code,
+                'message' => (string) $result['message'],
+            ];
+            if (isset($result['work_date'])) {
+                $body['state'] = PunchService::current_state($user_id, (string) $result['work_date']);
+            }
+
+            return new \WP_REST_Response($body, $status);
+        }
+
+        return new \WP_REST_Response([
+            'ok'      => true,
+            'message' => (string) $result['message'],
+            'state'   => PunchService::current_state($user_id, (string) $result['work_date']),
+        ], 200);
     }
 
     /**

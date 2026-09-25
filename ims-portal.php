@@ -25,8 +25,8 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.7.4-phase2bfix'); // 2b修正：打刻コンソールの現在時刻表示が9時間ずれる不具合を修正
-define('IMS_PORTAL_DB_VERSION', 10); // スキーマ変更時にインクリメントする（08 §5.2）。v9→v10: (1) wp_monthly_summaryのyear_month列がMySQL予約語でCREATE TABLE自体が失敗していたのをtarget_year_monthに変更、(2) v8→v9のoriginal_datetimeのNULL許容化がdbDeltaで反映されない不具合をALTER直接実行で修正
+define('IMS_PORTAL_VERSION', '0.8.1-phase2i2'); // 2i-2：打刻の取り消し機能のUIを接続（打刻コンソール・管理画面）
+define('IMS_PORTAL_DB_VERSION', 11); // スキーマ変更時にインクリメントする（08 §5.2）。v10→v11: 02モジュールのwp_attendance_logsにvoided_at/voided_by/void_reasonを追加（打刻の取り消し用。新規カラム追加のみのためdbDeltaで確実に反映される）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
 define('IMS_PORTAL_URL', plugin_dir_url(__FILE__));

@@ -199,8 +199,11 @@ final class StatusCalculator
      * ・punched_at が厳密な単調増加であること（同時刻・逆転を許さない）
      * ・clock_in があるなら先頭・1件のみ
      * ・clock_out があるなら末尾・1件のみ
-     * ・break_in の直後に別の打刻が続く場合、それは必ず break_out（休憩は開始→終了の
-     *   対で並ぶ）。ただし break_in が最後のログなら「休憩中のまま」であり矛盾ではない
+     * ・休憩は break_in→break_out の対で開始・終了する。break_in の直後に別の打刻が
+     *   続く場合はそれが必ず break_out であること、break_out の前に対応する未終了の
+     *   break_in が必ずあること（孤立した break_out は矛盾）の両方向をチェックする
+     *   （2i：打刻の取り消しで「対になる片方だけが残る」状態を弾くために追加）。
+     *   ただし break_in が最後のログなら「休憩中のまま」であり矛盾ではない
      *   （clock_out や別モジュールが未完了の1日を修正しようとするケースを弾かないため）。
      *
      * @param array<int, array{punch_type:string, punched_at:string}> $logs punched_at昇順
@@ -215,6 +218,7 @@ final class StatusCalculator
         $prev_ts = null;
         $clock_in_count  = 0;
         $clock_out_count = 0;
+        $break_open      = false;
 
         foreach ($logs as $i => $log) {
             $ts = self::ts((string) ($log['punched_at'] ?? ''));
@@ -239,21 +243,25 @@ final class StatusCalculator
                     return false; // clock_out は末尾のみ
                 }
             }
+
+            // 休憩の開始・終了が対になっているかを状態機械で検証する。
+            if ($type === self::BREAK_IN) {
+                if ($break_open) {
+                    return false; // 前の休憩を終了しないまま次の休憩を開始している
+                }
+                $break_open = true;
+            } elseif ($type === self::BREAK_OUT) {
+                if (!$break_open) {
+                    return false; // 対応する break_in が無い孤立した休憩終了
+                }
+                $break_open = false;
+            } elseif ($break_open) {
+                return false; // 休憩中のはずが break_out 以外（出勤・退勤）が割り込んでいる
+            }
         }
 
         if ($clock_in_count > 1 || $clock_out_count > 1) {
             return false;
-        }
-
-        // break_in の直後に何か続くなら、それは必ず break_out（対で並ぶ）。
-        // break_in が最後のログ（$next === null）は「休憩中のまま」で矛盾ではない。
-        foreach ($logs as $i => $log) {
-            if (($log['punch_type'] ?? '') === self::BREAK_IN) {
-                $next = $logs[$i + 1] ?? null;
-                if ($next !== null && ($next['punch_type'] ?? '') !== self::BREAK_OUT) {
-                    return false;
-                }
-            }
         }
 
         return true;

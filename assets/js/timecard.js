@@ -17,6 +17,9 @@
  *     「修正」と違い対象を選ぶ手順が無い（存在しない打刻を新規作成するため）。
  *     権限・締めロック・整合性チェックはすべてサーバー側（PunchService::add_missing_punch）
  *     が行う。
+ * 【2i】打刻の取り消し：「修正」の対象選択ピッカーの各行に「取り消す」ボタンを併設する。
+ *     押し間違えた打刻そのものを取り消す（時刻の修正ではない）。権限・締めロック・
+ *     整合性チェックはすべてサーバー側（PunchService::void_punch）が行う。
  *
  * 打刻時刻は必ずサーバーが決める。このJSは時刻を一切送らない（§3.1）。
  * ケースA/Bのポップアップが表示する時刻・経過時間も、サーバー時刻ベースの
@@ -797,15 +800,31 @@
         list.className = 'tc-break-options';
 
         punches.forEach(function (p) {
-            var row = document.createElement('label');
-            row.className = 'tc-break-option';
+            var row = document.createElement('div');
+            row.className = 'tc-correct-pick-row';
+
+            var label = document.createElement('label');
+            label.className = 'tc-correct-pick-label';
             var input = document.createElement('input');
             input.type = 'radio';
             input.name = 'tc-correct-pick';
-            row.appendChild(input);
+            label.appendChild(input);
             var span = document.createElement('span');
             span.textContent = p.label + '：' + timeOnly(p.punchedAt);
-            row.appendChild(span);
+            label.appendChild(span);
+            row.appendChild(label);
+
+            // 2i：この打刻自体を取り消す（時刻の修正ではなく、押し間違えた打刻の取り消し）。
+            var voidBtn = document.createElement('button');
+            voidBtn.type = 'button';
+            voidBtn.className = 'tc-void-btn';
+            voidBtn.textContent = '取り消す';
+            voidBtn.addEventListener('click', function () {
+                m.close();
+                openVoidConfirmModal(wrap, date, p);
+            });
+            row.appendChild(voidBtn);
+
             list.appendChild(row);
 
             input.addEventListener('change', function () {
@@ -940,6 +959,83 @@
                 });
             }
         };
+    }
+
+    // ── 2i：打刻の取り消し ──────────────────────────────────
+
+    /** 押し間違えた打刻そのものを取り消す（時刻の修正ではない）。理由の入力必須。 */
+    function openVoidConfirmModal(wrap, date, punch) {
+        var m = createModal((PUNCH_LABELS[punch.punchType] || punch.punchType) + 'の取り消し');
+
+        var info = document.createElement('p');
+        info.className = 'tc-modal-info';
+        info.textContent = '対象日：' + date + '　／　時刻：' + timeOnly(punch.punchedAt);
+        m.body.appendChild(info);
+
+        var note = document.createElement('p');
+        note.className = 'tc-modal-note';
+        note.textContent = 'この打刻を取り消します。取り消した打刻は履歴から「―」表示になります。';
+        m.body.appendChild(note);
+
+        var reasonLabel = document.createElement('label');
+        reasonLabel.className = 'tc-correct-field';
+        var reasonSpan = document.createElement('span');
+        reasonSpan.textContent = '取り消し理由';
+        reasonLabel.appendChild(reasonSpan);
+        var reasonInput = document.createElement('textarea');
+        reasonInput.rows = 3;
+        reasonLabel.appendChild(reasonInput);
+        m.body.appendChild(reasonLabel);
+
+        var errorEl = document.createElement('p');
+        errorEl.className = 'tc-modal-error';
+        errorEl.hidden = true;
+        m.body.appendChild(errorEl);
+
+        var actions = document.createElement('div');
+        actions.className = 'tc-modal-actions';
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'tc-modal-btn is-ghost';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.addEventListener('click', m.close);
+        var submitBtn = document.createElement('button');
+        submitBtn.type = 'button';
+        submitBtn.className = 'tc-modal-btn is-danger';
+        submitBtn.textContent = 'この打刻を取り消す';
+        actions.appendChild(cancelBtn);
+        actions.appendChild(submitBtn);
+        m.body.appendChild(actions);
+
+        submitBtn.addEventListener('click', function () {
+            var reason = reasonInput.value.trim();
+            if (!reason) {
+                errorEl.textContent = '取り消し理由は必須です。';
+                errorEl.hidden = false;
+                return;
+            }
+            errorEl.hidden = true;
+            submitBtn.disabled = true;
+            cancelBtn.disabled = true;
+
+            var path = (routes().voidPunch || '').replace(/\{[^}]+\}/, punch.logId);
+
+            restPost(path, { reason: reason }).then(function (res) {
+                var data = res.data || {};
+                if (res.status >= 200 && res.status < 300 && data.ok) {
+                    m.close();
+                    // 「実労働」列の再計算をJS側で二重実装しないため、修正・追加と同様に
+                    // 保存後はページを再読み込みしてサーバー側の結果をそのまま反映する。
+                    window.location.reload();
+                    return;
+                }
+                m.close();
+                showToast(data.message || '取り消せませんでした。画面を再読み込みしてお試しください。');
+            }).catch(function () {
+                m.close();
+                showToast('通信に失敗しました。もう一度お試しください。');
+            });
+        });
     }
 
     // ── 2h：打刻の追加 ──────────────────────────────────────

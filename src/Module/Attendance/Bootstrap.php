@@ -49,6 +49,7 @@ if (!defined('ABSPATH')) {
  * ・ims_timecard_punch_corrected … 02モジュールの打刻修正完了時、日次勤怠集計を再計算する
  *   （実機確認で発見：修正しても再計算されず古い値が残るバグの修正）
  * ・ims_timecard_punch_added … 02モジュールの打刻追加（2h）完了時、日次勤怠集計を再計算する
+ * ・ims_timecard_punch_voided … 02モジュールの打刻取り消し（2i）完了時、日次勤怠集計を再計算する
  * ・ims_portal_register_page … /portal/attendance/ の登録（3e）
  * ・rest_api_init … 勤怠フラグ・事業別時間割当ての書き込みAPI登録（3e-2）
  *
@@ -70,6 +71,7 @@ final class Bootstrap
         add_action('ims_timecard_clocked_out', [DailyAttendanceService::class, 'recalculate'], 10, 2);
         add_action('ims_timecard_punch_corrected', [DailyAttendanceService::class, 'recalculate'], 10, 2);
         add_action('ims_timecard_punch_added', [DailyAttendanceService::class, 'recalculate'], 10, 2);
+        add_action('ims_timecard_punch_voided', [DailyAttendanceService::class, 'recalculate'], 10, 2);
 
         // フロント：月次勤務表グリッド（3e）。is_admin() の外で登録する（ポータル画面のため）。
         AttendanceGridPage::init();

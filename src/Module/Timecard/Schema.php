@@ -38,7 +38,8 @@ final class Schema
         //    ・work_date は「帰属日付」。退勤打刻のみ date_boundary_hour を考慮して前日になり得る。
         //    ・clock_in / clock_out の1日1件制約はアプリケーション層で担保する（§5.1 制約・ルール）。
         //      break_in / break_out は複数件を許容するため、DB の UNIQUE 制約は張らない。
-        //    ・物理削除はしない（§7.5）。
+        //    ・物理削除はしない（§7.5）。誤打刻の取り消し（2i）も voided_* 列を立てるだけで、
+        //      行自体は削除しない（監査証跡として残す。要件定義書には無い追加仕様）。
         $ddls[] = "CREATE TABLE {$p}attendance_logs (
   log_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   user_id bigint(20) unsigned NOT NULL,
@@ -50,6 +51,9 @@ final class Schema
   gps_latitude decimal(10,7) DEFAULT NULL,
   gps_longitude decimal(10,7) DEFAULT NULL,
   note text DEFAULT NULL,
+  voided_at datetime DEFAULT NULL,
+  voided_by bigint(20) unsigned DEFAULT NULL,
+  void_reason text DEFAULT NULL,
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY  (log_id),
   KEY idx_user_date (user_id,work_date),
