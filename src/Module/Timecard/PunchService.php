@@ -709,6 +709,92 @@ final class PunchService
         ];
     }
 
+    /**
+     * 打刻の取り消し（2i：押し間違えた打刻を取り消す。要件定義書には無い追加仕様で、
+     * ユーザー確認済み）。
+     *
+     * 物理削除はせず Repository::void_punch() が voided_* 列を立てるだけに留める
+     * （§3.5・§7.5の保持要件）。権限・締めロックは correct_punch()・add_missing_punch()
+     * と全く同じ規則を適用する。取り消し後に残る打刻列に矛盾が生じる場合
+     * （例：休憩開始だけが残り対になる休憩終了が無くなる、ではなく逆に休憩終了だけが
+     * 残ってしまう場合等）は取り消しを拒否する。
+     *
+     * @return array{ok:bool, code:string, message:string, log_id?:int, work_date?:string}
+     */
+    public static function void_punch(int $user_id, int $log_id, string $reason): array
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            return self::fail('reason_required', '取り消し理由を入力してください。');
+        }
+
+        $log = Repository::find_log($log_id);
+        if ($log === null) {
+            return self::fail('not_found', '対象の打刻が見つかりません。');
+        }
+        if ($log['user_id'] !== $user_id && !Capabilities::can_manage_users()) {
+            return self::fail('not_found', '対象の打刻が見つかりません。');
+        }
+        if ($log['is_voided']) {
+            return self::fail('already_voided', 'この打刻はすでに取り消し済みです。');
+        }
+
+        if (MonthlyClosing::is_locked($log['user_id'], $log['work_date'])) {
+            return self::fail('month_closed', 'この月度は締め処理が完了しているため取り消せません。', $log['work_date']);
+        }
+
+        $allowed = self::can_correct_punch(
+            Capabilities::can_manage_users(),
+            Capabilities::can_correct_own_punch(),
+            Settings::staff_correction_level(),
+            $log['work_date'],
+            self::console_work_date($log['user_id'])
+        );
+        if (!$allowed) {
+            return self::fail('correction_not_allowed', 'この打刻を取り消す権限がありません。', $log['work_date']);
+        }
+
+        // 取り消し後に残る打刻列（この1件を除いたもの）で矛盾チェック（correct_punch()と同方針）。
+        $remaining = array_values(array_filter(
+            Repository::logs_for_date($log['user_id'], $log['work_date']),
+            static fn(array $l): bool => $l['log_id'] !== $log_id
+        ));
+        if (!StatusCalculator::is_chronologically_consistent($remaining)) {
+            return self::fail(
+                'inconsistent',
+                'この打刻を取り消すと、残りの打刻順序に矛盾が生じるため取り消せません（対になる休憩の打刻をご確認ください）。',
+                $log['work_date']
+            );
+        }
+        // is_chronologically_consistent() は「clock_inが無ければclock_inの並び順チェックも
+        // 発生しない」仕様のため、出勤を取り消した結果、退勤・休憩だけが残る状態
+        // （clock_out単体は「先頭かつ末尾」を同時に満たすため上のチェックだけでは検出できない）
+        // をここで別途弾く。
+        if ($log['punch_type'] === StatusCalculator::CLOCK_IN && $remaining !== []) {
+            return self::fail(
+                'inconsistent',
+                'この打刻（出勤）を取り消すと、退勤や休憩の記録だけが残ってしまうため取り消せません。先に他の打刻もご確認ください。',
+                $log['work_date']
+            );
+        }
+
+        $ok = Repository::void_punch($log_id, $user_id, $reason);
+        if (!$ok) {
+            return self::fail('db_error', '取り消しの保存に失敗しました。時間をおいて再度お試しください。', $log['work_date']);
+        }
+
+        // 03_勤怠管理モジュールが日次集計（wp_daily_attendance）を再計算するための受け口。
+        do_action('ims_timecard_punch_voided', $log['user_id'], $log['work_date'], $log_id);
+
+        return [
+            'ok'        => true,
+            'code'      => 'ok',
+            'message'   => '打刻を取り消しました。',
+            'work_date' => $log['work_date'],
+            'log_id'    => $log_id,
+        ];
+    }
+
     // ── フック ──────────────────────────────────────────────
     //
     // 他モジュールの受け口一覧（本モジュール無改修で処理を挿せる）：
@@ -722,6 +808,9 @@ final class PunchService
     // ・ims_timecard_punch_added    … 打刻の追加（2h）完了時。存在しなかった打刻が
     //                                  新規作成されるため、03の日次勤怠集計はこれも拾って
     //                                  再計算する（add_missing_punch() 参照）
+    // ・ims_timecard_punch_voided   … 打刻の取り消し（2i）完了時。打刻が1件減るため、
+    //                                  03の日次勤怠集計はこれも拾って再計算する
+    //                                  （void_punch() 参照）
 
     /**
      * 他モジュールの受け口（新規打刻）。ここを撃っておけば 05（残業乖離アラート）や
