@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.8.0-phase2i1'); // 2i-1：打刻の取り消し機能（バックエンド）を追加
+define('IMS_PORTAL_VERSION', '0.8.1-phase2i2'); // 2i-2：打刻の取り消し機能のUIを接続（打刻コンソール・管理画面）
 define('IMS_PORTAL_DB_VERSION', 11); // スキーマ変更時にインクリメントする（08 §5.2）。v10→v11: 02モジュールのwp_attendance_logsにvoided_at/voided_by/void_reasonを追加（打刻の取り消し用。新規カラム追加のみのためdbDeltaで確実に反映される）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));

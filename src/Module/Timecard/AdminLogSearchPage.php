@@ -85,6 +85,8 @@ final class AdminLogSearchPage
             'nonce'   => wp_create_nonce('wp_rest'),
             // {log_id} はJS側でログIDに置換する（2eのREST修正エンドポイントを流用）
             'correctRoute' => 'timecard/logs/{log_id}/correct',
+            // {log_id} はJS側でログIDに置換する（2iのREST取り消しエンドポイントを流用）
+            'voidRoute'    => 'timecard/logs/{log_id}/void',
         ]);
     }
 
@@ -289,6 +291,9 @@ final class AdminLogSearchPage
                 <?php if ($row['has_correction']) : ?>
                     <span class="ims-chip ims-chip-off">修正あり</span>
                 <?php endif; ?>
+                <?php if ($row['is_voided']) : ?>
+                    <span class="ims-chip ims-chip-off">取消済み</span>
+                <?php endif; ?>
             </td>
             <td><?php echo $row['is_auto_filled'] ? '○' : '—'; ?></td>
             <td><?php echo $row['has_gps'] ? '有' : '無'; ?></td>
@@ -296,12 +301,20 @@ final class AdminLogSearchPage
             <td>
                 <button type="button" class="button button-small ims-tc-history-toggle"
                         data-log-id="<?php echo esc_attr((string) $row['log_id']); ?>">履歴</button>
-                <button type="button" class="button button-small ims-tc-correct-btn"
-                        data-log-id="<?php echo esc_attr((string) $row['log_id']); ?>"
-                        data-punch-type="<?php echo esc_attr($type_label); ?>"
-                        data-punched-at="<?php echo esc_attr($row['punched_at']); ?>"
-                        data-employee="<?php echo esc_attr($employee_name); ?>"
-                        data-work-date="<?php echo esc_attr($row['work_date']); ?>">修正</button>
+                <?php if (!$row['is_voided']) : ?>
+                    <button type="button" class="button button-small ims-tc-correct-btn"
+                            data-log-id="<?php echo esc_attr((string) $row['log_id']); ?>"
+                            data-punch-type="<?php echo esc_attr($type_label); ?>"
+                            data-punched-at="<?php echo esc_attr($row['punched_at']); ?>"
+                            data-employee="<?php echo esc_attr($employee_name); ?>"
+                            data-work-date="<?php echo esc_attr($row['work_date']); ?>">修正</button>
+                    <button type="button" class="button button-small ims-tc-void-btn"
+                            data-log-id="<?php echo esc_attr((string) $row['log_id']); ?>"
+                            data-punch-type="<?php echo esc_attr($type_label); ?>"
+                            data-punched-at="<?php echo esc_attr($row['punched_at']); ?>"
+                            data-employee="<?php echo esc_attr($employee_name); ?>"
+                            data-work-date="<?php echo esc_attr($row['work_date']); ?>">取消</button>
+                <?php endif; ?>
             </td>
         </tr>
         <tr class="ims-tc-history-row" data-log-id="<?php echo esc_attr((string) $row['log_id']); ?>" hidden>
@@ -314,8 +327,21 @@ final class AdminLogSearchPage
 
     private static function render_history_detail(array $row): void
     {
+        if ($row['is_voided']) {
+            $voider = $row['voided_by'] !== null ? get_userdata($row['voided_by']) : null;
+            ?>
+            <p class="ims-sub">
+                取消日時：<?php echo esc_html((string) $row['voided_at']); ?>／
+                取消者：<?php echo esc_html($voider ? $voider->display_name : '（不明）'); ?>／
+                理由：<?php echo esc_html((string) $row['void_reason']); ?>
+            </p>
+            <?php
+        }
+
         if (!$row['has_correction']) {
-            echo '<p class="ims-sub">修正履歴はありません。</p>';
+            if (!$row['is_voided']) {
+                echo '<p class="ims-sub">修正履歴はありません。</p>';
+            }
             return;
         }
 

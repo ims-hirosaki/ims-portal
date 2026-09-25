@@ -671,6 +671,54 @@
   color: var(--ink-soft);
 }
 
+.tc-modal-btn.is-danger {
+  background: var(--vermillion);
+  color: #fff;
+}
+
+/* 2i：打刻の取り消し（修正対象ピッカーの行に「取り消す」ボタンを併設） */
+
+.tc-correct-pick-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+.tc-correct-pick-row:has(input:checked) {
+  border-color: var(--indigo-soft);
+  background: var(--indigo-tint);
+}
+
+.tc-correct-pick-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  flex: 1;
+}
+
+.tc-void-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--vermillion);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--vermillion);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tc-void-btn:hover {
+  background: var(--vermillion-tint);
+}
+
 .tc-modal-btn:disabled {
   opacity: .4;
   cursor: not-allowed;
