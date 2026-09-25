@@ -241,6 +241,7 @@ CREATE TABLE wp_ims_launcher_apps (
 | `employment_type_id` | INT | 雇用形態ID（`wp_ims_employment_types.id` を参照） |
 | `employment_status` | VARCHAR(20) | 在籍状況：`在籍` / `休職` / `育児休業中` / `出向` / `退職`（雇用形態とは別フィールド） |
 | `scheduled_work_hours` | DECIMAL(4,2) | 1日の所定労働時間（単位：時間。例：8.00）→ 03_勤怠管理モジュールが参照 |
+| `default_business_id` | INT | 【将来実装・フェーズ未定】通常勤務日のデフォルト事業（`wp_businesses.business_id`。03_勤怠管理モジュール定義）→ 03の事業別時間割り当て自動化に使用予定。詳細仕様は 03_attendance_management.md §3.3「通常勤務日のデフォルト事業自動割り当て」参照 |
  
 #### ② 承認フロー設定
  
@@ -583,6 +584,7 @@ CREATE TABLE wp_salary_history (
 | `base_salary`（現在有効値） | 月次締め時の給与スナップショット取得元 |
 | `wp_user_allowances`（現在有効値） | 月次締め時の手当スナップショット取得元 |
 | `wp_salary_history` | スナップショット取得時の参照元（有効日判定） |
+| `default_business_id` 【将来実装】 | 通常勤務日の事業別時間割り当て自動化に使用予定（§3.3参照） |
  
 ### 6.3. → 04_交通費・車両借上げ申請モジュール
  
