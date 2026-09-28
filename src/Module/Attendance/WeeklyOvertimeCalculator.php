@@ -20,6 +20,8 @@ if (!defined('ABSPATH')) {
  * ・有給・時間休・半日休の加算分は数えない。日次の残業判定と同じく、打刻由来の実働のみを
  *   基準にする（AttendanceFlagCalculator の方針。ユーザー確認済み）。有給・振替休の日は
  *   実打刻があっても労働時間0として扱う（§3.2）。
+ * ・休日出勤の日は週40時間の計算に含めない（要件定義書に無い追加仕様。ユーザー確認済み）。
+ *   休日労働は週の法定労働時間とは別枠で扱うため。休日出勤の日の日次残業・深夜は従来どおり。
  * ・週の合計が2400分（40時間）を超えた分を週次の法定外残業とする。
  *
  * 法定内残業との二重計上の解消（要件定義書に無い追加仕様。ユーザー確認済み）：
@@ -32,9 +34,10 @@ final class WeeklyOvertimeCalculator
 {
     public const WEEKLY_LIMIT_MINUTES = 2400;
 
-    /** 実打刻があっても労働時間0として扱うフラグ（§3.2）。 */
+    /** 週40時間の計算で労働時間0として扱うフラグ（有給・振替休は§3.2、休日出勤は上記の追加仕様）。 */
     private const ZERO_WORK_FLAGS = [
         AttendanceFlagCalculator::PAID_LEAVE,
+        AttendanceFlagCalculator::HOLIDAY_WORK,
         AttendanceFlagCalculator::LEGAL_SUBSTITUTE,
         AttendanceFlagCalculator::SCHEDULED_SUBSTITUTE,
     ];
@@ -79,7 +82,7 @@ final class WeeklyOvertimeCalculator
         ];
     }
 
-    /** その日の打刻由来の実働時間（分）。有給・振替休の日は0。 */
+    /** 週40時間の計算に数える、その日の打刻由来の実働時間（分）。有給・振替休・休日出勤の日は0。 */
     private static function worked_minutes(array $day): int
     {
         $flag = (string) ($day['attendance_flag'] ?? AttendanceFlagCalculator::NONE);

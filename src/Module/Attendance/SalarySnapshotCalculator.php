@@ -25,6 +25,7 @@ final class SalarySnapshotCalculator
 {
     /**
      * 対象月末日（'Y-m-d'）。「対象月」は年月ラベル（'Y-m'）のカレンダー月として扱う。
+     * 締め日（20日・25日締め等）にはそろえない（ユーザー確認済み）。
      */
     public static function month_end_date(string $year_month): string
     {
