@@ -104,7 +104,7 @@ final class Schema
 
         // 月次締め・提出・承認（§3.4・§3.5・§5.5）。
         // total_* は提出時（3f）に確定する集計値。snapshot_* は最終承認（confirmed）確定時
-        // にのみ書き込む（3g）。3f時点ではNULLのまま。
+        // にのみ書き込む（3g。MonthlySummaryService::final_approve()）。
         // 列名は要件定義書のDDL（§5.5）では year_month だが、YEAR_MONTH は
         // MySQL/MariaDBの予約語（INTERVAL指定子）で、無予約語のまま使うとCREATE TABLE自体が
         // 構文エラーになる（実機で確認）。同じ意味の target_year_month に変更した

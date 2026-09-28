@@ -198,16 +198,32 @@ final class MonthlySummaryService
     }
 
     /**
-     * 最終承認（checked → confirmed）。給与条件のスナップショット（snapshot_base_salary等）
-     * は3g（月次データスナップショット）で、この遷移に合わせて書き込む想定
-     * （3f-3時点ではNULLのまま確定する）。
+     * 最終承認（checked → confirmed）。
+     *
+     * 3g：確定の瞬間に給与条件のスナップショット（snapshot_base_salary / snapshot_allowances）を
+     * 01モジュールの wp_salary_history / wp_user_allowances から取得し、ステータス変更と同じ
+     * 1回の更新で書き込む（§3.5「取得タイミングは confirmed 実行の瞬間のみ」）。
+     * これにより、確定後に昇給・手当変更があっても確定済み月度の給与条件は変わらない。
      *
      * @return true|\WP_Error
      */
     public static function final_approve(int $actor_id, int $target_user_id, string $year_month)
     {
-        return self::run_final_transition($actor_id, $target_user_id, $year_month, static function (int $id) use ($actor_id): bool {
-            return MonthlySummaryRepository::final_approve($id, $actor_id);
+        return self::run_final_transition($actor_id, $target_user_id, $year_month, static function (int $id) use ($actor_id, $target_user_id, $year_month): bool {
+            $as_of = SalarySnapshotCalculator::month_end_date($year_month);
+
+            $base_salary = SalarySnapshotCalculator::base_salary(
+                SalarySnapshotRepository::salary_rows($target_user_id, $as_of),
+                $as_of
+            );
+            $allowances_json = SalarySnapshotCalculator::allowances_json(
+                SalarySnapshotCalculator::allowances(
+                    SalarySnapshotRepository::allowance_rows($target_user_id, $as_of),
+                    $as_of
+                )
+            );
+
+            return MonthlySummaryRepository::final_approve($id, $actor_id, $base_salary, $allowances_json);
         });
     }
 

@@ -93,14 +93,19 @@ final class MonthlySummaryRepository
         ], ['id' => $id]) !== false;
     }
 
-    /** 最終承認：checked → confirmed。給与スナップショットは3gで別途書き込む。 */
-    public static function final_approve(int $id, int $actor_id): bool
+    /**
+     * 最終承認：checked → confirmed。給与スナップショット（3g）も同じ更新で書き込む。
+     * $base_salary が null（基本給の履歴が無い）の場合は snapshot_base_salary を NULL のままにする。
+     */
+    public static function final_approve(int $id, int $actor_id, ?int $base_salary, string $allowances_json): bool
     {
         global $wpdb;
         return $wpdb->update(self::table(), [
-            'status'            => MonthlySummaryCalculator::CONFIRMED,
-            'final_approved_by' => $actor_id,
-            'final_approved_at' => current_time('mysql'),
+            'status'               => MonthlySummaryCalculator::CONFIRMED,
+            'final_approved_by'    => $actor_id,
+            'final_approved_at'    => current_time('mysql'),
+            'snapshot_base_salary' => $base_salary,
+            'snapshot_allowances'  => $allowances_json,
         ], ['id' => $id]) !== false;
     }
 
