@@ -64,3 +64,15 @@
   font-size: inherit;
   line-height: 1.4;
 }
+
+/* 確定の取り消し履歴（3n-4）。 */
+.ims-ag-admin .ims-ag-admin-cancellations {
+  margin: 0 0 12px;
+}
+.ims-ag-admin .ims-ag-admin-cancellations summary {
+  cursor: pointer;
+  color: var(--vermillion);
+}
+.ims-ag-admin .ims-ag-admin-cancellations table {
+  margin-top: 8px;
+}

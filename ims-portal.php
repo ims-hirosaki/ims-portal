@@ -3,7 +3,7 @@
  * Plugin Name:       IMS Hirosaki Portal
  * Plugin URI:        https://portal-site.labs-ims.com/
  * Description:       IMS Hirosaki 社内業務システム（グループウェア）。ユーザー管理・打刻・勤怠・交通費・稟議・Google Workspace 連携を統合するポータル基盤プラグイン。
- * Version:           0.8.13-phase3n3
+ * Version:           0.8.14-phase3n4
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            IMS Hirosaki
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.8.13-phase3n3'); // 3n-3：確定の取り消し処理（記録の追記とステータスの戻し）
+define('IMS_PORTAL_VERSION', '0.8.14-phase3n4'); // 3n-4：月次提出状況に「確定を取り消す」、勤務表の確認に取り消し履歴
 define('IMS_PORTAL_DB_VERSION', 12); // スキーマ変更時にインクリメントする（08 §5.2）。v11→v12: 03モジュールに wp_monthly_confirmation_cancellations（確定の取り消し記録）を新規追加（新規テーブルのためdbDeltaで反映される）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
