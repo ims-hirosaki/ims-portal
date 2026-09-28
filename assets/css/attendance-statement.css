@@ -1,0 +1,111 @@
+/**
+ * 勤怠画面のタブと集計表タブ（月次総括表。3l）専用スタイル。
+ *
+ * ・スタッフ画面（/portal/attendance/）と管理者向け「勤務表の確認」で共通に使う。
+ * ・クラスはすべて `.ag-tabs` / `.ag-statement` 配下にスコープする。共有CSSは変更しない。
+ * ・色・角丸は 07_design_system.md のトークン経由（ims-tokens.css が先に読み込まれる前提）。
+ */
+
+/* ── タブ ──────────────────────────────────────────── */
+
+.ag-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 4px;
+}
+.ag-tabs .ag-tab {
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--r-sm, 8px) var(--r-sm, 8px) 0 0;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-weight: 500;
+  margin-bottom: -1px;
+}
+.ag-tabs .ag-tab:hover {
+  background: var(--indigo-tint);
+  color: var(--indigo);
+}
+.ag-tabs .ag-tab.is-current {
+  background: var(--surface-raised);
+  border-color: var(--line);
+  color: var(--indigo);
+  font-weight: 700;
+}
+.ag-tabs .ag-tab:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+/* ── 集計表 ─────────────────────────────────────────── */
+
+.ag-statement {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.ag-statement .ag-st-block {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md, 14px);
+  padding: 14px 16px;
+}
+.ag-statement .ag-st-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-family: var(--f-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ag-statement .ag-st-badge {
+  font-family: var(--f-body);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold-tint);
+  color: var(--gold);
+}
+.ag-statement .ag-st-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ag-statement .ag-st-table th,
+.ag-statement .ag-st-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+  font-weight: 400;
+}
+.ag-statement .ag-st-table th {
+  color: var(--ink-soft);
+}
+.ag-statement .ag-st-table .ag-st-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ag-statement .ag-st-total th,
+.ag-statement .ag-st-total td {
+  font-weight: 700;
+  color: var(--ink);
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+}
+.ag-statement .ag-st-muted {
+  color: var(--sub);
+  font-size: 12px;
+}
+.ag-statement .ag-st-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--sub);
+  line-height: 1.6;
+}
