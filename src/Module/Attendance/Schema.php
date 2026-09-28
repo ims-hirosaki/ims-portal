@@ -136,6 +136,28 @@ final class Schema
   UNIQUE KEY unique_user_month (user_id,target_year_month)
 ) {$charset};";
 
+        // 確定（最終承認）の取り消し記録（3n。要件定義書 §3.5 の追記。ユーザー確認済み）。
+        // 取り消しのたびに1行追記し、更新・削除はしない（監査用）。取り消すと wp_monthly_summary の
+        // final_approved_* / snapshot_* は空に戻るため、取り消し前の値をここに写して残す。
+        $ddls[] = "CREATE TABLE {$p}monthly_confirmation_cancellations (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  monthly_summary_id int(11) NOT NULL,
+  user_id bigint(20) unsigned NOT NULL,
+  target_year_month char(7) NOT NULL,
+  returned_status varchar(30) NOT NULL,
+  cancel_reason text NOT NULL,
+  cancelled_by bigint(20) unsigned NOT NULL,
+  cancelled_at datetime NOT NULL,
+  prev_final_approved_by bigint(20) unsigned DEFAULT NULL,
+  prev_final_approved_at datetime DEFAULT NULL,
+  prev_snapshot_base_salary int(11) DEFAULT NULL,
+  prev_snapshot_allowances json DEFAULT NULL,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY  (id),
+  KEY idx_user_month (user_id,target_year_month),
+  KEY idx_summary (monthly_summary_id)
+) {$charset};";
+
         return $ddls;
     }
 
@@ -158,6 +180,13 @@ final class Schema
     {
         global $wpdb;
         return $wpdb->prefix . 'project_hours';
+    }
+
+    /** 確定の取り消し記録テーブルの物理名（3n）。 */
+    public static function confirmation_cancellations_table(): string
+    {
+        global $wpdb;
+        return $wpdb->prefix . 'monthly_confirmation_cancellations';
     }
 
     /** 月次締め・提出・承認テーブルの物理名。 */
