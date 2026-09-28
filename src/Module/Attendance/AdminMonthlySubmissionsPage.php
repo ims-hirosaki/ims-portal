@@ -15,8 +15,8 @@ if (!defined('ABSPATH')) {
  * 「社員管理 > 月次提出状況」wp-admin画面（03_attendance_management.md §4.3 の簡略版。3f-4c）。
  *
  * 全社員の指定年月の提出ステータスを一覧表示し、チェック承認・最終承認・差し戻しを
- * その場で行える最小実装。要件定義書§4.2（事業別色分けの監査用グリッド・PDF/弥生CSV
- * ダウンロード）はスコープ外（04モジュール・スナップショット等の前提が未整備のため）。
+ * その場で行える最小実装。要件定義書§4.2のうち事業別色分けの監査用グリッド・PDF出力は
+ * 未実装。弥生給与計算CSVのダウンロード（確定済みの社員分）は3i-2で追加した。
  *
  * 承認・差し戻しの権限判定・自己承認禁止・ステータス遷移の妥当性チェックは
  * すべて MonthlySummaryService に委譲し、ここでは行わない（AdminBusinessesPage と同方針）。
@@ -30,6 +30,7 @@ final class AdminMonthlySubmissionsPage
     private const MENU_SLUG = 'ims-monthly-submissions';
     private const CAP       = 'ims_approve';
     private const NONCE     = 'ims_monthly_summary_action';
+    private const CSV_NONCE = 'ims_monthly_yayoi_csv';
 
     public static function init(): void
     {
@@ -38,6 +39,7 @@ final class AdminMonthlySubmissionsPage
         add_action('admin_post_ims_monthly_check_reject', [self::class, 'handle_check_reject']);
         add_action('admin_post_ims_monthly_final_approve', [self::class, 'handle_final_approve']);
         add_action('admin_post_ims_monthly_final_reject', [self::class, 'handle_final_reject']);
+        add_action('admin_post_ims_monthly_yayoi_csv', [self::class, 'handle_yayoi_csv']);
         add_action('admin_enqueue_scripts', [self::class, 'enqueue']);
     }
 
@@ -94,6 +96,40 @@ final class AdminMonthlySubmissionsPage
         self::finish($result, $year_month, 'final_rejected');
     }
 
+    /**
+     * 弥生給与計算CSVのダウンロード（3i-2）。確定済みの社員分のみ。
+     * 給与データを含むため、最終承認できる権限（人事管理担当者以上）に限る。
+     */
+    public static function handle_yayoi_csv(): void
+    {
+        self::guard();
+        check_admin_referer(self::CSV_NONCE);
+        if (!MonthlySummaryService::can_final_approve()) {
+            wp_die(esc_html__('この操作を行う権限がありません。', 'ims-portal'), '', ['response' => 403]);
+        }
+
+        $year_month = sanitize_text_field(wp_unslash($_GET['year_month'] ?? ''));
+        if (!MonthlySummaryCalculator::is_valid_year_month($year_month)) {
+            self::redirect(self::resolve_month(), 'error', '対象年月の形式が正しくありません。');
+            return;
+        }
+
+        $result = YayoiCsvExportService::collect($year_month);
+        if ($result['rows'] === []) {
+            self::redirect($year_month, 'error', 'この月に確定済みの社員がいないため、CSVを作成できません。');
+            return;
+        }
+
+        $body = YayoiCsvExportService::csv($result['rows']);
+
+        nocache_headers();
+        header('Content-Type: text/csv; charset=Shift_JIS');
+        header('Content-Disposition: attachment; filename="' . YayoiCsvExportService::filename($year_month) . '"');
+        header('Content-Length: ' . strlen($body));
+        echo $body; // Shift-JISのバイト列をそのまま出力する（HTMLではないためエスケープしない）
+        exit;
+    }
+
     /** @return array{0:int, 1:int, 2:string} */
     private static function guarded_input(): array
     {
@@ -133,6 +169,7 @@ final class AdminMonthlySubmissionsPage
             </p>
             <?php self::render_notice(); ?>
             <?php self::render_month_nav($year_month); ?>
+            <?php self::render_csv_download($year_month); ?>
 
             <table class="wp-list-table widefat fixed striped">
                 <thead>
@@ -167,6 +204,39 @@ final class AdminMonthlySubmissionsPage
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+        <?php
+    }
+
+    /** 弥生給与計算CSVのダウンロード欄（人事管理担当者以上のみ表示。3i-2）。 */
+    private static function render_csv_download(string $year_month): void
+    {
+        if (!MonthlySummaryService::can_final_approve()) {
+            return;
+        }
+
+        $result = YayoiCsvExportService::collect($year_month, false);
+        $url    = wp_nonce_url(add_query_arg([
+            'action'     => 'ims_monthly_yayoi_csv',
+            'year_month' => $year_month,
+        ], admin_url('admin-post.php')), self::CSV_NONCE);
+        ?>
+        <div class="ims-note">
+            <strong>弥生給与計算用のファイル</strong><br>
+            この月が「確定済み」になっている社員の勤怠を、弥生給与計算に取り込めるファイル（CSV）で保存します。
+            欠勤日数はすべて0で出力されるため、弥生給与計算の画面で入力してください。<br>
+            <?php if ($result['count'] > 0) : ?>
+                <a class="button button-primary" href="<?php echo esc_url($url); ?>">
+                    <?php echo esc_html(sprintf('CSVをダウンロード（%d名分）', $result['count'])); ?>
+                </a>
+            <?php else : ?>
+                <span class="ims-sub">この月に確定済みの社員はまだいません。</span>
+            <?php endif; ?>
+            <?php if ($result['missing_code'] !== []) : ?>
+                <br><span class="ims-sub">
+                    <?php echo esc_html('社員番号が登録されていないため、次の方はファイルに含まれません：' . implode('、', $result['missing_code'])); ?>
+                </span>
+            <?php endif; ?>
         </div>
         <?php
     }
