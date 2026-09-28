@@ -41,6 +41,33 @@ final class DashboardIntegration
             'caps'     => ['ims_use_portal'],
             'badge'    => [self::class, 'badge'],
         ]);
+
+        // 3p-3：approver 以上向けの「月次勤怠の承認」タイル（00 §4.3 の例外で開放した
+        // wp-admin の 勤怠管理 > 月次提出状況 への入口。approver はここからしか辿れないため）。
+        $registry_class::add([
+            'id'       => 'attendance_approval',
+            'label'    => __('月次勤怠の承認', 'ims-portal'),
+            'icon'     => '',
+            'url'      => self::admin_path_from_home('admin.php?page=' . AdminMenu::ATTENDANCE_PARENT),
+            'desc'     => __('担当する社員の月次勤怠のチェック承認', 'ims-portal'),
+            'priority' => 25, // 「月次勤怠表」（20）の次
+            'caps'     => ['ims_approve'],
+        ]);
+    }
+
+    /**
+     * wp-admin の画面URLを、タイルの url（home_url() に渡す相対パス）の形にする。
+     * DashboardPage は home_url($tile['url']) でリンクを作るため、WordPress 本体を
+     * サブディレクトリに置いている場合（siteurl と home が違う場合）でも正しい先になるようにする。
+     */
+    private static function admin_path_from_home(string $path): string
+    {
+        $admin = admin_url($path);
+        $home  = untrailingslashit(home_url());
+        if (str_starts_with($admin, $home)) {
+            return substr($admin, strlen($home));
+        }
+        return '/wp-admin/' . ltrim($path, '/'); // 通常ここには来ない（別ドメインの管理画面など）
     }
 
     /** 前の何か月までさかのぼって未提出を確認するか。 */

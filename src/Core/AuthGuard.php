@@ -14,6 +14,8 @@ if (!defined('ABSPATH')) {
  * ・未認証ユーザーが /portal/ 配下にアクセス → /portal/login/ へリダイレクト
  * ・employment_status = 退職 のユーザー → アクセス拒否
  * ・general_staff / approver が wp-admin にアクセス → /portal/ へ強制リダイレクト
+ *   例外：各モジュールが `ims_wp_admin_limited_access` フィルタで許可した画面・処理だけは通す
+ *   （approver のチェック承認用。00 §4.3。判定は AdminAccessPolicy）。
  *
  * 安全設計メモ：
  * 本番サーバーへ直接デプロイする運用のため、このガードのバグが
@@ -33,6 +35,9 @@ final class AuthGuard
         // wp-admin 側のブロックは admin_init で行う（init フックだと早すぎてユーザー情報が
         // 確定していない場合があるため、08 §3 の方針通り admin_init を使用）
         add_action('admin_init', [self::class, 'guard_wp_admin_access']);
+
+        // 例外的に wp-admin の一部だけ使えるユーザーには、使えない標準メニュー（ダッシュボード等）を出さない
+        add_action('admin_menu', [self::class, 'trim_limited_admin_menu'], 999);
 
         // ログイン後のデフォルトリダイレクト先を /portal/ にする
         add_filter('login_redirect', [self::class, 'login_redirect'], 10, 3);
@@ -68,7 +73,8 @@ final class AuthGuard
     }
 
     /**
-     * wp-admin へのアクセスを検査する。general_staff / approver は完全ブロックする。
+     * wp-admin へのアクセスを検査する。general_staff / approver はブロックする。
+     * ただし、モジュールが許可した画面・処理（limited_access()）だけは通す。
      */
     public static function guard_wp_admin_access(): void
     {
@@ -87,8 +93,46 @@ final class AuthGuard
             return;
         }
 
+        global $pagenow;
+        $page   = isset($_GET['page']) ? sanitize_key(wp_unslash((string) $_GET['page'])) : '';
+        $action = isset($_REQUEST['action']) ? sanitize_key(wp_unslash((string) $_REQUEST['action'])) : '';
+        if (AdminAccessPolicy::is_allowed((string) $pagenow, $page, $action, self::limited_access($user))) {
+            return;
+        }
+
         wp_safe_redirect(home_url('/portal/'));
         exit;
+    }
+
+    /**
+     * wp-admin に入れないユーザーに、例外として許可する画面・処理（各モジュールが登録する）。
+     *
+     * @return array{pages: array<int, string>, actions: array<int, string>}
+     */
+    public static function limited_access(\WP_User $user): array
+    {
+        $allow = apply_filters('ims_wp_admin_limited_access', ['pages' => [], 'actions' => []], $user);
+        return [
+            'pages'   => array_values(array_map('strval', (array) ($allow['pages'] ?? []))),
+            'actions' => array_values(array_map('strval', (array) ($allow['actions'] ?? []))),
+        ];
+    }
+
+    /**
+     * 例外的に wp-admin の一部だけ使えるユーザーから、使えない標準メニューを外す。
+     * 開いても /portal/ に戻されるだけのメニューを出さないため（見た目の整理。アクセス制御は guard_wp_admin_access）。
+     */
+    public static function trim_limited_admin_menu(): void
+    {
+        $user = wp_get_current_user();
+        if (!$user->exists() || Roles::can_access_wp_admin($user)) {
+            return;
+        }
+        if (!AdminAccessPolicy::has_any(self::limited_access($user))) {
+            return;
+        }
+        remove_menu_page('index.php');   // ダッシュボード
+        remove_menu_page('profile.php'); // プロフィール
     }
 
     public static function login_redirect(string $redirect_to, string $requested_redirect_to, $user): string

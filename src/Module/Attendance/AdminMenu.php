@@ -17,6 +17,10 @@ if (!defined('ABSPATH')) {
  * ・共通マスタ … 事業マスタ（AdminBusinessesPage）
  *
  * 親メニューの権限は、中の画面のうちもっとも低い権限に合わせる（見えない画面は WordPress が自動で隠す）。
+ *
+ * 3p-2：approver は wp-admin に入れない（00 §4.3）が、チェック承認のために「月次提出状況」「勤務表の確認」と、
+ * そこから行うチェック承認・差し戻し・印刷の処理だけを ims_wp_admin_limited_access フィルタで許可する
+ * （00 §4.3 の例外。ユーザー確認済み）。最終承認・CSV・取り消しは、各処理の権限チェックで従来どおり拒否される。
  */
 final class AdminMenu
 {
@@ -26,9 +30,31 @@ final class AdminMenu
     /** 「共通マスタ」の親スラッグ（＝事業マスタの画面）。 */
     public const MASTERS_PARENT = 'ims-businesses';
 
+    /** approver に許可する admin-post.php の処理。 */
+    private const APPROVER_ACTIONS = [
+        'ims_monthly_check_approve',
+        'ims_monthly_check_reject',
+        AttendancePrintPage::ACTION,
+    ];
+
     public static function init(): void
     {
         add_action('admin_menu', [self::class, 'register_menu'], 9); // サブメニューより先に登録する
+        add_filter('ims_wp_admin_limited_access', [self::class, 'limited_access'], 10, 2);
+    }
+
+    /**
+     * @param array{pages: array<int, string>, actions: array<int, string>} $allow
+     * @return array{pages: array<int, string>, actions: array<int, string>}
+     */
+    public static function limited_access(array $allow, \WP_User $user): array
+    {
+        if (!$user->has_cap('ims_approve')) {
+            return $allow;
+        }
+        $allow['pages']   = array_merge($allow['pages'] ?? [], [self::ATTENDANCE_PARENT, AdminAttendanceGridPage::MENU_SLUG]);
+        $allow['actions'] = array_merge($allow['actions'] ?? [], self::APPROVER_ACTIONS);
+        return $allow;
     }
 
     public static function register_menu(): void
