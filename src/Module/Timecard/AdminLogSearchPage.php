@@ -18,8 +18,7 @@ if (!defined('ABSPATH')) {
  * 自動補完/修正履歴の証跡確認）。画面を開いた直後は検索フォームのみを表示し、
  * 「検索する」ボタン押下後にのみ結果テーブルを表示する（条件なしなら全件扱い）。
  *
- * 親メニュー（社員管理）は User モジュールの AdminUserListPage が登録済みのため、
- * ここではサブメニューとして追加するだけで User モジュール側は無改修。
+ * 親メニューは「勤怠管理」（03 の Attendance\AdminMenu。00 §4.4）。当初は「社員管理」の下に置いていた。
  *
  * 検索条件のうち社員名・社員番号は WordPress のユーザーデータ（wp_users/wp_usermeta）
  * にしかないため、ここで先に user_id へ解決してから Repository::search_logs() に渡す
@@ -47,7 +46,7 @@ final class AdminLogSearchPage
     public static function register_menu(): void
     {
         add_submenu_page(
-            \IMS\Module\User\AdminUserListPage::PARENT_SLUG,
+            \IMS\Module\Attendance\AdminMenu::ATTENDANCE_PARENT, // 「勤怠管理」（00 §4.4）
             '打刻ログ照会',
             '打刻ログ照会',
             self::CAP,

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace IMS\Module\Attendance;
 
-use IMS\Module\User\AdminUserListPage;
 use IMS\Module\User\EmployeeRepository;
 
 if (!defined('ABSPATH')) {
@@ -41,7 +40,7 @@ final class AdminAttendanceGridPage
     public static function register_menu(): void
     {
         add_submenu_page(
-            AdminUserListPage::PARENT_SLUG,
+            AdminMenu::ATTENDANCE_PARENT, // 「勤怠管理」（00 §4.4）
             '勤務表の確認',
             '勤務表の確認',
             self::CAP,

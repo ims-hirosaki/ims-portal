@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace IMS\Module\Attendance;
 
-use IMS\Module\User\AdminUserListPage;
 use IMS\Module\User\EmployeeRepository;
 
 if (!defined('ABSPATH')) {
@@ -47,7 +46,7 @@ final class AdminMonthlySubmissionsPage
     public static function register_menu(): void
     {
         add_submenu_page(
-            AdminUserListPage::PARENT_SLUG,
+            AdminMenu::ATTENDANCE_PARENT, // 「勤怠管理」（00 §4.4）。親と同じスラッグで先頭の項目になる
             '月次提出状況',
             '月次提出状況',
             self::CAP,
