@@ -72,7 +72,7 @@ final class MonthlySummaryCalculator
         foreach ($days as $day) {
             $flag = (string) ($day['attendance_flag'] ?? AttendanceFlagCalculator::NONE);
 
-            if (in_array($flag, self::WORK_DAY_FLAGS, true)) {
+            if (self::is_work_day($flag, $day)) {
                 $total_work_days++;
             }
             if ($flag === AttendanceFlagCalculator::PAID_LEAVE) {
@@ -99,6 +99,23 @@ final class MonthlySummaryCalculator
             'total_late_night_min'   => $total_late_night,
             'total_paid_leave_days'  => $total_paid_leave_days,
         ];
+    }
+
+    /**
+     * 出勤日数に数える日か（§4.2 弥生CSV「出勤日数」＝フラグなし出勤＋休日出勤＋時間休＋半日休）。
+     * フラグなしの日は、出勤打刻（clock_in）がある日だけを数える。打刻もフラグも無い日は
+     * 欠勤または休日であり出勤ではない（§3.2「フラグなし・打刻なしの日の扱い」）。
+     * 3f時点では打刻の有無を見ておらず、土日・欠勤日まで出勤に数えていた不具合を修正した。
+     */
+    public static function is_work_day(string $flag, array $day): bool
+    {
+        if (!in_array($flag, self::WORK_DAY_FLAGS, true)) {
+            return false;
+        }
+        if ($flag === AttendanceFlagCalculator::NONE) {
+            return ($day['clock_in_minutes'] ?? null) !== null;
+        }
+        return true;
     }
 
     /** 'Y-m' 形式かどうか（DB/WPに触れない純粋関数）。 */
