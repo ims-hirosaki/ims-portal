@@ -1,0 +1,199 @@
+/**
+ * 印刷用勤務表（3k。AttendancePrintPage）専用スタイル。
+ *
+ * ・グリッド本体の色・罫線は attendance-grid.css（スタッフ画面と共通）をそのまま使い、
+ *   ここでは A4横1枚に1人分が収まるよう寸法だけを詰める。
+ * ・すべて `.ap-print` 配下にスコープする。共有CSSは変更しない。
+ */
+
+.ap-print {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body, 'Zen Kaku Gothic New', sans-serif);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* ── 画面表示時のみ：操作バー ─────────────────────────── */
+
+.ap-print .ap-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--line);
+}
+.ap-print .ap-print-btn {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: var(--r-sm, 8px);
+  background: var(--indigo);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ap-print .ap-toolbar-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.ap-print .ap-empty {
+  margin: 40px 16px;
+}
+
+/* ── 1人分のシート ──────────────────────────────────── */
+
+.ap-print .ap-sheet {
+  box-sizing: border-box;
+  width: 281mm;
+  margin: 16px auto;
+  padding: 6mm;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-md);
+}
+
+.ap-print .ap-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8mm;
+  margin-bottom: 2mm;
+}
+.ap-print .ap-title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 13pt;
+}
+.ap-print .ap-meta {
+  display: flex;
+  gap: 6mm;
+  margin: 0;
+  font-size: 8pt;
+}
+.ap-print .ap-meta div { display: flex; gap: 2mm; }
+.ap-print .ap-meta dt { color: var(--sub); }
+.ap-print .ap-meta dd { margin: 0; font-weight: 700; }
+
+/* グリッド：列幅を均等にして1枚に収める。 */
+.ap-print .ap-grid { gap: 0; }
+.ap-print .ag-table-scroll {
+  overflow: visible;
+  border-radius: 0;
+}
+.ap-print .ag-table {
+  width: 100%;
+  table-layout: fixed;
+  font-size: 5.5pt;
+  line-height: 1.15;
+}
+.ap-print .ag-table th,
+.ap-print .ag-table td {
+  padding: 0 1px;
+  height: 2.2mm;
+  overflow: hidden;
+  text-overflow: clip;
+}
+/* 時刻の行（15分刻み・56行）は1行1.8mmまで詰める。 */
+.ap-print .ag-table tbody th,
+.ap-print .ag-table tbody td {
+  height: 1.8mm;
+  line-height: 1;
+  font-size: 5pt;
+}
+.ap-print .ag-table .ag-col-time {
+  width: 11mm;
+  position: static;
+}
+.ap-print .ag-row-daynum th { position: static; }
+.ap-print .ag-cell-label {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ap-print .ag-flag-badge,
+.ap-print .ag-needs-badge {
+  display: block;
+  font-size: 5pt;
+  white-space: normal;
+}
+/* 勤怠フラグ行は選択欄なので印刷しない（フラグは日付見出しのバッジで表示される）。 */
+.ap-print .ag-row-summary:has(.ag-flag-select) { display: none; }
+
+/* 下段：月次集計・事業別明細・承認記録を横に並べる。 */
+.ap-print .ap-bottom {
+  display: flex;
+  align-items: flex-start;
+  gap: 5mm;
+  margin-top: 2.5mm;
+}
+.ap-print .ap-table {
+  border-collapse: collapse;
+  font-size: 6.5pt;
+  line-height: 1.2;
+}
+.ap-print .ap-table caption {
+  text-align: left;
+  font-weight: 700;
+  font-size: 7.5pt;
+  padding-bottom: 1mm;
+}
+.ap-print .ap-table th,
+.ap-print .ap-table td {
+  border: 1px solid var(--line);
+  padding: 0.15mm 2mm;
+  text-align: left;
+  white-space: nowrap;
+}
+.ap-print .ap-table th {
+  background: var(--line-soft);
+  font-weight: 500;
+}
+.ap-print .ap-table-business { flex: 1; }
+.ap-print .ap-table-business table,
+.ap-print .ap-table-business { min-width: 60mm; }
+.ap-print .ap-table .ag-swatch {
+  display: inline-block;
+  width: 2.5mm;
+  height: 2mm;
+  margin-right: 1.5mm;
+  vertical-align: middle;
+}
+.ap-print .ap-muted { color: var(--sub); }
+.ap-print .ap-foot {
+  margin: 1.5mm 0 0;
+  font-size: 6.5pt;
+  color: var(--sub);
+  text-align: right;
+}
+
+/* ── 印刷時 ─────────────────────────────────────────── */
+
+@page {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
+@media print {
+  .ap-print { background: #fff; }
+  .ap-print .ap-toolbar { display: none; }
+  .ap-print .ap-sheet {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid;
+  }
+  .ap-print .ap-sheet:last-of-type {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}
