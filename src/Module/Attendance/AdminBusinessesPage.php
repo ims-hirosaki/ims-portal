@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace IMS\Module\Attendance;
 
-use IMS\Module\User\AdminUserListPage;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -19,8 +18,7 @@ if (!defined('ABSPATH')) {
  *   （§2.3「必ず1件のみ1を設定できる」）。0件になる操作（デフォルトを外すだけの保存・
  *   デフォルト行の停止・削除）はブロックする。
  *
- * 親メニュー（社員管理）は Module\User\AdminUserListPage が登録済みのため、
- * ここではサブメニューとして追加するだけで User モジュール側は無改修。
+ * 親メニューは「共通マスタ」（AdminMenu。00 §4.4）。当初は「社員管理」の下に置いていた。
  *
  * 権限：ims_manage_masters（hr_admin 以上）。
  */
@@ -42,7 +40,7 @@ final class AdminBusinessesPage
     public static function register_menu(): void
     {
         add_submenu_page(
-            AdminUserListPage::PARENT_SLUG,
+            AdminMenu::MASTERS_PARENT, // 「共通マスタ」（00 §4.4）。親と同じスラッグで先頭の項目になる
             '事業マスタ',
             '事業マスタ',
             self::CAP,
