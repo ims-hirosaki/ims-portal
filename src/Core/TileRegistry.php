@@ -31,9 +31,16 @@ if (!defined('ABSPATH')) {
  *               ims_timecard_is_missing($user_id) ? '!' : null,
  *       ]);
  *   });
+ *
+ * badge の戻り値は文字列（従来どおり朱色のバッジ）か、色を指定する配列
+ * ['text' => '未提出', 'tone' => 'neutral'|'warning'|'danger'] のどちらか（3m で追加。ユーザー確認済み）。
+ * tone は 07_design_system.md の色の意味に対応する（neutral＝グレー、warning＝金、danger＝朱）。
  */
 final class TileRegistry
 {
+    /** badge で指定できる色（07_design_system.md の色の意味に対応）。 */
+    public const BADGE_TONES = ['neutral', 'warning', 'danger'];
+
     /** @var array<int, array<string, mixed>> */
     private static array $tiles = [];
 
@@ -94,12 +101,35 @@ final class TileRegistry
 
         foreach ($visible as &$tile) {
             $badge = $tile['badge'];
-            $tile['resolved_badge'] = is_callable($badge) ? $badge($user_id) : null;
+            [$tile['resolved_badge'], $tile['resolved_badge_tone']] = self::normalize_badge(
+                is_callable($badge) ? $badge($user_id) : null
+            );
             unset($tile['badge']);
         }
         unset($tile);
 
         return $visible;
+    }
+
+    /**
+     * badge コールバックの戻り値を [表示文字列, 色] にそろえる。
+     * 文字列はそのまま（色は null＝従来の朱色）。配列は text と tone を取り出し、
+     * 知らない tone は null（従来の朱色）にする。
+     *
+     * @param mixed $badge
+     * @return array{0:?string, 1:?string}
+     */
+    public static function normalize_badge($badge): array
+    {
+        if (is_array($badge)) {
+            $text = isset($badge['text']) ? (string) $badge['text'] : '';
+            $tone = isset($badge['tone']) && in_array($badge['tone'], self::BADGE_TONES, true) ? (string) $badge['tone'] : null;
+            return $text === '' ? [null, null] : [$text, $tone];
+        }
+        if ($badge === null || $badge === '') {
+            return [null, null];
+        }
+        return [(string) $badge, null];
     }
 
     private static function collect_once(): void

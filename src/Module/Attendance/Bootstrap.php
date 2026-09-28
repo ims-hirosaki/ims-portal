@@ -76,6 +76,9 @@ final class Bootstrap
         // フロント：月次勤務表グリッド（3e）。is_admin() の外で登録する（ポータル画面のため）。
         AttendanceGridPage::init();
 
+        // ダッシュボードの「月次勤怠表」タイル（3m）。ポータル画面のため is_admin() の外で登録する。
+        DashboardIntegration::init();
+
         // 書き込みAPI（3e-2）。rest_api_init は管理画面文脈でも走るため is_admin() の外で登録する。
         RestController::init();
 

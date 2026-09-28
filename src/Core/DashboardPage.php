@@ -42,7 +42,7 @@ final class DashboardPage
             <?php foreach ($tiles as $tile) : ?>
                 <a class="tile" href="<?php echo esc_url(home_url($tile['url'])); ?>">
                     <?php if (!empty($tile['resolved_badge'])) : ?>
-                        <span class="tile-badge"><?php echo esc_html((string) $tile['resolved_badge']); ?></span>
+                        <span class="tile-badge<?php echo !empty($tile['resolved_badge_tone']) ? ' tile-badge--' . esc_attr($tile['resolved_badge_tone']) : ''; ?>"><?php echo esc_html((string) $tile['resolved_badge']); ?></span>
                     <?php endif; ?>
                     <span class="tile-label"><?php echo esc_html($tile['label']); ?></span>
                 </a>

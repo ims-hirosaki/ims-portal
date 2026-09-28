@@ -50,6 +50,14 @@ final class Assets
             IMS_PORTAL_VERSION
         );
 
+        // タイルバッジの色の出し分け（3m）。共有の portal.css は変更せず別ファイルにする。
+        wp_enqueue_style(
+            'ims-portal-tile-badge',
+            IMS_PORTAL_URL . 'assets/css/tile-badge.css',
+            ['ims-portal-layout'],
+            IMS_PORTAL_VERSION
+        );
+
         wp_enqueue_script(
             'ims-portal-js',
             IMS_PORTAL_URL . 'assets/js/portal.js',

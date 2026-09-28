@@ -1,0 +1,22 @@
+/**
+ * ダッシュボードのタイルバッジの色（3m）。
+ *
+ * ・TileRegistry の badge で tone を指定したときに付く `.tile-badge--{tone}` の色だけを定義する。
+ *   tone を指定しないバッジは portal.css の `.tile-badge`（朱）のまま。共有の portal.css は変更しない。
+ * ・色の意味は 07_design_system.md に従う（neutral＝グレー、warning＝金、danger＝朱）。
+ */
+
+.tile-badge.tile-badge--neutral {
+  background: var(--sub);
+  color: #fff;
+}
+
+.tile-badge.tile-badge--warning {
+  background: var(--gold);
+  color: #fff;
+}
+
+.tile-badge.tile-badge--danger {
+  background: var(--vermillion);
+  color: #fff;
+}

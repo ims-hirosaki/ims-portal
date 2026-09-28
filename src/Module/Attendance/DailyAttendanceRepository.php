@@ -41,6 +41,23 @@ final class DailyAttendanceRepository
     }
 
     /**
+     * 指定期間に日次勤怠の行が1件でもあるか（読み取り専用。3m-2の未提出バッジで、
+     * 勤務実績の無い月＝運用開始前・入社前の月を対象外にするために使う）。
+     */
+    public static function has_any_in_range(int $user_id, string $start, string $end): bool
+    {
+        global $wpdb;
+        return (bool) $wpdb->get_var(
+            $wpdb->prepare(
+                'SELECT 1 FROM ' . self::table() . ' WHERE user_id = %d AND work_date BETWEEN %s AND %s LIMIT 1',
+                $user_id,
+                $start,
+                $end
+            )
+        );
+    }
+
+    /**
      * 勤怠フラグ適用後の最終値を保存する（AttendanceFlagCalculator::apply() の結果をそのまま渡す）。
      *
      * $rounded_clock_in_minutes / $rounded_clock_out_minutes は打刻ログの生の実時刻とは別に

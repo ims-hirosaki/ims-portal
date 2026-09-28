@@ -30,6 +30,8 @@
 - `Router::register()` は**スラッグ文字列のみ**（例：`'timecard'`）。
   フックに渡ってくるのは**インスタンスではなくクラス名の文字列**。
 - `TileRegistry::add()` の `caps` は**capability 名**（`ims_use_portal` 等）。ロール名ではない。
+- `TileRegistry::add()` の `badge` は文字列（朱のバッジ）か、`['text' => '…', 'tone' => 'neutral'|'warning'|'danger']`
+  （グレー／金／朱）を返す。色の指定は 3m でユーザー確認の上コアに追加した（色は `assets/css/tile-badge.css`）。
 - コアの `Assets` は**モジュール固有CSS/JSを積まない**。各モジュールが自前で enqueue する。
 - `ims-portal.php` の `boot()` が各モジュールの `Bootstrap::init()` を直接呼ぶ。
   これがコア無改修原則の唯一の例外。新モジュール追加時はここに1行足す。
