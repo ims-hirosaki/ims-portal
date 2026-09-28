@@ -49,9 +49,10 @@ final class MonthlySummaryCalculator
      * 1か月分の日別データ（AttendanceGridService::month_data()['days']）から、
      * wp_monthly_summary の total_* に保存する集計値を算出する。
      *
-     * 週次法定外残業（週40h超の追加分）は複数月をまたいで日曜始まりの週を合算する
-     * 必要があり、ここでは扱わない。3g（月次データスナップショット）で
-     * total_overtime_illegal に加算する方針（3b実装時にユーザー確認済み）。
+     * 週次の法定外残業（週40時間超）は WeeklyOvertimeCalculator で算出し、
+     * total_overtime_illegal に加算する。週40時間を超えた分のうち日次で法定内残業として
+     * 数えていた分は total_overtime_legal から差し引く（二重計上の解消。§3.1・§7.1）。
+     * 対象期間をまたぐ週は対象期間内の日だけを数える（§7.1）ため、$days だけで完結する。
      *
      * @param array<string, array<string, mixed>> $days
      * @return array{
@@ -85,6 +86,10 @@ final class MonthlySummaryCalculator
             $total_overtime_illegal += (int) ($day['overtime_illegal_min'] ?? 0);
             $total_late_night       += (int) ($day['late_night_minutes'] ?? 0);
         }
+
+        $weekly = WeeklyOvertimeCalculator::calculate($days);
+        $total_overtime_illegal += $weekly['weekly_illegal_min'];
+        $total_overtime_legal    = max(0, $total_overtime_legal - $weekly['legal_reduction_min']);
 
         return [
             'total_work_days'        => $total_work_days,
