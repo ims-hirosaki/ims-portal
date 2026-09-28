@@ -276,6 +276,18 @@ final class MonthlySummaryService
     }
 
     /**
+     * 指定社員の月次勤務表を閲覧できるか（§3.4 操作権限マトリクス「閲覧」。3j-1）。
+     * 本人・担当チェック者（first_approver_id）・hr_admin以上は可。
+     * 承認できるかどうかとは別（自己承認禁止は閲覧には適用しない）。
+     */
+    public static function can_view_month(int $actor_id, int $target_user_id): bool
+    {
+        return $actor_id === $target_user_id
+            || self::can_check_approve($actor_id, $target_user_id)
+            || self::can_final_approve();
+    }
+
+    /**
      * 最終承認・差し戻しの役割上の権限があるか（自己承認禁止は別途チェックする）。
      * hr_admin・administratorのみ可（§3.4。締め処理の実行権限 ims_run_closing を流用する）。
      */
