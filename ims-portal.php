@@ -3,7 +3,7 @@
  * Plugin Name:       IMS Hirosaki Portal
  * Plugin URI:        https://portal-site.labs-ims.com/
  * Description:       IMS Hirosaki 社内業務システム（グループウェア）。ユーザー管理・打刻・勤怠・交通費・稟議・Google Workspace 連携を統合するポータル基盤プラグイン。
- * Version:           0.8.15-phase3o
+ * Version:           0.8.15.1-phase3o
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            IMS Hirosaki
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.8.15-phase3o'); // 管理メニューを目的別に整理（勤怠管理・共通マスタを新設。00 §4.4）
+define('IMS_PORTAL_VERSION', '0.8.15.1-phase3o'); // fix：有効化時にモジュールのテーブルが作られない不具合を修正
 define('IMS_PORTAL_DB_VERSION', 12); // スキーマ変更時にインクリメントする（08 §5.2）。v11→v12: 03モジュールに wp_monthly_confirmation_cancellations（確定の取り消し記録）を新規追加（新規テーブルのためdbDeltaで反映される）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
@@ -63,6 +63,9 @@ final class IMS_Portal_Plugin
 {
     private static ?self $instance = null;
 
+    /** boot() を実行済みか（有効化時と plugins_loaded で二重に初期化しないため）。 */
+    private bool $booted = false;
+
     public static function instance(): self
     {
         return self::$instance ??= new self();
@@ -76,15 +79,35 @@ final class IMS_Portal_Plugin
 
     private function register_activation_hooks(): void
     {
-        register_activation_hook(IMS_PORTAL_FILE, [Installer::class, 'activate']);
+        register_activation_hook(IMS_PORTAL_FILE, [$this, 'activate']);
         register_deactivation_hook(IMS_PORTAL_FILE, [Installer::class, 'deactivate']);
     }
 
     /**
+     * 有効化フック。先に boot() でモジュールを初期化してから Installer::activate() を呼ぶ。
+     *
+     * 有効化の処理は plugins_loaded より後（プラグインを読み込んだその場）で走るため、そのままだと
+     * boot() が一度も実行されず、各モジュールの ims_register_schema フィルタが未登録のまま
+     * Installer が動く。その結果、テーブルが1つも作られないのに ims_db_version だけが最新になり、
+     * 以後 maybe_upgrade() も走らなくなっていた（新規有効化・無効化→再有効化で発生。実機相当の環境で確認）。
+     */
+    public function activate(): void
+    {
+        $this->boot();
+        Installer::activate();
+    }
+
+    /**
      * 本体の初期化。plugins_loaded で全モジュールがロード済みの状態にする。
+     * 有効化時にも呼ばれるため、同じリクエスト内では1回だけ実行する。
      */
     public function boot(): void
     {
+        if ($this->booted) {
+            return;
+        }
+        $this->booted = true;
+
         load_plugin_textdomain(IMS_PORTAL_TEXT_DOMAIN, false, dirname(plugin_basename(IMS_PORTAL_FILE)) . '/languages');
 
         // ── Core（土台）の初期化 ──
