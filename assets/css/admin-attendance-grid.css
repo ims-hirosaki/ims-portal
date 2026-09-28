@@ -1,0 +1,66 @@
+/**
+ * 社員管理 > 勤務表の確認（wp-admin。3j-1）専用スタイル。
+ *
+ * ・グリッド・凡例本体の見た目は attendance-grid.css（スタッフ画面と共通）をそのまま使う。
+ *   ここでは wp-admin 上での配置調整と、凡例の上部固定（§4.2「凡例を画面上部に常時表示」）だけを行う。
+ * ・すべて `.ims-ag-admin` 配下にスコープする。共有の admin.css は変更しない。
+ */
+
+.ims-ag-admin .ims-ag-admin-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+.ims-ag-admin .ims-ag-admin-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ims-ag-admin .ims-ag-admin-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.ims-ag-admin .ims-ag-admin-name {
+  font-family: var(--f-display);
+  font-size: 16px;
+  color: var(--ink);
+}
+.ims-ag-admin .ims-ag-admin-period {
+  color: var(--sub);
+}
+.ims-ag-admin .ims-ag-admin-status .ag-status-label {
+  display: inline-block;
+}
+.ims-ag-admin .ims-ag-admin-comment {
+  color: var(--vermillion);
+  margin: 0 0 12px;
+}
+
+/* 凡例：スクロールしても上部に残す（wp-admin の管理バー 32px の下に固定）。 */
+.ims-ag-admin .ims-ag-admin-legend {
+  position: sticky;
+  top: 32px;
+  z-index: 10;
+  background: var(--paper, #F7F3EA);
+  padding: 4px 0;
+}
+@media screen and (max-width: 782px) {
+  .ims-ag-admin .ims-ag-admin-legend {
+    top: 46px;
+  }
+}
+
+/* wp-admin の既定の select スタイル（高さ・文字サイズ）がグリッドの行高を崩さないよう戻す。 */
+.ims-ag-admin .ag-table select {
+  max-width: 100%;
+  min-height: 0;
+  padding: 0 2px;
+  font-size: inherit;
+  line-height: 1.4;
+}

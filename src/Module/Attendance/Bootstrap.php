@@ -85,6 +85,7 @@ final class Bootstrap
             AdminSalaryCycleSettingsPage::init();  // ポータル設定 > 給与計算サイクル設定
             AdminTimeRoundingSettingsPage::init(); // ポータル設定 > 打刻丸め設定
             AdminMonthlySubmissionsPage::init();   // 社員管理 > 月次提出状況（3f-4c）
+            AdminAttendanceGridPage::init();       // 社員管理 > 勤務表の確認（3j-1）
         }
     }
 

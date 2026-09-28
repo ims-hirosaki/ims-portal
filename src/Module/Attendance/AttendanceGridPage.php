@@ -232,8 +232,11 @@ final class AttendanceGridPage
     /**
      * @param array<int, array{id:int, name:string, color:string}> $businesses
      * @param array<int, int> $business_totals
+     *
+     * 管理者向け確認画面（AdminAttendanceGridPage。3j-1）でもスタッフ画面と同じ見た目で
+     * 表示するため public にしている（§4.2「スタッフ画面と完全に統一」）。
      */
-    private static function render_legend(array $businesses, array $business_totals): void
+    public static function render_legend(array $businesses, array $business_totals): void
     {
         ?>
         <div class="ag-legend">
@@ -259,8 +262,10 @@ final class AttendanceGridPage
 
     /**
      * @param array{businesses: array<int, array{id:int, name:string, color:string}>, days: array<string, array<string, mixed>>, business_totals: array<int,int>} $data
+     *
+     * render_legend() と同じ理由で public（管理者向け確認画面は $is_editable = false で呼ぶ）。
      */
-    private static function render_grid(array $data, bool $is_editable): void
+    public static function render_grid(array $data, bool $is_editable): void
     {
         $days = $data['days'];
         $business_by_id = [];

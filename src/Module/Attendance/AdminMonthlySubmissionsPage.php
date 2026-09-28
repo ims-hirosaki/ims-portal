@@ -192,7 +192,12 @@ final class AdminMonthlySubmissionsPage
                         ?>
                         <tr>
                             <td><?php echo esc_html($code !== '' ? $code : '—'); ?></td>
-                            <td><strong><?php echo esc_html($u->display_name); ?></strong></td>
+                            <td>
+                                <strong><?php echo esc_html($u->display_name); ?></strong>
+                                <?php if (MonthlySummaryService::can_view_month($actor_id, $target_id)) : ?>
+                                    <br><a href="<?php echo esc_url(AdminAttendanceGridPage::url($target_id, $year_month)); ?>">勤務表を見る</a>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <span class="ims-chip" style="<?php echo esc_attr(self::status_chip_style($status['status'])); ?>">
                                     <?php echo esc_html($status['label']); ?>
