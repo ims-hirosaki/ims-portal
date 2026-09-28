@@ -63,6 +63,7 @@
 
 1. 変更した全PHPファイルに `php -l` を通す。
 2. ロジックを足したらスモークテストを書いて通す（WordPress 無しで動く形）。
+   テストは `tests/smoke/` に置き、`php tests/smoke/run.php` で全件通す（書き方は `tests/smoke/README.md`）。
 3. 要件定義書の該当章と照合し、**仕様から意図的に外した点があれば理由とともに報告する**。
 4. `ims-portal.php` のバージョンを更新する（`0.5.1-phase2b` 形式）。
 

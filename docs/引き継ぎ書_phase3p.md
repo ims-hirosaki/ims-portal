@@ -166,8 +166,9 @@ php wp-cli.phar --allow-root --path=wp plugin activate ims-portal
 
 - ログイン状態でのアクセスは、`wp eval-file` で `wp_generate_auth_cookie()` を作って curl / Playwright に渡すと早い。
 - Chromium（Playwright）は最初から入っている。印刷の1ページ収まりは `page.pdf()` と `emulateMedia({media:'print'})` で確認した。
-- **スモークテストはリポジトリに入れていない**（今回もセッションの作業用ディレクトリに置いたため、セッション終了で消える）。
-  必要なら `tests/smoke/` を作ってコミットする運用をユーザーに相談するとよい。
+- **スモークテストは `tests/smoke/` にある**（3g〜3p の分、16本）。`php tests/smoke/run.php`（DBを使うテストも含めるなら `--db`）で
+  まとめて実行できる。使い方・注意点は `tests/smoke/README.md`。`tests/` はデプロイでサーバーにも置かれるため、
+  **新しいテストも必ず先頭で「コマンドライン以外なら何もせず終了」させること**（`tests/.htaccess` でもWebからのアクセスを拒否している）。
 
 ---
 
