@@ -276,6 +276,57 @@ final class MonthlySummaryService
     }
 
     /**
+     * 確定（最終承認）の取り消し（confirmed → rejected_by_admin / checked。§3.5 追記分。3n-3）。
+     * 人事管理担当者以上のみ。自分自身の月度は取り消せない（自己承認禁止と同じ扱い）。
+     * 「確定の取り消しを許可する」設定がオフのときは受け付けない。
+     *
+     * @return true|\WP_Error
+     */
+    public static function cancel_confirmation(int $actor_id, int $target_user_id, string $year_month, string $returned_status, string $reason)
+    {
+        if (!MonthlySummaryCalculator::is_valid_year_month($year_month)) {
+            return new \WP_Error('validation', '対象年月の形式が正しくありません。');
+        }
+        if ($actor_id === $target_user_id) {
+            return new \WP_Error('forbidden_self', '自身の月次データの確定は取り消せません。');
+        }
+        if (!self::can_final_approve()) {
+            return new \WP_Error('forbidden', 'この月度の確定を取り消す権限がありません。');
+        }
+
+        $existing = MonthlySummaryRepository::find($target_user_id, $year_month);
+        $error = ConfirmationCancelCalculator::validate(
+            ConfirmationCancelSettings::is_allowed(),
+            $existing !== null ? (string) $existing['status'] : MonthlySummaryCalculator::DRAFT,
+            $returned_status,
+            $reason
+        );
+        if ($error !== null) {
+            return new \WP_Error($error[0], $error[1]);
+        }
+
+        $now = current_time('mysql');
+        $ok  = MonthlySummaryRepository::cancel_confirmation(
+            (int) $existing['id'],
+            ConfirmationCancelCalculator::log_row($existing, $returned_status, $reason, $actor_id, $now),
+            ConfirmationCancelCalculator::summary_update($returned_status, $reason, $actor_id, $now)
+        );
+        if (!$ok) {
+            return new \WP_Error('db_error', '取り消しの保存に失敗しました。画面を読み込み直して、状態を確認してください。');
+        }
+
+        return true;
+    }
+
+    /** 確定を取り消せるか（画面にボタンを出すかどうか。最終的な判定は cancel_confirmation() で行う）。 */
+    public static function can_cancel_confirmation(int $actor_id, int $target_user_id): bool
+    {
+        return $actor_id !== $target_user_id
+            && self::can_final_approve()
+            && ConfirmationCancelSettings::is_allowed();
+    }
+
+    /**
      * 指定社員の月次勤務表を閲覧できるか（§3.4 操作権限マトリクス「閲覧」。3j-1）。
      * 本人・担当チェック者（first_approver_id）・hr_admin以上は可。
      * 承認できるかどうかとは別（自己承認禁止は閲覧には適用しない）。
