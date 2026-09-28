@@ -39,6 +39,7 @@ final class AdminMonthlySubmissionsPage
         add_action('admin_post_ims_monthly_check_reject', [self::class, 'handle_check_reject']);
         add_action('admin_post_ims_monthly_final_approve', [self::class, 'handle_final_approve']);
         add_action('admin_post_ims_monthly_final_reject', [self::class, 'handle_final_reject']);
+        add_action('admin_post_ims_monthly_cancel_confirmation', [self::class, 'handle_cancel_confirmation']);
         add_action('admin_post_ims_monthly_yayoi_csv', [self::class, 'handle_yayoi_csv']);
         add_action('admin_enqueue_scripts', [self::class, 'enqueue']);
     }
@@ -86,6 +87,16 @@ final class AdminMonthlySubmissionsPage
         [$actor_id, $target_id, $year_month] = self::guarded_input();
         $result = MonthlySummaryService::final_approve($actor_id, $target_id, $year_month);
         self::finish($result, $year_month, 'final_approved');
+    }
+
+    /** 確定の取り消し（3n-4。§3.5 追記分）。判定・保存は MonthlySummaryService に委譲する。 */
+    public static function handle_cancel_confirmation(): void
+    {
+        [$actor_id, $target_id, $year_month] = self::guarded_input();
+        $returned = sanitize_key(wp_unslash($_POST['returned_status'] ?? ''));
+        $reason   = sanitize_textarea_field(wp_unslash($_POST['reason'] ?? ''));
+        $result   = MonthlySummaryService::cancel_confirmation($actor_id, $target_id, $year_month, $returned, $reason);
+        self::finish($result, $year_month, 'confirmation_cancelled');
     }
 
     public static function handle_final_reject(): void
@@ -271,7 +282,42 @@ final class AdminMonthlySubmissionsPage
             return;
         }
 
+        if ($status['status'] === MonthlySummaryCalculator::CONFIRMED
+            && MonthlySummaryService::can_cancel_confirmation($actor_id, $target_id)
+        ) {
+            self::render_cancel_form($target_id, $year_month);
+            return;
+        }
+
         echo '<span class="ims-sub">—</span>';
+    }
+
+    /**
+     * 確定の取り消しフォーム（3n-4）。誤操作を防ぐため、普段は折りたたんでおく。
+     * 設定「確定の取り消しを許可する」がオフのときは出さない（MonthlySummaryService::can_cancel_confirmation()）。
+     */
+    private static function render_cancel_form(int $target_id, string $year_month): void
+    {
+        ?>
+        <details class="ims-cancel-confirmation">
+            <summary>確定を取り消す</summary>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
+                  onsubmit="return confirm('この月の確定を取り消します。よろしいですか？\n（取り消した記録は残ります）');">
+                <?php wp_nonce_field(self::NONCE); ?>
+                <input type="hidden" name="action" value="ims_monthly_cancel_confirmation">
+                <input type="hidden" name="user_id" value="<?php echo (int) $target_id; ?>">
+                <input type="hidden" name="year_month" value="<?php echo esc_attr($year_month); ?>">
+                <?php foreach (ConfirmationCancelCalculator::RETURN_TARGETS as $i => $target) : ?>
+                    <label style="display:block;">
+                        <input type="radio" name="returned_status" value="<?php echo esc_attr($target); ?>" <?php checked($i, 0); ?> required>
+                        <?php echo esc_html(ConfirmationCancelCalculator::return_label($target)); ?>
+                    </label>
+                <?php endforeach; ?>
+                <textarea name="reason" rows="2" class="ims-reject-comment" placeholder="取り消す理由（必須）" required></textarea>
+                <button type="submit" class="button button-small ims-btn-del">確定を取り消す</button>
+            </form>
+        </details>
+        <?php
     }
 
     private static function render_action_forms(int $target_id, string $year_month, string $approve_action, string $reject_action, string $approve_label): void
@@ -359,6 +405,7 @@ final class AdminMonthlySubmissionsPage
             'check_rejected' => '差し戻しました。',
             'final_approved' => '最終承認しました。',
             'final_rejected' => '差し戻しました。',
+            'confirmation_cancelled' => '確定を取り消しました。',
         ];
         $text  = $labels[$msg] ?? $msg;
         $class = $status === 'success' ? 'notice-success' : 'notice-error';

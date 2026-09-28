@@ -188,6 +188,7 @@ final class AdminAttendanceGridPage
         <?php if ($status['rejection_comment']) : ?>
             <p class="ims-ag-admin-comment">差し戻し理由：<?php echo esc_html($status['rejection_comment']); ?></p>
         <?php endif; ?>
+        <?php self::render_cancellations($target->ID, $year_month); ?>
 
         <?php $tab = self::resolve_tab(); ?>
         <nav class="ag-tabs ims-ag-admin-tabs" aria-label="表示の切り替え">
@@ -205,6 +206,42 @@ final class AdminAttendanceGridPage
                 <?php AttendanceGridPage::render_grid($data, false); ?>
             <?php endif; ?>
         </div>
+        <?php
+    }
+
+    /** 確定の取り消し履歴（3n-4。§3.5 追記分）。記録がある月だけ表示する。 */
+    private static function render_cancellations(int $user_id, string $year_month): void
+    {
+        $rows = MonthlySummaryRepository::cancellations($user_id, $year_month);
+        if ($rows === []) {
+            return;
+        }
+        ?>
+        <details class="ims-ag-admin-cancellations">
+            <summary><?php echo esc_html(sprintf('この月は確定を%d回取り消しています（履歴を見る）', count($rows))); ?></summary>
+            <table class="widefat striped">
+                <thead><tr><th>取り消した日時</th><th>取り消した人</th><th>戻し先</th><th>理由</th><th>取り消す前の最終承認</th></tr></thead>
+                <tbody>
+                    <?php foreach ($rows as $r) :
+                        $by   = get_userdata((int) $r['cancelled_by']);
+                        $prev = $r['prev_final_approved_by'] !== null ? get_userdata((int) $r['prev_final_approved_by']) : false;
+                        ?>
+                        <tr>
+                            <td><?php echo esc_html(date('Y年n月j日 H:i', strtotime((string) $r['cancelled_at']))); ?></td>
+                            <td><?php echo esc_html($by ? $by->display_name : '—'); ?></td>
+                            <td><?php echo esc_html(ConfirmationCancelCalculator::return_label((string) $r['returned_status'])); ?></td>
+                            <td><?php echo esc_html((string) $r['cancel_reason']); ?></td>
+                            <td>
+                                <?php
+                                $when = $r['prev_final_approved_at'] !== null ? date('Y年n月j日 H:i', strtotime((string) $r['prev_final_approved_at'])) : '—';
+                                echo esc_html(($prev ? $prev->display_name . '　' : '') . $when);
+                                ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </details>
         <?php
     }
 

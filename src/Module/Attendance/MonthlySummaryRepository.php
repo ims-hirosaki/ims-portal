@@ -109,6 +109,53 @@ final class MonthlySummaryRepository
         ], ['id' => $id]) !== false;
     }
 
+    /**
+     * 確定の取り消し（3n-3）：取り消し記録の追記と、wp_monthly_summary の書き換えを
+     * 1つのトランザクションで行う。書き換えは「まだ confirmed のままなら」に限る
+     * （同時に2人が取り消しても二重に処理されないように）。失敗時はどちらも保存しない。
+     *
+     * @param array<string, mixed> $log    ConfirmationCancelCalculator::log_row() の結果
+     * @param array<string, mixed> $update ConfirmationCancelCalculator::summary_update() の結果
+     */
+    public static function cancel_confirmation(int $id, array $log, array $update): bool
+    {
+        global $wpdb;
+
+        $wpdb->query('START TRANSACTION');
+
+        $inserted = $wpdb->insert(Schema::confirmation_cancellations_table(), $log);
+        $updated  = $inserted !== false
+            ? $wpdb->update(self::table(), $update, ['id' => $id, 'status' => MonthlySummaryCalculator::CONFIRMED])
+            : false;
+
+        if ($inserted === false || $updated !== 1) {
+            $wpdb->query('ROLLBACK');
+            return false;
+        }
+
+        $wpdb->query('COMMIT');
+        return true;
+    }
+
+    /**
+     * 指定社員・年月の確定取り消し記録（新しい順）。
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function cancellations(int $user_id, string $year_month): array
+    {
+        global $wpdb;
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT * FROM ' . Schema::confirmation_cancellations_table()
+                . ' WHERE user_id = %d AND target_year_month = %s ORDER BY cancelled_at DESC, id DESC',
+                $user_id,
+                $year_month
+            ),
+            ARRAY_A
+        ) ?: [];
+    }
+
     /** 最終差し戻し：checked → rejected_by_admin。 */
     public static function final_reject(int $id, int $actor_id, string $comment): bool
     {
