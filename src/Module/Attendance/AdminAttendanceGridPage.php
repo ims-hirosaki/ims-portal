@@ -163,6 +163,9 @@ final class AdminAttendanceGridPage
             <a class="button button-small" href="<?php echo esc_url(add_query_arg(['page' => 'ims-monthly-submissions', 'ym' => $year_month], admin_url('admin.php'))); ?>">
                 月次提出状況へ
             </a>
+            <a class="button button-small" href="<?php echo esc_url(AttendancePrintPage::url($year_month, $target->ID)); ?>" target="_blank" rel="noopener">
+                印刷・PDF保存
+            </a>
         </div>
         <?php if ($status['rejection_comment']) : ?>
             <p class="ims-ag-admin-comment">差し戻し理由：<?php echo esc_html($status['rejection_comment']); ?></p>

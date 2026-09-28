@@ -227,12 +227,15 @@ final class AdminMonthlySubmissionsPage
         ], admin_url('admin-post.php')), self::CSV_NONCE);
         ?>
         <div class="ims-note">
-            <strong>弥生給与計算用のファイル</strong><br>
+            <strong>弥生給与計算用のファイル・印刷用の勤務表</strong><br>
             この月が「確定済み」になっている社員の勤怠を、弥生給与計算に取り込めるファイル（CSV）で保存します。
             欠勤日数はすべて0で出力されるため、弥生給与計算の画面で入力してください。<br>
             <?php if ($result['count'] > 0) : ?>
                 <a class="button button-primary" href="<?php echo esc_url($url); ?>">
                     <?php echo esc_html(sprintf('CSVをダウンロード（%d名分）', $result['count'])); ?>
+                </a>
+                <a class="button" href="<?php echo esc_url(AttendancePrintPage::url($year_month)); ?>" target="_blank" rel="noopener">
+                    勤務表を印刷・PDF保存（確定済みの全員分）
                 </a>
             <?php else : ?>
                 <span class="ims-sub">この月に確定済みの社員はまだいません。</span>
