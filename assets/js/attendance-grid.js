@@ -21,14 +21,20 @@
   'use strict';
 
   document.addEventListener('DOMContentLoaded', function () {
+    if (typeof imsPortal === 'undefined' || typeof imsAttendanceGrid === 'undefined') {
+      return;
+    }
+
+    // 提出ボタンはステータスバナーにあり、集計表タブ（グリッド無し。3l）でも使うため先に初期化する。
+    initSubmit();
+
     var table = document.querySelector('.ag-table');
-    if (!table || typeof imsPortal === 'undefined' || typeof imsAttendanceGrid === 'undefined') {
+    if (!table) {
       return;
     }
 
     initFlagSelects(table);
     initModal(table);
-    initSubmit();
   });
 
   // ── 勤怠フラグの変更 ────────────────────────────────────

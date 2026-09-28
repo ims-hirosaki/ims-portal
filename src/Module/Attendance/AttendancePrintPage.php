@@ -142,9 +142,8 @@ final class AttendancePrintPage
         $code    = (string) get_user_meta($user->ID, 'employee_code', true);
 
         // 月次集計：提出済みなら提出時に確定した値、未提出・差し戻し中は今の入力内容から計算した参考値。
-        $has_totals = $summary !== null && $summary['total_actual_minutes'] !== null
-            && !in_array($status, MonthlySummaryCalculator::SUBMITTABLE_FROM, true);
-        $totals = $has_totals ? $summary : MonthlySummaryCalculator::aggregate($data['days']);
+        $totals     = MonthlyStatementCalculator::totals($summary, $data['days']);
+        $has_totals = $totals['is_final'];
 
         $breakdown = AttendancePrintCalculator::business_breakdown($data['days'], $data['businesses']);
         ?>
@@ -167,7 +166,7 @@ final class AttendancePrintPage
         <table class="ap-table">
             <caption>月次集計<?php echo $has_totals ? '' : '（未提出のため参考値）'; ?></caption>
             <tr><th>出勤日数</th><td><?php echo (int) $totals['total_work_days']; ?>日</td></tr>
-            <tr><th>有給取得</th><td><?php echo esc_html(rtrim(rtrim(number_format((float) $totals['total_paid_leave_days'], 1, '.', ''), '0'), '.')); ?>日</td></tr>
+            <tr><th>有給取得</th><td><?php echo esc_html(MonthlyStatementCalculator::days_label($totals['total_paid_leave_days'])); ?></td></tr>
             <tr><th>総労働時間</th><td><?php echo esc_html(AttendancePrintCalculator::format_hours((int) $totals['total_actual_minutes'])); ?></td></tr>
             <tr><th>法定内残業</th><td><?php echo esc_html(AttendancePrintCalculator::format_hours((int) $totals['total_overtime_legal'])); ?></td></tr>
             <tr><th>法定外残業</th><td><?php echo esc_html(AttendancePrintCalculator::format_hours((int) $totals['total_overtime_illegal'])); ?></td></tr>

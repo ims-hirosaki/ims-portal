@@ -29,6 +29,9 @@ final class AdminAttendanceGridPage
     public const MENU_SLUG = 'ims-attendance-grid';
     private const CAP      = 'ims_approve';
 
+    /** 集計表タブ（3l）。スタッフ画面の ?tab=statement と同じ値。 */
+    private const TAB_STATEMENT = 'statement';
+
     public static function init(): void
     {
         add_action('admin_menu', [self::class, 'register_menu']);
@@ -55,17 +58,29 @@ final class AdminAttendanceGridPage
         wp_enqueue_style('ims-portal-tokens', IMS_PORTAL_URL . 'assets/css/ims-tokens.css', [], IMS_PORTAL_VERSION);
         wp_enqueue_style('ims-admin', IMS_PORTAL_URL . 'assets/css/admin.css', ['ims-portal-tokens'], IMS_PORTAL_VERSION);
         wp_enqueue_style('ims-attendance-grid', IMS_PORTAL_URL . 'assets/css/attendance-grid.css', ['ims-portal-tokens'], IMS_PORTAL_VERSION);
+        wp_enqueue_style('ims-attendance-statement', IMS_PORTAL_URL . 'assets/css/attendance-statement.css', ['ims-attendance-grid'], IMS_PORTAL_VERSION);
         wp_enqueue_style('ims-admin-attendance-grid', IMS_PORTAL_URL . 'assets/css/admin-attendance-grid.css', ['ims-attendance-grid'], IMS_PORTAL_VERSION);
     }
 
-    /** 月次提出状況画面などからこの画面を開くURL。 */
-    public static function url(int $user_id, string $year_month): string
+    /** 月次提出状況画面などからこの画面を開くURL。$tab は 'statement'（集計表）のときだけ付ける。 */
+    public static function url(int $user_id, string $year_month, string $tab = ''): string
     {
-        return add_query_arg([
+        $args = [
             'page'    => self::MENU_SLUG,
             'user_id' => $user_id,
             'ym'      => $year_month,
-        ], admin_url('admin.php'));
+        ];
+        if ($tab === self::TAB_STATEMENT) {
+            $args['tab'] = $tab;
+        }
+        return add_query_arg($args, admin_url('admin.php'));
+    }
+
+    /** 表示中のタブ（?tab=statement で集計表。それ以外は勤怠。3l）。 */
+    private static function resolve_tab(): string
+    {
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
+        return $tab === self::TAB_STATEMENT ? self::TAB_STATEMENT : '';
     }
 
     public static function render(): void
@@ -116,6 +131,9 @@ final class AdminAttendanceGridPage
         ?>
         <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>" class="ims-list-filter ims-ag-admin-filter">
             <input type="hidden" name="page" value="<?php echo esc_attr(self::MENU_SLUG); ?>">
+            <?php if (self::resolve_tab() !== '') : ?>
+                <input type="hidden" name="tab" value="<?php echo esc_attr(self::resolve_tab()); ?>">
+            <?php endif; ?>
             <label>
                 社員
                 <select name="user_id">
@@ -135,9 +153,9 @@ final class AdminAttendanceGridPage
             </label>
             <button type="submit" class="button button-primary">表示する</button>
             <?php if ($target_id !== 0) : ?>
-                <a class="button" href="<?php echo esc_url(self::url($target_id, self::adjacent_month($year_month, -1))); ?>">‹ 前の月</a>
+                <a class="button" href="<?php echo esc_url(self::url($target_id, self::adjacent_month($year_month, -1), self::resolve_tab())); ?>">‹ 前の月</a>
                 <strong><?php echo esc_html(sprintf('%d年%d月分', $year, $month)); ?></strong>
-                <a class="button" href="<?php echo esc_url(self::url($target_id, self::adjacent_month($year_month, 1))); ?>">次の月 ›</a>
+                <a class="button" href="<?php echo esc_url(self::url($target_id, self::adjacent_month($year_month, 1), self::resolve_tab())); ?>">次の月 ›</a>
             <?php endif; ?>
         </form>
         <?php
@@ -171,11 +189,21 @@ final class AdminAttendanceGridPage
             <p class="ims-ag-admin-comment">差し戻し理由：<?php echo esc_html($status['rejection_comment']); ?></p>
         <?php endif; ?>
 
+        <?php $tab = self::resolve_tab(); ?>
+        <nav class="ag-tabs ims-ag-admin-tabs" aria-label="表示の切り替え">
+            <a class="ag-tab<?php echo $tab === '' ? ' is-current' : ''; ?>" href="<?php echo esc_url(self::url($target->ID, $year_month)); ?>">勤怠</a>
+            <a class="ag-tab<?php echo $tab === self::TAB_STATEMENT ? ' is-current' : ''; ?>" href="<?php echo esc_url(self::url($target->ID, $year_month, self::TAB_STATEMENT)); ?>">集計表</a>
+        </nav>
+
         <div class="ag-wrap">
-            <div class="ims-ag-admin-legend">
-                <?php AttendanceGridPage::render_legend($data['businesses'], $data['business_totals']); ?>
-            </div>
-            <?php AttendanceGridPage::render_grid($data, false); ?>
+            <?php if ($tab === self::TAB_STATEMENT) : ?>
+                <?php MonthlyStatementView::render($target->ID, $year_month); ?>
+            <?php else : ?>
+                <div class="ims-ag-admin-legend">
+                    <?php AttendanceGridPage::render_legend($data['businesses'], $data['business_totals']); ?>
+                </div>
+                <?php AttendanceGridPage::render_grid($data, false); ?>
+            <?php endif; ?>
         </div>
         <?php
     }

@@ -47,6 +47,10 @@ final class AttendanceGridPage
 {
     private const SLUG = 'attendance';
 
+    /** タブ（3l）。 */
+    private const TAB_GRID      = 'grid';
+    private const TAB_STATEMENT = 'statement';
+
     /** グリッドの表示範囲（分・work_date 0時起点）。8:00〜21:45（§4.1の例に合わせた既定値）。 */
     private const GRID_START_MINUTES = 8 * 60;
     private const GRID_END_MINUTES   = 21 * 60 + 45;
@@ -80,6 +84,12 @@ final class AttendanceGridPage
             'ims-attendance-grid',
             IMS_PORTAL_URL . 'assets/css/attendance-grid.css',
             ['ims-portal-layout'],
+            IMS_PORTAL_VERSION
+        );
+        wp_enqueue_style(
+            'ims-attendance-statement',
+            IMS_PORTAL_URL . 'assets/css/attendance-statement.css',
+            ['ims-attendance-grid'],
             IMS_PORTAL_VERSION
         );
         wp_enqueue_script(
@@ -148,17 +158,54 @@ final class AttendanceGridPage
         $data   = AttendanceGridService::month_data($user_id, $year_month);
         $status = MonthlySummaryService::status_summary($user_id, $year_month);
 
+        $tab = self::resolve_tab();
+
         Layout::render_header(__('勤怠', 'ims-portal'));
         ?>
         <div class="ag-wrap">
             <?php self::render_head($year_month, $data['period']); ?>
             <?php self::render_status_banner($year_month, $status); ?>
-            <?php self::render_legend($data['businesses'], $data['business_totals']); ?>
-            <?php self::render_grid($data, $status['is_editable']); ?>
-            <?php self::render_modal(); ?>
+            <?php self::render_tabs($year_month, $tab); ?>
+            <?php if ($tab === self::TAB_STATEMENT) : ?>
+                <?php MonthlyStatementView::render($user_id, $year_month); ?>
+            <?php else : ?>
+                <?php self::render_legend($data['businesses'], $data['business_totals']); ?>
+                <?php self::render_grid($data, $status['is_editable']); ?>
+                <?php self::render_modal(); ?>
+            <?php endif; ?>
         </div>
         <?php
         Layout::render_footer();
+    }
+
+    /**
+     * タブ（§4.1「画面統合（タブ構成）」の簡略版。3l）。交通費・車両借り上げは04モジュール未実装のため、
+     * 勤怠・集計表の2つだけ。切り替えは ?tab= のページ遷移で行う（JSで二重に描画しない）。
+     */
+    private static function render_tabs(string $year_month, string $current): void
+    {
+        $tabs = [
+            self::TAB_GRID      => __('勤怠', 'ims-portal'),
+            self::TAB_STATEMENT => __('集計表', 'ims-portal'),
+        ];
+        ?>
+        <nav class="ag-tabs" aria-label="<?php esc_attr_e('表示の切り替え', 'ims-portal'); ?>">
+            <?php foreach ($tabs as $key => $label) : ?>
+                <a class="ag-tab<?php echo $key === $current ? ' is-current' : ''; ?>"
+                   href="<?php echo esc_url(self::month_url($year_month, $key)); ?>"
+                   <?php echo $key === $current ? 'aria-current="page"' : ''; ?>>
+                    <?php echo esc_html($label); ?>
+                </a>
+            <?php endforeach; ?>
+        </nav>
+        <?php
+    }
+
+    /** 表示中のタブ（?tab=statement で集計表。それ以外は勤怠）。 */
+    private static function resolve_tab(): string
+    {
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
+        return $tab === self::TAB_STATEMENT ? self::TAB_STATEMENT : self::TAB_GRID;
     }
 
     /**
@@ -201,9 +248,9 @@ final class AttendanceGridPage
         <div class="ag-head">
             <span class="ag-card-title"><?php esc_html_e('月次勤務表', 'ims-portal'); ?></span>
             <div class="ag-month-nav">
-                <a class="ag-month-btn" href="<?php echo esc_url(self::month_url($prev_ym)); ?>" aria-label="<?php esc_attr_e('前の月', 'ims-portal'); ?>">‹</a>
+                <a class="ag-month-btn" href="<?php echo esc_url(self::month_url($prev_ym, self::resolve_tab())); ?>" aria-label="<?php esc_attr_e('前の月', 'ims-portal'); ?>">‹</a>
                 <span class="ag-month-label"><?php echo esc_html(sprintf('%d年%d月分', $year, $month)); ?></span>
-                <a class="ag-month-btn" href="<?php echo esc_url(self::month_url($next_ym)); ?>" aria-label="<?php esc_attr_e('次の月', 'ims-portal'); ?>">›</a>
+                <a class="ag-month-btn" href="<?php echo esc_url(self::month_url($next_ym, self::resolve_tab())); ?>" aria-label="<?php esc_attr_e('次の月', 'ims-portal'); ?>">›</a>
             </div>
         </div>
         <p class="ag-period">
@@ -560,8 +607,13 @@ final class AttendanceGridPage
         return [date('Y-m', $prev), date('Y-m', $next)];
     }
 
-    private static function month_url(string $ym): string
+    /** 月送り・タブ切り替えのURL。勤怠タブ（既定）は tab を付けない。 */
+    private static function month_url(string $ym, string $tab = self::TAB_GRID): string
     {
-        return add_query_arg('ym', $ym, home_url('/portal/' . self::SLUG . '/'));
+        $args = ['ym' => $ym];
+        if ($tab !== self::TAB_GRID) {
+            $args['tab'] = $tab;
+        }
+        return add_query_arg($args, home_url('/portal/' . self::SLUG . '/'));
     }
 }
