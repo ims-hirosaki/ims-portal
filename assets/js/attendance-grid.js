@@ -156,9 +156,14 @@
 
       modal.dataset.date = date;
       dateEl.textContent = date;
-      targetEl.textContent = day.roundedActualLabel
-        ? '実労働時間の目標：' + day.roundedActualLabel + '（出勤 ' + (day.clockIn || '—') + ' ／ 退勤 ' + (day.clockOut || '—') + '）'
-        : 'この日はまだ出退勤の打刻が完了していないため、割当てを保存できません。';
+      if (day.flag === 'paid_leave') {
+        // 3q-2：有給日は打刻が無いため、有給で付与される時間（所定労働時間）が目標になる。
+        targetEl.textContent = '有給で付与される時間：' + imsAttendanceGrid.scheduledLabel + '（合計をこの時間に合わせてください）';
+      } else {
+        targetEl.textContent = day.roundedActualLabel
+          ? '実労働時間の目標：' + day.roundedActualLabel + '（出勤 ' + (day.clockIn || '—') + ' ／ 退勤 ' + (day.clockOut || '—') + '）'
+          : 'この日はまだ出退勤の打刻が完了していないため、割当てを保存できません。';
+      }
 
       rowsBody.innerHTML = '';
       hideError();
