@@ -128,6 +128,7 @@ final class AdminUserFields
                     <td><input type="number" step="0.25" min="0" max="24" id="ims_scheduled_work_hours"
                                name="ims_scheduled_work_hours" value="<?php echo esc_attr($hours); ?>" class="small-text"> 時間</td>
                 </tr>
+                <?php self::render_default_business_row($uid); ?>
             </table>
         </div>
         <?php
@@ -290,6 +291,37 @@ final class AdminUserFields
         }
     }
 
+    /**
+     * デフォルト事業（01 §3.3① default_business_id）。設定すると、退勤打刻のときにその日の事業別時間を
+     * この事業で自動記録する（03 §3.3）。事業マスタは 03（勤怠）モジュールのもの。
+     */
+    private static function render_default_business_row(int $uid): void
+    {
+        if (!class_exists(\IMS\Module\Attendance\BusinessRepository::class)) {
+            return;
+        }
+        $current = (int) get_user_meta($uid, 'default_business_id', true);
+        ?>
+        <tr>
+            <th><label for="ims_default_business_id">デフォルト事業</label></th>
+            <td>
+                <select id="ims_default_business_id" name="ims_default_business_id">
+                    <option value="0">設定しない（毎日手で入力する）</option>
+                    <?php foreach (\IMS\Module\Attendance\BusinessRepository::all(false) as $b) : ?>
+                        <option value="<?php echo (int) $b['business_id']; ?>" <?php selected($current, (int) $b['business_id']); ?>>
+                            <?php echo esc_html((string) $b['business_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description">
+                    設定すると、退勤の打刻をしたときに、その日の事業別時間をこの事業で自動的に記録します（休憩の時間は除きます）。
+                    ほかの事業でも働いた日は、本人が月次勤怠表で直せます。
+                </p>
+            </td>
+        </tr>
+        <?php
+    }
+
     // ── 保存 ───────────────────────────────────────────────
 
     public static function save(int $user_id): void
@@ -322,6 +354,8 @@ final class AdminUserFields
             update_user_meta($user_id, 'employment_status', $new_status);
         }
 
+        self::save_default_business($user_id, (int) ($_POST['ims_default_business_id'] ?? 0));
+
         EmployeeRepository::save_approvers($user_id, [
             'first_approver_id' => $_POST['ims_first_approver_id'] ?? 0,
             'final_approver_id' => $_POST['ims_final_approver_id'] ?? 0,
@@ -340,6 +374,20 @@ final class AdminUserFields
                 'allowance_date'              => $_POST['ims_allowance_date'] ?? [],
             ], get_current_user_id());
         }
+    }
+
+    /** デフォルト事業を保存する。0・存在しない・無効な事業なら「設定しない」にする。 */
+    private static function save_default_business(int $user_id, int $business_id): void
+    {
+        if (!isset($_POST['ims_default_business_id']) || !class_exists(\IMS\Module\Attendance\BusinessRepository::class)) {
+            return; // 欄が出ていない画面からの保存では触らない
+        }
+        $business = $business_id > 0 ? \IMS\Module\Attendance\BusinessRepository::find($business_id) : null;
+        if ($business !== null && (int) $business['is_active'] === 1) {
+            update_user_meta($user_id, 'default_business_id', $business_id);
+            return;
+        }
+        delete_user_meta($user_id, 'default_business_id');
     }
 
     // ── 部品 ───────────────────────────────────────────────

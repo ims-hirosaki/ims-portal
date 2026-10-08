@@ -58,6 +58,15 @@ final class UserRepository
         return $value !== '' ? (float) $value : 8.0;
     }
 
+    /**
+     * 通常勤務日のデフォルト事業（01 §3.3① default_business_id。03 §3.3 の自動割り当てに使う）。未設定は null。
+     */
+    public static function get_default_business_id(int $user_id): ?int
+    {
+        $value = (int) get_user_meta($user_id, 'default_business_id', true);
+        return $value > 0 ? $value : null;
+    }
+
     public static function get_affiliation_id(int $user_id): ?int
     {
         $value = get_user_meta($user_id, 'affiliation_id', true);
