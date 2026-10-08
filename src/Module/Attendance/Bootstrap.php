@@ -88,6 +88,7 @@ final class Bootstrap
             AdminBusinessesPage::init();           // 共通マスタ > 事業マスタ
             AdminSalaryCycleSettingsPage::init();  // ポータル設定 > 給与計算サイクル設定
             AdminTimeRoundingSettingsPage::init(); // ポータル設定 > 打刻丸め設定
+            AdminWorkStartSettingsPage::init();    // ポータル設定 > 所定の始業時刻（有給日の自動割り当て）
             AdminConfirmationCancelSettingsPage::init(); // ポータル設定 > 確定の取り消し（3n-2）
             AdminMonthlySubmissionsPage::init();   // 勤怠管理 > 月次提出状況（3f-4c）
             AdminAttendanceGridPage::init();       // 勤怠管理 > 勤務表の確認（3j-1）
