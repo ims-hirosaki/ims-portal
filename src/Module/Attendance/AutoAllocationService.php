@@ -68,6 +68,9 @@ final class AutoAllocationService
      */
     public static function on_clocked_out(int $user_id, string $work_date): bool
     {
+        // この退勤で割り当てたかどうかだけを完了メッセージに反映するため、前回の記録を消してから判定する
+        unset(self::$assigned_on_clock_out[$user_id][$work_date]);
+
         $business_id = UserRepository::get_default_business_id($user_id);
         if ($business_id === null) {
             return false;
@@ -114,6 +117,22 @@ final class AutoAllocationService
 
         self::$assigned_on_clock_out[$user_id][$work_date] = (string) $business['business_name'];
         return true;
+    }
+
+    /**
+     * 退勤の完了メッセージに、自動割り当てした事業名を添える（3q-5。§3.3「退勤時の案内は確認のみ」）。
+     * ims_timecard_punch_success_message フィルタ（02）に登録する。
+     */
+    public static function append_clock_out_message(string $message, string $punch_type, int $user_id, string $work_date): string
+    {
+        if ($punch_type !== 'clock_out') {
+            return $message;
+        }
+        $name = self::assigned_business_name($user_id, $work_date);
+        if ($name === null) {
+            return $message;
+        }
+        return $message . sprintf('今日の事業別時間を「%s」で記録しました。ほかの事業でも働いた場合は、月次勤怠表で直してください。', $name);
     }
 
     /** このリクエストの退勤打刻で自動割り当てした事業名。無ければ null（3q-5 の完了メッセージ用）。 */
