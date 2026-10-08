@@ -142,6 +142,8 @@ final class AttendanceGridPage
             'days'       => $days_for_js,
             'yearMonth'  => $year_month,
             'isEditable' => $status['is_editable'],
+            // 3q-2：有給日の入力モーダルで目標として出す所定労働時間
+            'scheduledLabel' => self::format_hours((int) round(\IMS\Support\UserRepository::get_scheduled_work_hours($user_id) * 60)),
         ]);
     }
 

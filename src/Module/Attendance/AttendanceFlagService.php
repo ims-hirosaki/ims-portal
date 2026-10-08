@@ -50,6 +50,9 @@ final class AttendanceFlagService
             $stored_hourly_minutes = $hourly_leave_minutes;
         }
 
+        $previous  = DailyAttendanceRepository::find($user_id, $work_date);
+        $old_flag  = $previous !== null ? (string) $previous['attendance_flag'] : AttendanceFlagCalculator::NONE;
+
         $scheduled_minutes = (int) round(UserRepository::get_scheduled_work_hours($user_id) * 60);
         $logs = TimecardRepository::logs_for_date($user_id, $work_date);
         $raw  = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes, TimeRoundingSettings::minutes());
@@ -71,6 +74,11 @@ final class AttendanceFlagService
         );
         if (!$saved) {
             return new \WP_Error('db_error', '勤怠フラグの保存に失敗しました。');
+        }
+
+        // 3q-2：有給日の事業別時間の自動割り当て（有給を外したときは自動割り当ての行を取り除く）。
+        if ($old_flag !== $flag) {
+            AutoAllocationService::on_flag_changed($user_id, $work_date, $old_flag, $flag);
         }
 
         return true;

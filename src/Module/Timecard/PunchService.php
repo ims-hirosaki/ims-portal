@@ -135,7 +135,7 @@ final class PunchService
         return [
             'ok'         => true,
             'code'       => 'ok',
-            'message'    => self::success_message($punch_type),
+            'message'    => self::success_message($punch_type, $user_id, $work_date),
             'log_id'     => $log_id,
             'punched_at' => $now_mysql,
             'work_date'  => $work_date,
@@ -301,7 +301,7 @@ final class PunchService
         return [
             'ok'         => true,
             'code'       => 'ok',
-            'message'    => self::success_message(StatusCalculator::CLOCK_OUT),
+            'message'    => self::success_message(StatusCalculator::CLOCK_OUT, $user_id, $work_date),
             'log_id'     => $ids[1],
             'punched_at' => $now_mysql,
             'work_date'  => $work_date,
@@ -403,7 +403,7 @@ final class PunchService
         return [
             'ok'         => true,
             'code'       => 'ok',
-            'message'    => self::success_message(StatusCalculator::CLOCK_OUT),
+            'message'    => self::success_message(StatusCalculator::CLOCK_OUT, $user_id, $work_date),
             'log_id'     => $ids[2],
             'punched_at' => $now_mysql,
             'work_date'  => $work_date,
@@ -917,15 +917,22 @@ final class PunchService
 
     // ── メッセージ ──────────────────────────────────────────
 
-    private static function success_message(string $punch_type): string
+    /**
+     * 打刻完了時に本人へ出すメッセージ。
+     * 他モジュールは `ims_timecard_punch_success_message` フィルタで一言足せる
+     * （例：03 が退勤時に「事業別時間を○○で記録しました」と添える。3q-5。本モジュールは 03 を知らない）。
+     * フィルタは fire_hooks() の後に呼ばれるため、退勤フックで行った処理の結果を反映できる。
+     */
+    private static function success_message(string $punch_type, int $user_id = 0, string $work_date = ''): string
     {
-        return match ($punch_type) {
+        $message = match ($punch_type) {
             StatusCalculator::CLOCK_IN  => '出勤を記録しました。',
             StatusCalculator::BREAK_IN  => '休憩開始を記録しました。',
             StatusCalculator::BREAK_OUT => '休憩終了を記録しました。',
             StatusCalculator::CLOCK_OUT => '退勤を記録しました。お疲れさまでした。',
             default                     => '打刻を記録しました。',
         };
+        return (string) apply_filters('ims_timecard_punch_success_message', $message, $punch_type, $user_id, $work_date);
     }
 
     /**

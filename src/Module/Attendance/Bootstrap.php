@@ -73,6 +73,12 @@ final class Bootstrap
         add_action('ims_timecard_punch_added', [DailyAttendanceService::class, 'recalculate'], 10, 2);
         add_action('ims_timecard_punch_voided', [DailyAttendanceService::class, 'recalculate'], 10, 2);
 
+        // 3q-4：退勤打刻時に、社員のデフォルト事業で事業別時間を自動割り当てする（§3.3）。
+        // 日次勤怠の再計算（優先度10）の後に動かす。修正・追加・取り消しでは自動割り当てしない。
+        add_action('ims_timecard_clocked_out', [AutoAllocationService::class, 'on_clocked_out'], 20, 2);
+        // 3q-5：自動割り当てした場合、退勤の完了メッセージに事業名を添える（確認のみ。入力画面は出さない）。
+        add_filter('ims_timecard_punch_success_message', [AutoAllocationService::class, 'append_clock_out_message'], 10, 4);
+
         // フロント：月次勤務表グリッド（3e）。is_admin() の外で登録する（ポータル画面のため）。
         AttendanceGridPage::init();
 
@@ -88,6 +94,7 @@ final class Bootstrap
             AdminBusinessesPage::init();           // 共通マスタ > 事業マスタ
             AdminSalaryCycleSettingsPage::init();  // ポータル設定 > 給与計算サイクル設定
             AdminTimeRoundingSettingsPage::init(); // ポータル設定 > 打刻丸め設定
+            AdminWorkStartSettingsPage::init();    // ポータル設定 > 所定の始業時刻（有給日の自動割り当て）
             AdminConfirmationCancelSettingsPage::init(); // ポータル設定 > 確定の取り消し（3n-2）
             AdminMonthlySubmissionsPage::init();   // 勤怠管理 > 月次提出状況（3f-4c）
             AdminAttendanceGridPage::init();       // 勤怠管理 > 勤務表の確認（3j-1）

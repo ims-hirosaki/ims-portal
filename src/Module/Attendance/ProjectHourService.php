@@ -25,17 +25,17 @@ if (!defined('ABSPATH')) {
  * 「実際に働いた時間帯」のみのため（§3.3）。範囲・合計とも丸め後の時刻を基準にする
  * （要件定義書に無い追加仕様。ユーザー確認済み。WorkTimeCalculator 冒頭コメント参照）。
  *
- * 既知のスコープ外（次スライス以降で対応）：
- * ・有給日の自動割当て（§3.3「有給日の自動割当て」） … 所定の始業・終業"時刻"
- *   （time-of-day）を01モジュールがまだ保持しておらず（scheduled_work_hoursは
- *   時間数のみ）、自動割当てに必要な start_time/end_time を算出できないため見送った。
- *   01モジュールに所定始業・終業時刻を追加するタイミングで実装する。
+ * 有給日（3q-2）：自動割り当ては AutoAllocationService が行う（全社共通の所定の始業時刻を使う）。
+ * 手動での変更・分割もここで受け付け、打刻が無いため合計＝所定労働時間で検証する（§3.3 追記）。
  *
  * 3f-4で月次提出後の編集ロック（§4.1「ステータスがsubmitted以降は読み取り専用」）を追加した。
  * MonthlySummaryService::is_editable() で判定する。
  */
 final class ProjectHourService
 {
+    /** 有給日の手動入力で許す時刻の上限（分。打刻が無いため実質的に範囲チェックをしない。48:00）。 */
+    private const PAID_LEAVE_RANGE_END = 48 * 60;
+
     /**
      * 指定ユーザー・勤務日の事業別時間割当てを丸ごと保存する（差し替え）。
      *
@@ -58,13 +58,21 @@ final class ProjectHourService
 
         $logs = TimecardRepository::logs_for_date($user_id, $work_date);
         $scheduled_minutes = (int) round(UserRepository::get_scheduled_work_hours($user_id) * 60);
-        $raw = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes, TimeRoundingSettings::minutes());
-        if ($raw === null) {
-            return new \WP_Error('incomplete', 'この日はまだ出勤・退勤の打刻が完了していないため、事業別時間の割当てはできません。');
-        }
 
-        $clock_in_minutes  = $raw['rounded_clock_in_minutes'];
-        $clock_out_minutes = $raw['rounded_clock_out_minutes'];
+        if ($flag === AttendanceFlagCalculator::PAID_LEAVE) {
+            // 3q-2：有給日は打刻が無いため、打刻の範囲（条件2）は見ず、合計＝所定労働時間で検証する（§3.3 追記）。
+            $clock_in_minutes  = 0;
+            $clock_out_minutes = self::PAID_LEAVE_RANGE_END;
+            $target_minutes    = $scheduled_minutes;
+        } else {
+            $raw = WorkTimeCalculator::calculate_day($logs, $work_date, $scheduled_minutes, TimeRoundingSettings::minutes());
+            if ($raw === null) {
+                return new \WP_Error('incomplete', 'この日はまだ出勤・退勤の打刻が完了していないため、事業別時間の割当てはできません。');
+            }
+            $clock_in_minutes  = $raw['rounded_clock_in_minutes'];
+            $clock_out_minutes = $raw['rounded_clock_out_minutes'];
+            $target_minutes    = $raw['actual_minutes'];
+        }
 
         $parsed_rows = array_map(static fn(array $row): array => [
             'business_id' => (int) ($row['business_id'] ?? 0),
@@ -72,9 +80,9 @@ final class ProjectHourService
             'end_time'    => (string) ($row['end_time'] ?? ''),
         ], $rows);
 
-        $errors = ProjectHourCalculator::validate($parsed_rows, $clock_in_minutes, $clock_out_minutes, $raw['actual_minutes']);
+        $errors = ProjectHourCalculator::validate($parsed_rows, $clock_in_minutes, $clock_out_minutes, $target_minutes);
         if ($errors !== []) {
-            return new \WP_Error('validation', self::first_error_message($errors), $errors);
+            return new \WP_Error('validation', self::first_error_message($errors, $flag === AttendanceFlagCalculator::PAID_LEAVE), $errors);
         }
 
         foreach ($parsed_rows as $row) {
@@ -98,7 +106,7 @@ final class ProjectHourService
     }
 
     /** @param array<int, array{code:string}> $errors */
-    private static function first_error_message(array $errors): string
+    private static function first_error_message(array $errors, bool $is_paid_leave = false): string
     {
         $messages = [
             'invalid_business'    => '事業が選択されていない行があります。',
@@ -108,6 +116,9 @@ final class ProjectHourService
             'overlapping'         => '時間帯が重複している行があります。',
             'total_mismatch'      => '入力した時間の合計が、その日の実労働時間と一致しません。休憩時間は入力しないでください。',
         ];
+        if ($is_paid_leave) {
+            $messages['total_mismatch'] = '入力した時間の合計が、所定労働時間（有給で付与される時間）と一致しません。';
+        }
         $code = $errors[0]['code'] ?? '';
         return $messages[$code] ?? 'この入力内容には誤りがあります。';
     }
