@@ -73,6 +73,10 @@ final class Bootstrap
         add_action('ims_timecard_punch_added', [DailyAttendanceService::class, 'recalculate'], 10, 2);
         add_action('ims_timecard_punch_voided', [DailyAttendanceService::class, 'recalculate'], 10, 2);
 
+        // 3q-4：退勤打刻時に、社員のデフォルト事業で事業別時間を自動割り当てする（§3.3）。
+        // 日次勤怠の再計算（優先度10）の後に動かす。修正・追加・取り消しでは自動割り当てしない。
+        add_action('ims_timecard_clocked_out', [AutoAllocationService::class, 'on_clocked_out'], 20, 2);
+
         // フロント：月次勤務表グリッド（3e）。is_admin() の外で登録する（ポータル画面のため）。
         AttendanceGridPage::init();
 
