@@ -82,5 +82,17 @@ $punch(1,'2026-10-07','clock_out'); C::on_punched(1,'clock_out','2026-10-07');
 t('退勤打刻では作らない', count($rows(1,'2026-10-07')), 0);
 $punch(1,'2026-10-07'); C::on_punched(1,'clock_in','2026-10-07');
 t('出勤打刻のフックで作成', count($rows(1,'2026-10-07')), 1);
+// 期間まとめて同期（運用開始前の打刻の補完）
+foreach (['travel_expenses','daily_attendance','attendance_logs'] as $t) $wpdb->query("DELETE FROM wp_$t");
+$punch(1,'2026-12-01'); $punch(1,'2026-12-03'); $punch(1,'2026-12-20'); $flag(1,'2026-12-02','paid_leave'); $flag(1,'2026-12-04','half_day_am');
+$wpdb->insert('wp_attendance_logs',['user_id'=>1,'work_date'=>'2026-12-05','punch_type'=>'clock_in','punched_at'=>'2026-12-05 09:00:00','voided_at'=>'2026-12-05 10:00:00']);
+t('候補日（打刻のある日＋0円フラグの日。範囲外・取り消し済み・半日休のみは除く）', \IMS\Module\Travel\ExpenseRepository::candidate_dates(1,'2026-12-01','2026-12-15'), ['2026-12-01','2026-12-02','2026-12-03']);
+C::sync_period(1,'2026-12-01','2026-12-15');
+$in=\IMS\Module\Travel\ExpenseRepository::commutes_in_range(1,'2026-12-01','2026-12-31');
+t('期間内の3日ぶんだけ作られる', array_keys($in), ['2026-12-01','2026-12-02','2026-12-03']);
+t('有給は0円', [$in['2026-12-02']['amount'],$in['2026-12-02']['is_zero_suppressed']], ['0','1']);
+C::sync_period(1,'2026-12-01','2026-12-15');
+t('もう一度呼んでも増えない', count(\IMS\Module\Travel\ExpenseRepository::commutes_in_range(1,'2026-12-01','2026-12-31')), 3);
+t('他の社員のぶんは見えない', \IMS\Module\Travel\ExpenseRepository::commutes_in_range(2,'2026-12-01','2026-12-31'), []);
 echo $f?"FAILED $f\n":"ALL PASS\n"; exit($f?1:0);
 }

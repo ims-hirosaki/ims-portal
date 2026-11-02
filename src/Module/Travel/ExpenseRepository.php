@@ -26,6 +26,57 @@ final class ExpenseRepository
         return $row ?: null;
     }
 
+    /**
+     * 期間内の通勤レコード（勤務日 → レコード）。
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function commutes_in_range(int $user_id, string $start, string $end): array
+    {
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT * FROM ' . Schema::expenses_table() . " WHERE user_id = %d AND expense_type = 'commute' AND work_date BETWEEN %s AND %s ORDER BY work_date ASC, id ASC",
+                $user_id,
+                $start,
+                $end
+            ),
+            ARRAY_A
+        ) ?: [];
+        $by = [];
+        foreach ($rows as $r) {
+            $by[(string) $r['work_date']] ??= $r; // 1日1件（先頭のみ）
+        }
+        return $by;
+    }
+
+    /**
+     * 期間内で通勤費の生成対象になりうる日（出勤打刻のある日＋0円処理になる勤怠フラグの日）。
+     *
+     * @return string[] 'Y-m-d' の昇順
+     */
+    public static function candidate_dates(int $user_id, string $start, string $end): array
+    {
+        global $wpdb;
+        $logs  = \IMS\Module\Timecard\Schema::logs_table();
+        $daily = \IMS\Module\Attendance\Schema::daily_attendance_table();
+        $dates = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT DISTINCT work_date FROM {$logs} WHERE user_id = %d AND punch_type = 'clock_in' AND voided_at IS NULL AND work_date BETWEEN %s AND %s
+                 UNION
+                 SELECT work_date FROM {$daily} WHERE user_id = %d AND attendance_flag IN ('paid_leave','legal_substitute','scheduled_substitute') AND work_date BETWEEN %s AND %s
+                 ORDER BY work_date ASC",
+                $user_id,
+                $start,
+                $end,
+                $user_id,
+                $start,
+                $end
+            )
+        ) ?: [];
+        return array_map('strval', $dates);
+    }
+
     /** @param array<string, mixed> $row */
     public static function insert(array $row): bool
     {

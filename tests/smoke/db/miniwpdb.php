@@ -13,5 +13,6 @@ class MiniWpdb {
   function update($t,$d,$w){ $set=implode(',',array_map(fn($k,$v)=>"`$k`=".$this->q($v),array_keys($d),$d)); $wh=implode(' AND ',array_map(fn($k,$v)=>$v===null?"`$k` IS NULL":"`$k`=".$this->q($v),array_keys($w),$w)); return $this->query("UPDATE $t SET $set WHERE $wh"); }
   function get_row($sql,$o=null){ $r=$this->db->query($sql); return $r?($r->fetch_assoc()?:null):null; }
   function get_var($sql){ $r=$this->db->query($sql); if(!$r)return null; $row=$r->fetch_row(); return $row?$row[0]:null; }
+  function get_col($sql){ $r=$this->db->query($sql); return $r?array_map(fn($row)=>$row[0],$r->fetch_all(MYSQLI_NUM)):[]; }
   function get_results($sql,$o=null){ $r=$this->db->query($sql); return $r?$r->fetch_all(MYSQLI_ASSOC):null; }
 }

@@ -48,6 +48,17 @@ final class CommuteService
         }
     }
 
+    /**
+     * 期間分をまとめて同期する（運用開始前の打刻や、取りこぼしの補完用。画面を開いたときに呼ぶ）。
+     * 提出済み以降の月度は sync_day が何もしない。
+     */
+    public static function sync_period(int $user_id, string $start, string $end): void
+    {
+        foreach (ExpenseRepository::candidate_dates($user_id, $start, $end) as $date) {
+            self::on_day_changed($user_id, $date);
+        }
+    }
+
     /** 1日分を同期する。 */
     public static function sync_day(int $user_id, string $work_date): string
     {

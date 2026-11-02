@@ -36,3 +36,5 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 | `db/gasoline_price_test.php` | 4c 一括再計算（実DB）：確定月は不変・履歴の追記・失敗時は全体ロールバック |
 | `commute_planner_test.php` | 4d 通勤費の自動生成の判定（`CommutePlanner`） |
 | `db/commute_service_test.php` | 4d 通勤費の自動生成（実DB）：作成・べき等・勤怠フラグ連動・提出後ロック・編集を上書きしない |
+| `travel_tab_calculator_test.php` | 4e 交通費タブの表示データ（`TravelTabCalculator`） |
+| `db/travel_tab_view_test.php` | 4e 交通費タブの描画（実DB）：行・事業の色・未設定の警告・0円ラベル・集計・提出済みは作り足さない |

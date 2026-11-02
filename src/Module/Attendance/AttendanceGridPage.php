@@ -50,6 +50,7 @@ final class AttendanceGridPage
     /** タブ（3l）。 */
     private const TAB_GRID      = 'grid';
     private const TAB_STATEMENT = 'statement';
+    private const TAB_TRAVEL    = 'travel'; // 04（交通費。4e）
 
     /** グリッドの表示範囲（分・work_date 0時起点）。8:00〜21:45（§4.1の例に合わせた既定値）。 */
     private const GRID_START_MINUTES = 8 * 60;
@@ -170,6 +171,8 @@ final class AttendanceGridPage
             <?php self::render_tabs($year_month, $tab); ?>
             <?php if ($tab === self::TAB_STATEMENT) : ?>
                 <?php MonthlyStatementView::render($user_id, $year_month); ?>
+            <?php elseif ($tab === self::TAB_TRAVEL) : ?>
+                <?php \IMS\Module\Travel\TravelTabView::render($user_id, $year_month, $data['period']['start'], $data['period']['end']); ?>
             <?php else : ?>
                 <?php self::render_legend($data['businesses'], $data['business_totals']); ?>
                 <?php self::render_grid($data, $status['is_editable']); ?>
@@ -181,13 +184,13 @@ final class AttendanceGridPage
     }
 
     /**
-     * タブ（§4.1「画面統合（タブ構成）」の簡略版。3l）。交通費・車両借り上げは04モジュール未実装のため、
-     * 勤怠・集計表の2つだけ。切り替えは ?tab= のページ遷移で行う（JSで二重に描画しない）。
+     * タブ（§4.1「画面統合（タブ構成）」の簡略版。3l）。交通費タブは04モジュール（4e）。車両借り上げは未実装。切り替えは ?tab= のページ遷移で行う（JSで二重に描画しない）。
      */
     private static function render_tabs(string $year_month, string $current): void
     {
         $tabs = [
             self::TAB_GRID      => __('勤怠', 'ims-portal'),
+            self::TAB_TRAVEL    => __('交通費', 'ims-portal'),
             self::TAB_STATEMENT => __('集計表', 'ims-portal'),
         ];
         ?>
@@ -207,7 +210,7 @@ final class AttendanceGridPage
     private static function resolve_tab(): string
     {
         $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
-        return $tab === self::TAB_STATEMENT ? self::TAB_STATEMENT : self::TAB_GRID;
+        return in_array($tab, [self::TAB_STATEMENT, self::TAB_TRAVEL], true) ? $tab : self::TAB_GRID;
     }
 
     /**

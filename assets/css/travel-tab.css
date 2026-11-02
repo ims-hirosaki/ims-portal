@@ -1,0 +1,32 @@
+/**
+ * スタッフ画面「交通費」タブ（04 §4.1。4e）専用スタイル。
+ * クラスはすべて `.tv-` で始め、共有CSSは変更しない。色・角丸は 07_design_system.md のトークン経由。
+ */
+.tv-wrap { display: flex; gap: 20px; align-items: flex-start; margin-top: 12px; }
+.tv-main { flex: 1 1 auto; min-width: 0; }
+.tv-side { flex: 0 0 260px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-sm, 8px); background: var(--paper, #fff); }
+.tv-scroll { overflow-x: auto; }
+.tv-table { width: 100%; border-collapse: collapse; }
+.tv-table th, .tv-table td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.tv-table thead th { color: var(--ink-soft); font-weight: 500; font-size: 0.9em; }
+.tv-table .tv-num { text-align: right; font-variant-numeric: tabular-nums; }
+.tv-table tfoot th, .tv-table tfoot td { font-weight: 600; border-top: 2px solid var(--line); }
+.tv-row.is-weekend td { background: rgba(0, 0, 0, 0.03); }
+.tv-row.is-zero td { color: var(--ink-soft); background: rgba(0, 0, 0, 0.05); }
+.tv-empty { color: var(--ink-soft); }
+.tv-zero-label { margin-left: 8px; font-size: 0.85em; }
+.tv-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: #bbb; vertical-align: baseline; }
+.tv-unset { color: #A8412E; font-weight: 500; }
+.tv-warn { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid #A8412E; background: rgba(168, 65, 46, 0.07); }
+.tv-note { color: var(--ink-soft); font-size: 0.9em; margin: 10px 0 0; }
+.tv-side-title { margin: 0 0 8px; font-size: 1em; }
+.tv-side-list { list-style: none; margin: 0; padding: 0; }
+.tv-side-list li { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.tv-side-name { flex: 1 1 auto; }
+.tv-side-days { color: var(--ink-soft); font-size: 0.85em; }
+.tv-side-amt { font-variant-numeric: tabular-nums; }
+.tv-side-total { margin: 10px 0 0; text-align: right; }
+@media (max-width: 760px) {
+  .tv-wrap { flex-direction: column; }
+  .tv-side { flex-basis: auto; width: 100%; box-sizing: border-box; }
+}
