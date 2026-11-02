@@ -32,3 +32,5 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 | `admin_access_policy_test.php` | 3p-1 wp-admin の限定開放（`AdminAccessPolicy`） |
 | `travel_expense_calculator_test.php` | 4a 交通費・車両借り上げの金額計算（`ExpenseCalculator`） |
 | `travel_calc_settings_test.php` | 4b 距離の丸め設定の保存（`CalcSettings`） |
+| `gasoline_price_calculator_test.php` | 4c ガソリン単価変更の入力チェックと再計算の計画（`GasolinePriceCalculator`） |
+| `db/gasoline_price_test.php` | 4c 一括再計算（実DB）：確定月は不変・履歴の追記・失敗時は全体ロールバック |
