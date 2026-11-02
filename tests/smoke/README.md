@@ -15,7 +15,7 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 - `tests/` はデプロイ（FTP）でサーバーにも置かれる（`.github/` の除外設定は変えられないため）。
   そのため、すべてのファイルは先頭で「コマンドライン以外なら何もせず終了」し、`tests/.htaccess` で Web からのアクセスを拒否している。
   **新しいテストを足すときも、必ず先頭にこの2行を入れること。**
-- MariaDB と本物の WordPress で確認する手順は `docs/引き継ぎ書_phase3p.md` §6。
+- MariaDB と本物の WordPress で確認する手順は `docs/引き継ぎ書_phase3q.md` §6。
 
 ## テスト一覧
 | ファイル | 対象 |
@@ -30,3 +30,5 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 | `submission_reminder_test.php` / `dashboard_tile_test.php` / `tile_badge_test.php` | 3m・3p-3 タイルと未提出バッジ |
 | `confirmation_cancel_settings_test.php` / `db/confirmation_cancel_test.php` / `db/confirmation_cancel_ui_test.php` | 3n 確定の取り消し |
 | `admin_access_policy_test.php` | 3p-1 wp-admin の限定開放（`AdminAccessPolicy`） |
+| `work_start_settings_test.php` | 3q-1 所定の始業時刻（`WorkStartSettings`） |
+| `auto_allocation_test.php` | 3q 事業別時間の自動割り当て（`AutoAllocationCalculator`） |
