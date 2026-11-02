@@ -3,7 +3,7 @@
  * Plugin Name:       IMS Hirosaki Portal
  * Plugin URI:        https://portal-site.labs-ims.com/
  * Description:       IMS Hirosaki 社内業務システム（グループウェア）。ユーザー管理・打刻・勤怠・交通費・稟議・Google Workspace 連携を統合するポータル基盤プラグイン。
- * Version:           0.8.23-phase3q5
+ * Version:           0.9.0-phase4a
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            IMS Hirosaki
@@ -25,8 +25,8 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.8.23-phase3q5'); // 3q-5：退勤の完了メッセージに自動記録した事業名を表示（確認のみ）
-define('IMS_PORTAL_DB_VERSION', 12); // スキーマ変更時にインクリメントする（08 §5.2）。v11→v12: 03モジュールに wp_monthly_confirmation_cancellations（確定の取り消し記録）を新規追加（新規テーブルのためdbDeltaで反映される）
+define('IMS_PORTAL_VERSION', '0.9.0-phase4a'); // 4a：モジュール04（交通費・車両借上げ）の土台（テーブル・金額計算・丸め設定。画面なし）
+define('IMS_PORTAL_DB_VERSION', 13); // スキーマ変更時にインクリメントする（08 §5.2）。v12→v13: 04モジュールに wp_travel_expenses・wp_gasoline_price_history を新規追加（新規テーブルのためdbDeltaで反映される）。v11→v12: 03モジュールに wp_monthly_confirmation_cancellations（確定の取り消し記録）を新規追加（新規テーブルのためdbDeltaで反映される）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));
 define('IMS_PORTAL_URL', plugin_dir_url(__FILE__));
@@ -132,6 +132,7 @@ final class IMS_Portal_Plugin
         \IMS\Module\User\Bootstrap::init();   // 01_user_management
         \IMS\Module\Timecard\Bootstrap::init();
         \IMS\Module\Attendance\Bootstrap::init(); // 03_attendance_management（3a：骨格）
+        \IMS\Module\Travel\Bootstrap::init();     // 04_travel_expenses（4a：土台のみ）
         do_action('ims_portal_modules_loaded');
     }
 }
