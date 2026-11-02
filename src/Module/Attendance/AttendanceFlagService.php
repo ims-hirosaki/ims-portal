@@ -79,6 +79,8 @@ final class AttendanceFlagService
         // 3q-2：有給日の事業別時間の自動割り当て（有給を外したときは自動割り当ての行を取り除く）。
         if ($old_flag !== $flag) {
             AutoAllocationService::on_flag_changed($user_id, $work_date, $old_flag, $flag);
+            // 04（通勤交通費）が有給・振替休の0円処理などを同期する受け口。
+            do_action('ims_attendance_flag_changed', $user_id, $work_date, $old_flag, $flag);
         }
 
         return true;

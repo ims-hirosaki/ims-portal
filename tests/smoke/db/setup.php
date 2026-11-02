@@ -17,11 +17,12 @@ $wpdb = new IMS_Smoke_Wpdb_For_Ddl();
 function add_filter(...$args) {}
 require dirname(__DIR__, 3) . '/src/Module/Attendance/Schema.php';
 require dirname(__DIR__, 3) . '/src/Module/Travel/Schema.php';
+require dirname(__DIR__, 3) . '/src/Module/Timecard/Schema.php';
 
 $db = new mysqli(getenv('IMS_TEST_DB_HOST') ?: 'localhost', getenv('IMS_TEST_DB_USER') ?: 'wp', getenv('IMS_TEST_DB_PASS') ?: 'wp', getenv('IMS_TEST_DB_NAME') ?: 't');
 $db->set_charset('utf8mb4');
 
-foreach (array_merge(IMS\Module\Attendance\Schema::contribute([]), IMS\Module\Travel\Schema::contribute([])) as $ddl) {
+foreach (array_merge(IMS\Module\Attendance\Schema::contribute([]), IMS\Module\Travel\Schema::contribute([]), IMS\Module\Timecard\Schema::contribute([])) as $ddl) {
     if (!preg_match('/CREATE TABLE (\S+)/', $ddl, $m)) {
         continue;
     }

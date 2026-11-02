@@ -34,3 +34,5 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 | `travel_calc_settings_test.php` | 4b 距離の丸め設定の保存（`CalcSettings`） |
 | `gasoline_price_calculator_test.php` | 4c ガソリン単価変更の入力チェックと再計算の計画（`GasolinePriceCalculator`） |
 | `db/gasoline_price_test.php` | 4c 一括再計算（実DB）：確定月は不変・履歴の追記・失敗時は全体ロールバック |
+| `commute_planner_test.php` | 4d 通勤費の自動生成の判定（`CommutePlanner`） |
+| `db/commute_service_test.php` | 4d 通勤費の自動生成（実DB）：作成・べき等・勤怠フラグ連動・提出後ロック・編集を上書きしない |
