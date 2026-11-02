@@ -31,3 +31,4 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 | `confirmation_cancel_settings_test.php` / `db/confirmation_cancel_test.php` / `db/confirmation_cancel_ui_test.php` | 3n 確定の取り消し |
 | `admin_access_policy_test.php` | 3p-1 wp-admin の限定開放（`AdminAccessPolicy`） |
 | `travel_expense_calculator_test.php` | 4a 交通費・車両借り上げの金額計算（`ExpenseCalculator`） |
+| `travel_calc_settings_test.php` | 4b 距離の丸め設定の保存（`CalcSettings`） |
