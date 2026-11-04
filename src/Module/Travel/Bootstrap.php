@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
  * 4a：テーブル（wp_travel_expenses・wp_gasoline_price_history）、金額計算（ExpenseCalculator）、
  * 距離の丸め設定の保存（CalcSettings）。4b：その設定画面（AdminCalcRulesPage）。
  * 4c：ガソリン単価の変更履歴と一括再計算（GasolinePriceCalculator・GasolinePriceService・AdminGasolinePricePage）。
+ * 4g：月次提出時に、通勤の交通費で事業が未設定なら提出をブロック（SubmitCheck）。
  * 4f：事業の選択・往復/片道の変更とサジェスト（BusinessSuggester・CommuteEditCalculator・CommuteEditService・RestController）。
  * 4e：スタッフ画面の「交通費」タブ（TravelTabCalculator・TravelTabView）。
  * 4d：通勤交通費の自動生成（CommutePlanner・CommuteService・ExpenseRepository）。
@@ -31,6 +32,7 @@ final class Bootstrap
         add_action('ims_timecard_punch_added', [CommuteService::class, 'on_day_changed'], 10, 2);  // 打刻の追加（出勤の追加を含む）
         add_action('ims_attendance_flag_changed', [CommuteService::class, 'on_day_changed'], 10, 2); // 勤怠フラグの変更
 
+        add_filter('ims_monthly_summary_submit_check', [SubmitCheck::class, 'filter'], 10, 3); // 月次提出時のチェック（4g）
         RestController::init(); // 書き込みAPI（4f）。rest_api_init は管理画面でも走るので is_admin() の外
         TravelTabView::init(); // スタッフ画面の「交通費」タブ（4e）。ポータル画面なので is_admin() の外
 

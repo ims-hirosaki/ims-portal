@@ -3,7 +3,7 @@
  * Plugin Name:       IMS Hirosaki Portal
  * Plugin URI:        https://portal-site.labs-ims.com/
  * Description:       IMS Hirosaki 社内業務システム（グループウェア）。ユーザー管理・打刻・勤怠・交通費・稟議・Google Workspace 連携を統合するポータル基盤プラグイン。
- * Version:           0.9.5-phase4f
+ * Version:           0.9.6-phase4g
  * Requires at least: 6.4
  * Requires PHP:      8.1
  * Author:            IMS Hirosaki
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // ── 定数 ──────────────────────────────────────────────
-define('IMS_PORTAL_VERSION', '0.9.5-phase4f'); // 4f：交通費タブで事業の選択・往復/片道の変更・事業のサジェスト
+define('IMS_PORTAL_VERSION', '0.9.6-phase4g'); // 4g：月次提出時に、通勤の交通費で事業が未設定なら提出をブロック
 define('IMS_PORTAL_DB_VERSION', 13); // スキーマ変更時にインクリメントする（08 §5.2）。v12→v13: 04モジュールに wp_travel_expenses・wp_gasoline_price_history を新規追加（新規テーブルのためdbDeltaで反映される）。v11→v12: 03モジュールに wp_monthly_confirmation_cancellations（確定の取り消し記録）を新規追加（新規テーブルのためdbDeltaで反映される）
 define('IMS_PORTAL_FILE', __FILE__);
 define('IMS_PORTAL_DIR', plugin_dir_path(__FILE__));

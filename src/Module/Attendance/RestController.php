@@ -46,6 +46,7 @@ final class RestController
         'forbidden_self'  => 403,
         'invalid_status'  => 409,
         'unallocated_days' => 409,
+        'unset_travel_business' => 409, // 04：通勤の交通費で事業が未設定
         'db_error'        => 500,
     ];
 
