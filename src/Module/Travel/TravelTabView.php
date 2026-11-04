@@ -34,7 +34,7 @@ final class TravelTabView
             return;
         }
         $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash((string) $_GET['tab'])) : '';
-        if ($tab !== self::TAB) {
+        if ($tab !== self::TAB && $tab !== VehicleTabView::TAB) {
             return;
         }
         wp_enqueue_style('ims-travel-tab', IMS_PORTAL_URL . 'assets/css/travel-tab.css', ['ims-attendance-statement'], IMS_PORTAL_VERSION);

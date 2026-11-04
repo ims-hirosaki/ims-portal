@@ -41,3 +41,5 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 | `commute_edit_test.php` | 4f 事業のサジェストと通勤レコード編集の入力チェック（`BusinessSuggester`・`CommuteEditCalculator`） |
 | `db/commute_edit_service_test.php` | 4f 通勤レコードの編集（実DB）：保存・他人/提出済みの拒否・事業の自動設定 |
 | `db/submit_check_test.php` | 4g 月次提出時の交通費チェック（実DB。03の提出処理まで通す）：未設定でブロック・自動設定・0円処理は対象外・提出後はロック |
+| `vehicle_rental_test.php` | 4h 車両借り上げの入力チェック・金額・タブの表示データ（`VehicleRentalCalculator`・`VehicleTabCalculator`） |
+| `db/vehicle_rental_service_test.php` | 4h 車両借り上げ（実DB）：追加・削除・ロック・他人の分は触れない・タブの描画 |

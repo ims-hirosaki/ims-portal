@@ -20,6 +20,8 @@ final class RestController
 {
     private const NAMESPACE = 'ims/v1';
     private const ROUTE_COMMUTE = '/travel/commute/(?P<id>\d+)';
+    private const ROUTE_VEHICLE = '/travel/vehicle';
+    private const ROUTE_VEHICLE_ONE = '/travel/vehicle/(?P<id>\d+)';
 
     private const STATUS_MAP = [
         'validation'   => 400,
@@ -45,6 +47,17 @@ final class RestController
                 'business_id'   => ['required' => false, 'type' => 'integer'],
                 'commute_type'  => ['required' => false, 'type' => 'string', 'enum' => CommuteEditCalculator::TYPES],
             ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, self::ROUTE_VEHICLE, [
+            'methods'             => 'POST',
+            'callback'            => [self::class, 'handle_create_vehicle'],
+            'permission_callback' => [self::class, 'can_use'],
+        ]);
+        register_rest_route(self::NAMESPACE, self::ROUTE_VEHICLE_ONE, [
+            'methods'             => 'DELETE',
+            'callback'            => [self::class, 'handle_delete_vehicle'],
+            'permission_callback' => [self::class, 'can_use'],
         ]);
     }
 
@@ -81,5 +94,26 @@ final class RestController
             'business_id' => $result['business_id'] !== null ? (int) $result['business_id'] : null,
             'commute_type' => (string) $result['commute_type'],
         ], 200);
+    }
+
+    /** 車両借り上げの追加（本人分のみ）。 */
+    public static function handle_create_vehicle(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $p = $request->get_json_params();
+        $result = VehicleRentalService::create(get_current_user_id(), is_array($p) ? $p : []);
+        return is_wp_error($result) ? self::error($result) : new \WP_REST_Response(['ok' => true, 'amount' => (int) $result['amount']], 200);
+    }
+
+    /** 車両借り上げの削除（本人分のみ・提出前の月度だけ）。 */
+    public static function handle_delete_vehicle(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $result = VehicleRentalService::delete(get_current_user_id(), (int) $request->get_param('id'));
+        return is_wp_error($result) ? self::error($result) : new \WP_REST_Response(['ok' => true], 200);
+    }
+
+    private static function error(\WP_Error $e): \WP_REST_Response
+    {
+        $code = (string) $e->get_error_code();
+        return new \WP_REST_Response(['ok' => false, 'code' => $code, 'message' => $e->get_error_message()], self::STATUS_MAP[$code] ?? 400);
     }
 }

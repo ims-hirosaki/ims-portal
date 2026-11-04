@@ -113,6 +113,34 @@ final class ExpenseRepository
         return $by;
     }
 
+    /**
+     * 期間内の車両借り上げ（勤務日・ID の昇順）。
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function vehicles_in_range(int $user_id, string $start, string $end): array
+    {
+        global $wpdb;
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT * FROM ' . Schema::expenses_table() . " WHERE user_id = %d AND expense_type = 'vehicle_rental' AND work_date BETWEEN %s AND %s ORDER BY work_date ASC, id ASC",
+                $user_id,
+                $start,
+                $end
+            ),
+            ARRAY_A
+        ) ?: [];
+    }
+
+    /** 本人の車両借り上げ1件を削除する（通勤レコードは対象外。確定済みの月度は呼び出し側で除く）。 */
+    public static function delete_vehicle(int $id, int $user_id): bool
+    {
+        global $wpdb;
+        return $wpdb->query(
+            $wpdb->prepare('DELETE FROM ' . Schema::expenses_table() . " WHERE id = %d AND user_id = %d AND expense_type = 'vehicle_rental'", $id, $user_id)
+        ) === 1;
+    }
+
     /** @param array<string, mixed> $row */
     public static function insert(array $row): bool
     {

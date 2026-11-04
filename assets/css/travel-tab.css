@@ -33,3 +33,18 @@
 .tv-select { max-width: 200px; padding: 3px 6px; border: 1px solid var(--line); border-radius: var(--r-sm, 8px); background: var(--paper, #fff); font: inherit; }
 .tv-select.is-unset { border-color: #A8412E; color: #A8412E; }
 .tv-select:disabled { opacity: 0.6; }
+
+/* ── 車両借り上げタブ（4h） ── */
+.tv-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.tv-chip { padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft); text-decoration: none; font-size: 0.9em; }
+.tv-chip.is-current { background: var(--ink, #222); border-color: var(--ink, #222); color: #fff; }
+.tv-group { margin: 0 0 18px; }
+.tv-group-title { margin: 0 0 6px; font-size: 1em; }
+.tv-form { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-sm, 8px); background: var(--paper, #fff); }
+.tv-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; align-items: end; margin-bottom: 10px; }
+.tv-form-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 0.85em; color: var(--ink-soft); }
+.tv-form-grid input[type="text"], .tv-form-grid input[type="number"], .tv-form-grid input[type="date"], .tv-form-grid select { padding: 5px 7px; border: 1px solid var(--line); border-radius: var(--r-sm, 8px); font: inherit; color: var(--ink, #222); background: var(--paper, #fff); }
+.tv-form-grid .tv-check { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 6px; }
+.tv-submit { padding: 6px 18px; border: 0; border-radius: var(--r-sm, 8px); background: var(--ink, #222); color: #fff; font: inherit; cursor: pointer; }
+.tv-submit:disabled, .tv-delete:disabled { opacity: 0.6; cursor: default; }
+.tv-delete { padding: 2px 10px; border: 1px solid var(--line); border-radius: var(--r-sm, 8px); background: transparent; color: #A8412E; font: inherit; font-size: 0.85em; cursor: pointer; }

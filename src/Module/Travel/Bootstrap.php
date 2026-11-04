@@ -14,6 +14,7 @@ if (!defined('ABSPATH')) {
  * 4a：テーブル（wp_travel_expenses・wp_gasoline_price_history）、金額計算（ExpenseCalculator）、
  * 距離の丸め設定の保存（CalcSettings）。4b：その設定画面（AdminCalcRulesPage）。
  * 4c：ガソリン単価の変更履歴と一括再計算（GasolinePriceCalculator・GasolinePriceService・AdminGasolinePricePage）。
+ * 4h：車両借り上げの入力・タブ（VehicleRentalCalculator・VehicleRentalService・VehicleTabCalculator・VehicleTabView）。
  * 4g：月次提出時に、通勤の交通費で事業が未設定なら提出をブロック（SubmitCheck）。
  * 4f：事業の選択・往復/片道の変更とサジェスト（BusinessSuggester・CommuteEditCalculator・CommuteEditService・RestController）。
  * 4e：スタッフ画面の「交通費」タブ（TravelTabCalculator・TravelTabView）。
