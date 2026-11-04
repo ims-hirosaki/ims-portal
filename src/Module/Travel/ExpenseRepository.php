@@ -77,6 +77,42 @@ final class ExpenseRepository
         return array_map('strval', $dates);
     }
 
+    /** @return array<string, mixed>|null 本人のレコード（他人のIDは見つからない扱い） */
+    public static function find_by_id(int $id, int $user_id): ?array
+    {
+        global $wpdb;
+        $row = $wpdb->get_row(
+            $wpdb->prepare('SELECT * FROM ' . Schema::expenses_table() . ' WHERE id = %d AND user_id = %d', $id, $user_id),
+            ARRAY_A
+        );
+        return $row ?: null;
+    }
+
+    /**
+     * 期間内の事業別時間（勤務日 → 事業ID → 分）。事業のサジェスト用。
+     *
+     * @return array<string, array<int, int>>
+     */
+    public static function project_minutes_by_date(int $user_id, string $start, string $end): array
+    {
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                'SELECT work_date, business_id, SUM(minutes) AS minutes FROM ' . \IMS\Module\Attendance\Schema::project_hours_table()
+                . ' WHERE user_id = %d AND work_date BETWEEN %s AND %s GROUP BY work_date, business_id',
+                $user_id,
+                $start,
+                $end
+            ),
+            ARRAY_A
+        ) ?: [];
+        $by = [];
+        foreach ($rows as $r) {
+            $by[(string) $r['work_date']][(int) $r['business_id']] = (int) $r['minutes'];
+        }
+        return $by;
+    }
+
     /** @param array<string, mixed> $row */
     public static function insert(array $row): bool
     {

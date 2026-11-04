@@ -22,9 +22,10 @@ final class TravelTabCalculator
      * @param array<string, array<string, mixed>>        $commutes_by_date 勤務日 → 通勤レコード
      * @param array<int, array{id:int, name:string, color:string}> $businesses 事業ID → 事業
      * @param array<string, string>                      $flags_by_date    勤務日 → 勤怠フラグ
+     * @param array<string, int>                         $suggested_by_date 勤務日 → 候補の事業ID（事業が未設定の日だけ使う）
      * @return array<int, array<string, mixed>>
      */
-    public static function rows(string $start, string $end, array $commutes_by_date, array $businesses, array $flags_by_date, string $mode): array
+    public static function rows(string $start, string $end, array $commutes_by_date, array $businesses, array $flags_by_date, string $mode, array $suggested_by_date = []): array
     {
         $rows = [];
         for ($ts = strtotime($start . ' 00:00:00 UTC'), $last = strtotime($end . ' 00:00:00 UTC'); $ts <= $last; $ts += 86400) {
@@ -42,6 +43,7 @@ final class TravelTabCalculator
                 'amount'        => null,
                 'business'      => null,
                 'business_unset' => false,
+                'suggested_business_id' => null,
                 'is_zero'       => false,
                 'zero_label'    => null,
             ];
@@ -54,6 +56,9 @@ final class TravelTabCalculator
                 $bid              = $rec['business_id'] !== null ? (int) $rec['business_id'] : 0;
                 $row['business']  = $bid > 0 ? ($businesses[$bid] ?? ['id' => $bid, 'name' => '（削除された事業）', 'color' => '#999999']) : null;
                 $row['business_unset'] = $bid === 0;
+                if ($bid === 0 && isset($suggested_by_date[$date])) {
+                    $row['suggested_business_id'] = (int) $suggested_by_date[$date];
+                }
                 if ((int) $rec['is_zero_suppressed'] === 1) {
                     $row['is_zero']    = true;
                     $reason            = self::ZERO_REASON[$flags_by_date[$date] ?? ''] ?? null;

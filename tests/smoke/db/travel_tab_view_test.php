@@ -47,10 +47,24 @@ ob_start(); V::render(1,'2026-10','2026-10-01','2026-10-05'); $h=ob_get_clean();
 t('事業の色と名前', [str_contains($h,'background:#1E3A5F'), str_contains($h,'本社業務')], [true,true]);
 t('未設定が1日減る', str_contains($h,'事業が未設定の日が2日'), true);
 
+// 編集できる月はプルダウンが出る。複数事業の日は最多の事業に「（候補）」が付く
+$wpdb->insert('wp_businesses',['business_code'=>'b','business_name'=>'氷河期事業','color_code'=>'#2E7D32','is_active'=>1,'sort_order'=>2]);
+$bid2=(int)$wpdb->get_var('SELECT MAX(business_id) FROM wp_businesses');
+$wpdb->insert('wp_project_hours',['user_id'=>1,'work_date'=>'2026-10-02','business_id'=>$bid,'start_time'=>'09:00:00','end_time'=>'11:00:00','minutes'=>120]);
+$wpdb->insert('wp_project_hours',['user_id'=>1,'work_date'=>'2026-10-02','business_id'=>$bid2,'start_time'=>'11:00:00','end_time'=>'17:00:00','minutes'=>360]);
+ob_start(); V::render(1,'2026-10','2026-10-01','2026-10-05'); $h=ob_get_clean();
+t('事業のプルダウンがある', str_contains($h,'data-field="business_id"'), true);
+t('往復/片道のプルダウンがある（0円の日を除く）', substr_count($h,'data-field="commute_type"'), 2);
+t('最多の事業に候補の印', str_contains($h,'氷河期事業（候補）'), true);
+t('候補は自動では設定されない', $wpdb->get_var("SELECT business_id FROM wp_travel_expenses WHERE user_id=1 AND work_date='2026-10-02'"), null);
+t('未設定の日は「未設定（要選択）」から始まる', str_contains($h,'⚠ 未設定（要選択）'), true);
+
 // 提出済みの月は作り足さない
 $wpdb->insert('wp_monthly_summary',['user_id'=>1,'target_year_month'=>'2026-10','status'=>'submitted']);
 $wpdb->insert('wp_attendance_logs',['user_id'=>1,'work_date'=>'2026-10-04','punch_type'=>'clock_in','punched_at'=>'2026-10-04 09:00:00']);
 ob_start(); V::render(1,'2026-10','2026-10-01','2026-10-05'); ob_get_clean();
+ob_start(); V::render(1,'2026-10','2026-10-01','2026-10-05'); $h=ob_get_clean();
+t('提出済みの月はプルダウンが出ない', [str_contains($h,'<select'), str_contains($h,'本社業務')], [false,true]);
 t('提出済みの月は作り足さない', (int)$wpdb->get_var('SELECT COUNT(*) FROM wp_travel_expenses WHERE user_id=1'), 3);
 
 // HTMLエスケープ

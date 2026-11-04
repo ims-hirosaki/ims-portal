@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 /**
  * スタッフ画面「交通費」タブ（04 §4.1「交通費タブ」。4e）。勤怠画面（/portal/attendance/?tab=travel）の中に出す。
  *
- * 4e は表示だけ。事業の選択・編集・提出は後続スライス。
+ * 4e は表示、4f で事業の選択・往復/片道の変更（保存は REST。assets/js/travel-tab.js）。提出は後続スライス。
  * 画面を開いたとき、編集できる月度なら通勤費を作り足す（運用開始前の打刻などの補完。CommuteService::sync_period）。
  */
 final class TravelTabView
@@ -38,12 +38,15 @@ final class TravelTabView
             return;
         }
         wp_enqueue_style('ims-travel-tab', IMS_PORTAL_URL . 'assets/css/travel-tab.css', ['ims-attendance-statement'], IMS_PORTAL_VERSION);
+        wp_enqueue_script('ims-travel-tab', IMS_PORTAL_URL . 'assets/js/travel-tab.js', ['ims-portal-js'], IMS_PORTAL_VERSION, true);
     }
 
     public static function render(int $user_id, string $year_month, string $start, string $end): void
     {
-        if (MonthlySummaryService::is_editable($user_id, $year_month)) {
+        $editable = MonthlySummaryService::is_editable($user_id, $year_month);
+        if ($editable) {
             CommuteService::sync_period($user_id, $start, $end);
+            CommuteEditService::auto_assign_business($user_id, $year_month, $start, $end); // 事業が1つだけの日は自動で設定
         }
 
         $businesses = [];
@@ -55,13 +58,25 @@ final class TravelTabView
             $flags[$date] = (string) $day['attendance_flag'];
         }
 
-        $rows    = TravelTabCalculator::rows($start, $end, ExpenseRepository::commutes_in_range($user_id, $start, $end), $businesses, $flags, CalcSettings::rounding_mode());
+        $commutes = ExpenseRepository::commutes_in_range($user_id, $start, $end);
+        $by_day   = ExpenseRepository::project_minutes_by_date($user_id, $start, $end);
+        $suggested = [];
+        foreach ($commutes as $date => $rec) {
+            if ($rec['business_id'] === null) {
+                $sg = BusinessSuggester::suggest($by_day[$date] ?? []);
+                if ($sg['basis'] === BusinessSuggester::TOP) {
+                    $suggested[$date] = (int) $sg['business_id']; // 最多の事業を候補にする（選ぶのはスタッフ）
+                }
+            }
+        }
+
+        $rows    = TravelTabCalculator::rows($start, $end, $commutes, $businesses, $flags, CalcSettings::rounding_mode(), $suggested);
         $summary = TravelTabCalculator::summary($rows, $businesses);
         ?>
         <div class="tv-wrap">
             <div class="tv-main">
                 <?php if ($summary['unset_days'] > 0) : ?>
-                    <p class="tv-warn">⚠ 事業が未設定の日が<?php echo (int) $summary['unset_days']; ?>日あります。提出までに事業を設定する必要があります（設定画面は準備中です）。</p>
+                    <p class="tv-warn">⚠ 事業が未設定の日が<?php echo (int) $summary['unset_days']; ?>日あります。提出までに事業を設定する必要があります<?php echo $editable ? '（下の「事業」の欄から選んでください）' : ''; ?>。</p>
                 <?php endif; ?>
                 <div class="tv-scroll">
                     <table class="tv-table">
@@ -70,7 +85,7 @@ final class TravelTabView
                         </thead>
                         <tbody>
                         <?php foreach ($rows as $row) : ?>
-                            <?php self::render_row($row); ?>
+                            <?php self::render_row($row, $editable, $businesses); ?>
                         <?php endforeach; ?>
                         </tbody>
                         <tfoot>
@@ -103,8 +118,11 @@ final class TravelTabView
         <?php
     }
 
-    /** @param array<string, mixed> $row TravelTabCalculator::rows() の1行 */
-    private static function render_row(array $row): void
+    /**
+     * @param array<string, mixed> $row TravelTabCalculator::rows() の1行
+     * @param array<int, array{id:int, name:string, color:string}> $businesses
+     */
+    private static function render_row(array $row, bool $editable, array $businesses): void
     {
         $classes = ['tv-row'];
         if ($row['is_weekend']) {
@@ -122,13 +140,22 @@ final class TravelTabView
                 <td class="tv-empty" colspan="4">―</td>
             <?php else : ?>
                 <td>
-                    <?php echo esc_html($row['content']); ?>
+                    <?php if ($editable && !$row['is_zero']) : ?>
+                        <select class="tv-select" data-field="commute_type" data-id="<?php echo (int) $row['record']['id']; ?>" data-current="<?php echo esc_attr((string) $row['record']['commute_type']); ?>" aria-label="往復・片道">
+                            <option value="round_trip"<?php echo $row['record']['commute_type'] === 'one_way' ? '' : ' selected'; ?>>通勤（往復）</option>
+                            <option value="one_way"<?php echo $row['record']['commute_type'] === 'one_way' ? ' selected' : ''; ?>>通勤（片道）</option>
+                        </select>
+                    <?php else : ?>
+                        <?php echo esc_html($row['content']); ?>
+                    <?php endif; ?>
                     <?php if ($row['is_zero']) : ?><span class="tv-zero-label"><?php echo esc_html($row['zero_label']); ?></span><?php endif; ?>
                 </td>
                 <td class="tv-num"><?php echo (int) $row['distance']; ?></td>
                 <td class="tv-num"><?php echo esc_html(self::yen((int) $row['amount'])); ?></td>
                 <td>
-                    <?php if ($row['business'] !== null) : ?>
+                    <?php if ($editable) : ?>
+                        <?php self::render_business_select($row, $businesses); ?>
+                    <?php elseif ($row['business'] !== null) : ?>
                         <span class="tv-dot" style="background:<?php echo esc_attr($row['business']['color']); ?>;"></span><?php echo esc_html($row['business']['name']); ?>
                     <?php else : ?>
                         <span class="tv-unset">⚠ 未設定</span>
@@ -136,6 +163,29 @@ final class TravelTabView
                 </td>
             <?php endif; ?>
         </tr>
+        <?php
+    }
+
+    /**
+     * 事業のプルダウン。未設定の日は「未設定（要選択）」から始め、候補（最多の事業）には印を付ける。
+     *
+     * @param array<string, mixed> $row
+     * @param array<int, array{id:int, name:string, color:string}> $businesses
+     */
+    private static function render_business_select(array $row, array $businesses): void
+    {
+        $current   = $row['business'] !== null ? (int) $row['business']['id'] : 0;
+        $suggested = (int) ($row['suggested_business_id'] ?? 0);
+        $active    = CommuteEditService::active_business_ids();
+        ?>
+        <?php if ($row['business'] !== null) : ?><span class="tv-dot" style="background:<?php echo esc_attr($row['business']['color']); ?>;"></span><?php endif; ?>
+        <select class="tv-select<?php echo $current === 0 ? ' is-unset' : ''; ?>" data-field="business_id" data-id="<?php echo (int) $row['record']['id']; ?>" data-current="<?php echo (int) $current; ?>" aria-label="事業">
+            <?php if ($current === 0) : ?><option value="" selected>⚠ 未設定（要選択）</option><?php endif; ?>
+            <?php foreach ($businesses as $id => $b) : ?>
+                <?php if (!isset($active[$id]) && $id !== $current) { continue; } ?>
+                <option value="<?php echo (int) $id; ?>"<?php echo $id === $current ? ' selected' : ''; ?>><?php echo esc_html($b['name'] . ($id === $suggested ? '（候補）' : '')); ?></option>
+            <?php endforeach; ?>
+        </select>
         <?php
     }
 

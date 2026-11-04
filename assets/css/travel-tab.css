@@ -30,3 +30,6 @@
   .tv-wrap { flex-direction: column; }
   .tv-side { flex-basis: auto; width: 100%; box-sizing: border-box; }
 }
+.tv-select { max-width: 200px; padding: 3px 6px; border: 1px solid var(--line); border-radius: var(--r-sm, 8px); background: var(--paper, #fff); font: inherit; }
+.tv-select.is-unset { border-color: #A8412E; color: #A8412E; }
+.tv-select:disabled { opacity: 0.6; }
