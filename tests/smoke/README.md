@@ -15,7 +15,7 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 - `tests/` はデプロイ（FTP）でサーバーにも置かれる（`.github/` の除外設定は変えられないため）。
   そのため、すべてのファイルは先頭で「コマンドライン以外なら何もせず終了」し、`tests/.htaccess` で Web からのアクセスを拒否している。
   **新しいテストを足すときも、必ず先頭にこの2行を入れること。**
-- MariaDB と本物の WordPress で確認する手順は `docs/引き継ぎ書_phase3p.md` §6。
+- MariaDB と本物の WordPress で確認する手順は `docs/引き継ぎ書_phase3q.md` §6。
 
 ## テスト一覧
 | ファイル | 対象 |
