@@ -69,6 +69,12 @@ final class MonthlySummaryService
             );
         }
 
+        // 04（交通費）などが提出をブロックする受け口。WP_Error を返すと提出しない。
+        $blocked = apply_filters('ims_monthly_summary_submit_check', null, $target_user_id, $year_month);
+        if (is_wp_error($blocked)) {
+            return $blocked;
+        }
+
         $totals = MonthlySummaryCalculator::aggregate($grid['days']);
 
         if (!MonthlySummaryRepository::submit($target_user_id, $year_month, $totals)) {

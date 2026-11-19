@@ -30,5 +30,16 @@ php tests/smoke/weekly_overtime_test.php   # 1本だけ実行
 | `submission_reminder_test.php` / `dashboard_tile_test.php` / `tile_badge_test.php` | 3m・3p-3 タイルと未提出バッジ |
 | `confirmation_cancel_settings_test.php` / `db/confirmation_cancel_test.php` / `db/confirmation_cancel_ui_test.php` | 3n 確定の取り消し |
 | `admin_access_policy_test.php` | 3p-1 wp-admin の限定開放（`AdminAccessPolicy`） |
-| `work_start_settings_test.php` | 3q-1 所定の始業時刻（`WorkStartSettings`） |
-| `auto_allocation_test.php` | 3q 事業別時間の自動割り当て（`AutoAllocationCalculator`） |
+| `travel_expense_calculator_test.php` | 4a 交通費・車両借り上げの金額計算（`ExpenseCalculator`） |
+| `travel_calc_settings_test.php` | 4b 距離の丸め設定の保存（`CalcSettings`） |
+| `gasoline_price_calculator_test.php` | 4c ガソリン単価変更の入力チェックと再計算の計画（`GasolinePriceCalculator`） |
+| `db/gasoline_price_test.php` | 4c 一括再計算（実DB）：確定月は不変・履歴の追記・失敗時は全体ロールバック |
+| `commute_planner_test.php` | 4d 通勤費の自動生成の判定（`CommutePlanner`） |
+| `db/commute_service_test.php` | 4d 通勤費の自動生成（実DB）：作成・べき等・勤怠フラグ連動・提出後ロック・編集を上書きしない |
+| `travel_tab_calculator_test.php` | 4e 交通費タブの表示データ（`TravelTabCalculator`） |
+| `db/travel_tab_view_test.php` | 4e 交通費タブの描画（実DB）：行・事業の色・未設定の警告・0円ラベル・集計・提出済みは作り足さない |
+| `commute_edit_test.php` | 4f 事業のサジェストと通勤レコード編集の入力チェック（`BusinessSuggester`・`CommuteEditCalculator`） |
+| `db/commute_edit_service_test.php` | 4f 通勤レコードの編集（実DB）：保存・他人/提出済みの拒否・事業の自動設定 |
+| `db/submit_check_test.php` | 4g 月次提出時の交通費チェック（実DB。03の提出処理まで通す）：未設定でブロック・自動設定・0円処理は対象外・提出後はロック |
+| `vehicle_rental_test.php` | 4h 車両借り上げの入力チェック・金額・タブの表示データ（`VehicleRentalCalculator`・`VehicleTabCalculator`） |
+| `db/vehicle_rental_service_test.php` | 4h 車両借り上げ（実DB）：追加・削除・ロック・他人の分は触れない・タブの描画 |
